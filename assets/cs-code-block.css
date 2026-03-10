@@ -121,7 +121,6 @@
 
 /* Buttons */
 .cs-code-theme-toggle,
-.cs-code-copy,
 .cs-code-lines-toggle {
     display: inline-flex;
     align-items: center;
@@ -139,15 +138,51 @@
 }
 
 .cs-code-theme-toggle:hover,
-.cs-code-copy:hover,
 .cs-code-lines-toggle:hover {
     color: var(--cs-hover-color);
     background: var(--cs-hover-bg);
 }
 
+/* Copy button — icon + label */
+.cs-code-copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    padding: 0 8px 0 6px;
+    gap: 4px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    background: transparent;
+    line-height: 1;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+}
+
+.cs-code-copy:hover {
+    color: var(--cs-hover-color);
+    background: var(--cs-hover-bg);
+}
+
+.cs-copy-label {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+}
+
 /* Copy success */
 .cs-code-copy.copied {
     color: #98c379 !important;
+}
+
+.cs-code-copy.copied .cs-copy-label {
+    display: none;
 }
 
 .cs-code-copy .cs-icon-check {
