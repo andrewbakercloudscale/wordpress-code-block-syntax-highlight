@@ -9,9 +9,10 @@ helpLib.run({
     docsDir:    process.env.WP_DOCS_DIR,
 
     pluginName: 'CloudScale Code Block',
-    pluginDesc: 'Syntax highlighted code blocks with auto language detection, clipboard copy, dark/light mode toggle, a code block migrator from other plugins, and a read-only SQL query tool. Works as a Gutenberg block and as a [cs_code] shortcode.',
+    pluginDesc: 'Most code block plugins for WordPress either cost money, depend on slow external CDNs, or produce ugly output you have to style yourself. CloudScale Code Block runs entirely on your server — no external CDN, no API calls, no subscription. Beautiful syntax highlighting, one-click copy, dark/light mode, and a built-in SQL query tool. Completely free.',
     pageTitle:  'CloudScale Code Block: Online Help',
     pageSlug:   'code-block-help',
+    downloadUrl: 'https://your-s3-bucket.s3.af-south-1.amazonaws.com/cloudscale-code-block.zip',
     adminUrl:   `${process.env.WP_BASE_URL}/wp-admin/tools.php?page=cloudscale-code-sql`,
 
     sections: [
@@ -22,6 +23,12 @@ helpLib.run({
 
     docs: {
         'code-block': `
+<div style="background:#f0f9ff;border-left:4px solid #0e6b8f;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:28px;">
+<h2 style="margin:0 0 10px;font-size:1.3em;color:#0f172a;">Why CloudScale Code Block?</h2>
+<p style="margin:0 0 10px;">Popular code highlighting plugins like Enlighter and SyntaxHighlighter load external CDN scripts that add 100–300ms to your page load time. Others charge $30–$50/year for features that should come included. Some require you to write custom CSS just to make the output look presentable.</p>
+<p style="margin:0 0 10px;">CloudScale Code Block bundles everything locally — zero external requests, zero impact on your CDN cache hit rate. Auto language detection, clipboard copy button, dark and light theme toggle, and line numbers all work out of the box. It also includes a one-click migrator to import code blocks from other popular plugins.</p>
+<p style="margin:0;"><strong>Completely free.</strong> No premium version, no nag screens, no feature gating. Use it on as many sites as you want.</p>
+</div>
 <p>The <strong>CloudScale Code Block</strong> is a registered Gutenberg block (<code>cloudscale/code</code>) and a <code>[cs_code]</code> shortcode for displaying syntax-highlighted code in WordPress posts and pages. Syntax highlighting is powered by <strong>highlight.js 11.11.1</strong> loaded from the cdnjs CDN, supporting over 190 languages with auto-detection.</p>
 <p><strong>Block and shortcode usage:</strong></p>
 <ul>
