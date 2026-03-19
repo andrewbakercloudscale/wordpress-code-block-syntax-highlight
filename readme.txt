@@ -149,6 +149,17 @@ Yes. Press Enter to run the query. Use Shift+Enter to insert a newline. Ctrl+Ent
 = 1.0.0 =
 * Initial release
 
+== External services ==
+
+This plugin loads syntax highlighting scripts and stylesheets from the cdnjs CDN operated by Cloudflare, Inc.
+
+* Service: cdnjs (https://cdnjs.cloudflare.com/)
+* When: On every page that contains a code block (frontend and block editor).
+* What is sent: Standard HTTP request headers including visitor IP address and user agent, as required by any CDN request. No site content or user data is transmitted by the plugin itself.
+* Why: To serve the highlight.js library and theme stylesheets without bundling them locally.
+* Cloudflare Privacy Policy: https://www.cloudflare.com/privacypolicy/
+* Cloudflare Terms of Service: https://www.cloudflare.com/terms/
+
 == Upgrade Notice ==
 
 = 1.7.3 =
