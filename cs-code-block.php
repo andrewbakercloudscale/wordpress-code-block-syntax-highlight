@@ -926,6 +926,10 @@ class CloudScale_Code_Block {
         if ( strpos( $clean, ';' ) !== false ) {
             return false;
         }
+        // Reject file-system abuse clauses regardless of SELECT keyword.
+        if ( preg_match( '/\b(INTO\s+OUTFILE|INTO\s+DUMPFILE|LOAD_FILE)\b/i', $clean ) ) {
+            return false;
+        }
         if ( preg_match( '/^(\w+)/i', $clean, $m ) ) {
             $first = strtoupper( $m[1] );
             return in_array( $first, [ 'SELECT', 'SHOW', 'DESCRIBE', 'DESC', 'EXPLAIN' ], true );
