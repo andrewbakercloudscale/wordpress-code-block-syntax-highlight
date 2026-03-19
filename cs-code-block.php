@@ -562,7 +562,7 @@ class CloudScale_Code_Block {
     public static function add_tools_page() {
         add_management_page(
             'CloudScale Code and SQL',
-            'CloudScale Code and SQL',
+            '🌩️ CloudScale Code and SQL',
             'manage_options',
             self::TOOLS_SLUG,
             [ __CLASS__, 'render_tools_page' ]
