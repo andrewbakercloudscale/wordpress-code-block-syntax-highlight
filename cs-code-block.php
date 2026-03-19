@@ -10,7 +10,7 @@
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Requires at least: 6.0
  * Requires PHP: 7.4
- * Text Domain: cs-code-block
+ * Text Domain: cloudscale-code-block
  *
  * @package CloudScale_Code_Block
  * @since   1.0.0
@@ -220,7 +220,7 @@ class CloudScale_Code_Block {
      */
     public static function load_textdomain(): void {
         load_plugin_textdomain(
-            'cs-code-block',
+            'cloudscale-code-block',
             false,
             dirname( plugin_basename( __FILE__ ) ) . '/languages'
         );
@@ -392,7 +392,6 @@ class CloudScale_Code_Block {
      */
     private static function build_html( $id, $code, $lang, $title, $theme ) {
         $lang_class = $lang ? 'language-' . esc_attr( $lang ) : '';
-        $theme_attr = $theme ? ' data-theme="' . esc_attr( $theme ) . '"' : '';
 
         $cloudscale_link = '<a class="cs-code-brand" href="https://andrewbaker.ninja/2026/02/27/building-a-better-code-block-for-wordpress-cloudscale-code-block-plugin/" target="_blank" rel="noopener noreferrer"><span class="cs-brand-bolt">&#9889;</span> Powered by CloudScale</a>';
 
@@ -403,28 +402,28 @@ class CloudScale_Code_Block {
 
         ob_start();
         ?>
-        <div class="cs-code-wrapper" id="<?php echo esc_attr( $id ); ?>"<?php echo $theme_attr; ?>>
+        <div class="cs-code-wrapper" id="<?php echo esc_attr( $id ); ?>"<?php if ( $theme ) { echo ' data-theme="' . esc_attr( $theme ) . '"'; } ?>>
             <div class="cs-code-toolbar">
-                <?php echo $cloudscale_link; ?>
-                <?php echo $title_html; ?>
+                <?php echo wp_kses_post( $cloudscale_link ); ?>
+                <?php echo wp_kses_post( $title_html ); ?>
                 <div class="cs-code-actions">
                     <span class="cs-code-lang-badge"></span>
-                    <button class="cs-code-lines-toggle" title="<?php esc_attr_e( 'Toggle line numbers', 'cs-code-block' ); ?>" aria-label="<?php esc_attr_e( 'Toggle line numbers', 'cs-code-block' ); ?>">
+                    <button class="cs-code-lines-toggle" title="<?php esc_attr_e( 'Toggle line numbers', 'cloudscale-code-block' ); ?>" aria-label="<?php esc_attr_e( 'Toggle line numbers', 'cloudscale-code-block' ); ?>">
                         <svg class="cs-icon-lines" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><text x="4" y="7" font-size="7" fill="currentColor" stroke="none" font-family="monospace">1</text><text x="4" y="13" font-size="7" fill="currentColor" stroke="none" font-family="monospace">2</text><text x="4" y="19" font-size="7" fill="currentColor" stroke="none" font-family="monospace">3</text></svg>
                     </button>
-                    <button class="cs-code-theme-toggle" title="<?php esc_attr_e( 'Toggle light/dark mode', 'cs-code-block' ); ?>" aria-label="<?php esc_attr_e( 'Toggle theme', 'cs-code-block' ); ?>">
+                    <button class="cs-code-theme-toggle" title="<?php esc_attr_e( 'Toggle light/dark mode', 'cloudscale-code-block' ); ?>" aria-label="<?php esc_attr_e( 'Toggle theme', 'cloudscale-code-block' ); ?>">
                         <svg class="cs-icon-sun" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
                         <svg class="cs-icon-moon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                     </button>
-                    <button class="cs-code-copy" title="<?php esc_attr_e( 'Copy to clipboard', 'cs-code-block' ); ?>" aria-label="<?php esc_attr_e( 'Copy code', 'cs-code-block' ); ?>">
+                    <button class="cs-code-copy" title="<?php esc_attr_e( 'Copy to clipboard', 'cloudscale-code-block' ); ?>" aria-label="<?php esc_attr_e( 'Copy code', 'cloudscale-code-block' ); ?>">
                         <svg class="cs-icon-copy" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                         <svg class="cs-icon-check" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span class="cs-copy-label"><?php esc_html_e( 'Copy', 'cs-code-block' ); ?></span>
+                        <span class="cs-copy-label"><?php esc_html_e( 'Copy', 'cloudscale-code-block' ); ?></span>
                     </button>
                 </div>
             </div>
             <div class="cs-code-body">
-                <pre><code class="<?php echo $lang_class; ?>"><?php echo esc_html( $code ); ?></code></pre>
+                <pre><code class="<?php echo esc_attr( $lang_class ); ?>"><?php echo esc_html( $code ); ?></code></pre>
             </div>
         </div>
         <?php
@@ -651,10 +650,10 @@ class CloudScale_Code_Block {
             <div id="cs-banner">
                 <div>
                     <div id="cs-banner-title">⚡ CloudScale Code and SQL</div>
-                    <div id="cs-banner-sub"><?php esc_html_e( 'Syntax highlighting, code migration, and database query tool', 'cs-code-block' ); ?> &middot; v<?php echo esc_html( self::VERSION ); ?></div>
+                    <div id="cs-banner-sub"><?php esc_html_e( 'Syntax highlighting, code migration, and database query tool', 'cloudscale-code-block' ); ?> &middot; v<?php echo esc_html( self::VERSION ); ?></div>
                 </div>
                 <div id="cs-banner-right">
-                    <span class="cs-badge cs-badge-green">✅ <?php esc_html_e( 'Totally Free', 'cs-code-block' ); ?></span>
+                    <span class="cs-badge cs-badge-green">✅ <?php esc_html_e( 'Totally Free', 'cloudscale-code-block' ); ?></span>
                     <span class="cs-badge cs-badge-orange">andrewbaker.ninja</span>
                 </div>
             </div>
@@ -663,11 +662,11 @@ class CloudScale_Code_Block {
             <div id="cs-tab-bar">
                 <a href="<?php echo esc_url( $base_url . '&tab=migrate' ); ?>"
                    class="cs-tab <?php echo $active_tab === 'migrate' ? 'active' : ''; ?>">
-                    🔄 <?php esc_html_e( 'Code Migrator', 'cs-code-block' ); ?>
+                    🔄 <?php esc_html_e( 'Code Migrator', 'cloudscale-code-block' ); ?>
                 </a>
                 <a href="<?php echo esc_url( $base_url . '&tab=sql' ); ?>"
                    class="cs-tab <?php echo $active_tab === 'sql' ? 'active' : ''; ?>">
-                    🗄️ <?php esc_html_e( 'SQL Command', 'cs-code-block' ); ?>
+                    🗄️ <?php esc_html_e( 'SQL Command', 'cloudscale-code-block' ); ?>
                 </a>
             </div>
 
@@ -709,7 +708,7 @@ class CloudScale_Code_Block {
             <div class="cs-panel-body">
                 <div class="cs-field-row">
                     <div class="cs-field">
-                        <label class="cs-label" for="cs-settings-pair"><?php esc_html_e( 'Color Theme:', 'cs-code-block' ); ?></label>
+                        <label class="cs-label" for="cs-settings-pair"><?php esc_html_e( 'Color Theme:', 'cloudscale-code-block' ); ?></label>
                         <select id="cs-settings-pair" name="cs_code_theme_pair" class="cs-input">
                             <?php foreach ( $registry as $slug => $info ) : ?>
                                 <option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $pair_slug, $slug ); ?>>
@@ -717,20 +716,20 @@ class CloudScale_Code_Block {
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <span class="cs-hint"><?php esc_html_e( 'Syntax highlighting color scheme loaded from CDN.', 'cs-code-block' ); ?></span>
+                        <span class="cs-hint"><?php esc_html_e( 'Syntax highlighting color scheme loaded from CDN.', 'cloudscale-code-block' ); ?></span>
                     </div>
                     <div class="cs-field">
-                        <label class="cs-label" for="cs-settings-theme"><?php esc_html_e( 'Default Mode:', 'cs-code-block' ); ?></label>
+                        <label class="cs-label" for="cs-settings-theme"><?php esc_html_e( 'Default Mode:', 'cloudscale-code-block' ); ?></label>
                         <select id="cs-settings-theme" name="cs_code_default_theme" class="cs-input">
-                            <option value="dark" <?php selected( $theme, 'dark' ); ?>><?php esc_html_e( 'Dark', 'cs-code-block' ); ?></option>
-                            <option value="light" <?php selected( $theme, 'light' ); ?>><?php esc_html_e( 'Light', 'cs-code-block' ); ?></option>
+                            <option value="dark" <?php selected( $theme, 'dark' ); ?>><?php esc_html_e( 'Dark', 'cloudscale-code-block' ); ?></option>
+                            <option value="light" <?php selected( $theme, 'light' ); ?>><?php esc_html_e( 'Light', 'cloudscale-code-block' ); ?></option>
                         </select>
-                        <span class="cs-hint"><?php esc_html_e( 'Visitors can still toggle per block.', 'cs-code-block' ); ?></span>
+                        <span class="cs-hint"><?php esc_html_e( 'Visitors can still toggle per block.', 'cloudscale-code-block' ); ?></span>
                     </div>
                 </div>
                 <div style="margin-top:14px;display:flex;align-items:center;gap:10px">
-                    <button type="button" class="cs-btn-primary" id="cs-settings-save">💾 <?php esc_html_e( 'Save Settings', 'cs-code-block' ); ?></button>
-                    <span class="cs-settings-saved" id="cs-settings-saved">✓ <?php esc_html_e( 'Saved', 'cs-code-block' ); ?></span>
+                    <button type="button" class="cs-btn-primary" id="cs-settings-save">💾 <?php esc_html_e( 'Save Settings', 'cloudscale-code-block' ); ?></button>
+                    <span class="cs-settings-saved" id="cs-settings-saved">✓ <?php esc_html_e( 'Saved', 'cloudscale-code-block' ); ?></span>
                 </div>
             </div>
         </div>
@@ -755,21 +754,21 @@ class CloudScale_Code_Block {
             </div>
             <div class="cs-panel-body">
                 <p style="color:#555;margin:0 0 16px;font-size:13px;line-height:1.6">
-                    <?php esc_html_e( 'Scan your posts for legacy WordPress code blocks, preview changes, then migrate one at a time or all at once.', 'cs-code-block' ); ?>
+                    <?php esc_html_e( 'Scan your posts for legacy WordPress code blocks, preview changes, then migrate one at a time or all at once.', 'cloudscale-code-block' ); ?>
                 </p>
 
                 <div class="cs-migrate-toolbar">
                     <button id="cs-scan-btn" class="cs-btn-primary" style="padding:8px 20px;font-size:13px">
-                        <span class="dashicons dashicons-search" style="font-size:14px;width:14px;height:14px;margin-top:1px"></span> <?php esc_html_e( 'Scan Posts', 'cs-code-block' ); ?>
+                        <span class="dashicons dashicons-search" style="font-size:14px;width:14px;height:14px;margin-top:1px"></span> <?php esc_html_e( 'Scan Posts', 'cloudscale-code-block' ); ?>
                     </button>
                     <button id="cs-migrate-all-btn" class="cs-btn-orange" style="padding:8px 20px;font-size:13px;opacity:.5;pointer-events:none" disabled>
-                        <span class="dashicons dashicons-update" style="font-size:14px;width:14px;height:14px;margin-top:1px"></span> <?php esc_html_e( 'Migrate All Remaining', 'cs-code-block' ); ?>
+                        <span class="dashicons dashicons-update" style="font-size:14px;width:14px;height:14px;margin-top:1px"></span> <?php esc_html_e( 'Migrate All Remaining', 'cloudscale-code-block' ); ?>
                     </button>
                     <span id="cs-scan-status" class="cs-status"></span>
                 </div>
 
                 <div id="cs-results-area">
-                    <p class="cs-migrate-hint"><?php printf( esc_html__( 'Click %s to find all posts with legacy code blocks.', 'cs-code-block' ), '<strong>' . esc_html__( 'Scan Posts', 'cs-code-block' ) . '</strong>' ); ?></p>
+                    <p class="cs-migrate-hint"><?php printf( esc_html__( 'Click %s to find all posts with legacy code blocks.', 'cloudscale-code-block' ), '<strong>' . esc_html__( 'Scan Posts', 'cloudscale-code-block' ) . '</strong>' ); ?></p>
                 </div>
             </div>
         </div>
@@ -778,17 +777,17 @@ class CloudScale_Code_Block {
             <div class="cs-modal-backdrop"></div>
             <div class="cs-modal-content">
                 <div class="cs-modal-header">
-                    <h2 id="cs-modal-title"><?php esc_html_e( 'Preview', 'cs-code-block' ); ?></h2>
+                    <h2 id="cs-modal-title"><?php esc_html_e( 'Preview', 'cloudscale-code-block' ); ?></h2>
                     <button class="cs-modal-close">&times;</button>
                 </div>
                 <div class="cs-modal-body" id="cs-modal-body">
-                    <?php esc_html_e( 'Loading...', 'cs-code-block' ); ?>
+                    <?php esc_html_e( 'Loading...', 'cloudscale-code-block' ); ?>
                 </div>
                 <div class="cs-modal-footer">
                     <button id="cs-modal-migrate-btn" class="cs-btn-primary" data-post-id="" style="padding:8px 20px">
-                        <span class="dashicons dashicons-yes-alt"></span> <?php esc_html_e( 'Migrate This Post', 'cs-code-block' ); ?>
+                        <span class="dashicons dashicons-yes-alt"></span> <?php esc_html_e( 'Migrate This Post', 'cloudscale-code-block' ); ?>
                     </button>
-                    <button class="cs-modal-close-btn" style="background:#fff;border:1.5px solid #dce3ef;border-radius:5px;padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer"><?php esc_html_e( 'Cancel', 'cs-code-block' ); ?></button>
+                    <button class="cs-modal-close-btn" style="background:#fff;border:1.5px solid #dce3ef;border-radius:5px;padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer"><?php esc_html_e( 'Cancel', 'cloudscale-code-block' ); ?></button>
                 </div>
             </div>
         </div>
@@ -812,91 +811,91 @@ class CloudScale_Code_Block {
         <div class="cs-panel">
             <div class="cs-section-header cs-section-header-purple">
                 <span>🗄️ SQL Query</span>
-                <span class="cs-header-hint"><?php esc_html_e( 'Table prefix:', 'cs-code-block' ); ?> <code><?php echo esc_html( $prefix ); ?></code> &nbsp;·&nbsp; ⚠ <?php esc_html_e( 'Read only (SELECT, SHOW, DESCRIBE, EXPLAIN)', 'cs-code-block' ); ?></span>
+                <span class="cs-header-hint"><?php esc_html_e( 'Table prefix:', 'cloudscale-code-block' ); ?> <code><?php echo esc_html( $prefix ); ?></code> &nbsp;·&nbsp; ⚠ <?php esc_html_e( 'Read only (SELECT, SHOW, DESCRIBE, EXPLAIN)', 'cloudscale-code-block' ); ?></span>
             </div>
             <div class="cs-panel-body">
                 <textarea id="cs-sql-input" class="cs-sql-textarea" placeholder="SELECT option_name, option_value FROM <?php echo esc_attr( $prefix ); ?>options WHERE option_name = 'siteurl';"></textarea>
                 <div style="display:flex;align-items:center;gap:10px;margin-top:12px">
-                    <button type="button" class="cs-btn-primary" id="cs-sql-run" style="padding:8px 20px;font-size:13px">▶ <?php esc_html_e( 'Run Query', 'cs-code-block' ); ?></button>
-                    <button type="button" class="cs-btn-pink" id="cs-sql-clear">🧹 <?php esc_html_e( 'Clear', 'cs-code-block' ); ?></button>
+                    <button type="button" class="cs-btn-primary" id="cs-sql-run" style="padding:8px 20px;font-size:13px">▶ <?php esc_html_e( 'Run Query', 'cloudscale-code-block' ); ?></button>
+                    <button type="button" class="cs-btn-pink" id="cs-sql-clear">🧹 <?php esc_html_e( 'Clear', 'cloudscale-code-block' ); ?></button>
                     <span id="cs-sql-status" style="font-size:12px;color:#888"></span>
-                    <span style="margin-left:auto;font-size:11px;color:#999"><?php esc_html_e( 'Enter or Ctrl+Enter to run', 'cs-code-block' ); ?></span>
+                    <span style="margin-left:auto;font-size:11px;color:#999"><?php esc_html_e( 'Enter or Ctrl+Enter to run', 'cloudscale-code-block' ); ?></span>
                 </div>
             </div>
         </div>
 
         <div class="cs-panel">
             <div class="cs-section-header cs-section-header-green">
-                <span>📊 <?php esc_html_e( 'Results', 'cs-code-block' ); ?></span>
+                <span>📊 <?php esc_html_e( 'Results', 'cloudscale-code-block' ); ?></span>
                 <span id="cs-sql-meta" style="font-size:12px;opacity:0.85"></span>
             </div>
             <div class="cs-panel-body">
                 <div id="cs-sql-results" style="overflow-x:auto;font-size:13px">
-                    <div style="text-align:center;color:#999;padding:40px 0"><?php esc_html_e( 'Run a query to see results here', 'cs-code-block' ); ?></div>
+                    <div style="text-align:center;color:#999;padding:40px 0"><?php esc_html_e( 'Run a query to see results here', 'cloudscale-code-block' ); ?></div>
                 </div>
             </div>
         </div>
 
         <div class="cs-panel">
             <div class="cs-section-header cs-section-header-orange">
-                <span>⚡ <?php esc_html_e( 'Quick Queries', 'cs-code-block' ); ?></span>
+                <span>⚡ <?php esc_html_e( 'Quick Queries', 'cloudscale-code-block' ); ?></span>
             </div>
             <div class="cs-panel-body">
-                <p class="cs-quick-group-label">🏥 <?php esc_html_e( 'Health and Diagnostics', 'cs-code-block' ); ?></p>
+                <p class="cs-quick-group-label">🏥 <?php esc_html_e( 'Health and Diagnostics', 'cloudscale-code-block' ); ?></p>
                 <div class="cs-quick-grid">
                     <button type="button" class="cs-quick-btn cs-sql-quick" data-sql="SELECT @@version AS mysql_version, @@global.max_connections AS max_connections, @@global.wait_timeout AS wait_timeout_sec, @@global.max_allowed_packet / 1024 / 1024 AS max_packet_mb, DATABASE() AS current_db;">
-                        🩺 <?php esc_html_e( 'Database health check', 'cs-code-block' ); ?>
+                        🩺 <?php esc_html_e( 'Database health check', 'cloudscale-code-block' ); ?>
                     </button>
                     <button type="button" class="cs-quick-btn cs-sql-quick" data-sql="SELECT option_id, option_name, LEFT(option_value, 200) AS option_value_preview FROM <?php echo esc_attr( $prefix ); ?>options WHERE option_name IN ('siteurl','home','blogname','blogdescription','wp_version','db_version');">
-                        🏠 <?php esc_html_e( 'Site identity options', 'cs-code-block' ); ?>
+                        🏠 <?php esc_html_e( 'Site identity options', 'cloudscale-code-block' ); ?>
                     </button>
                     <button type="button" class="cs-quick-btn cs-sql-quick" data-sql="SELECT table_name, engine, table_rows, ROUND(data_length/1024/1024, 2) AS data_mb, ROUND(index_length/1024/1024, 2) AS index_mb, ROUND((data_length + index_length)/1024/1024, 2) AS total_mb FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY (data_length + index_length) DESC;">
-                        📊 <?php esc_html_e( 'Table names, sizes and rows', 'cs-code-block' ); ?>
+                        📊 <?php esc_html_e( 'Table names, sizes and rows', 'cloudscale-code-block' ); ?>
                     </button>
                 </div>
 
-                <p class="cs-quick-group-label">📈 <?php esc_html_e( 'Content Summary', 'cs-code-block' ); ?></p>
+                <p class="cs-quick-group-label">📈 <?php esc_html_e( 'Content Summary', 'cloudscale-code-block' ); ?></p>
                 <div class="cs-quick-grid">
                     <button type="button" class="cs-quick-btn cs-sql-quick" data-sql="SELECT post_type, post_status, COUNT(*) AS total FROM <?php echo esc_attr( $prefix ); ?>posts GROUP BY post_type, post_status ORDER BY total DESC;">
-                        📰 <?php esc_html_e( 'Posts by type and status', 'cs-code-block' ); ?>
+                        📰 <?php esc_html_e( 'Posts by type and status', 'cloudscale-code-block' ); ?>
                     </button>
                     <button type="button" class="cs-quick-btn cs-sql-quick" data-sql="SELECT (SELECT COUNT(*) FROM <?php echo esc_attr( $prefix ); ?>posts WHERE post_status='publish') AS published_posts, (SELECT COUNT(*) FROM <?php echo esc_attr( $prefix ); ?>posts WHERE post_type='revision') AS revisions, (SELECT COUNT(*) FROM <?php echo esc_attr( $prefix ); ?>posts WHERE post_status='auto-draft') AS auto_drafts, (SELECT COUNT(*) FROM <?php echo esc_attr( $prefix ); ?>posts WHERE post_status='trash') AS trashed, (SELECT COUNT(*) FROM <?php echo esc_attr( $prefix ); ?>comments) AS total_comments, (SELECT COUNT(*) FROM <?php echo esc_attr( $prefix ); ?>comments WHERE comment_approved='spam') AS spam_comments, (SELECT COUNT(*) FROM <?php echo esc_attr( $prefix ); ?>users) AS users, (SELECT COUNT(*) FROM <?php echo esc_attr( $prefix ); ?>options WHERE option_name LIKE '%_transient_%') AS transients;">
-                        📋 <?php esc_html_e( 'Site stats summary', 'cs-code-block' ); ?>
+                        📋 <?php esc_html_e( 'Site stats summary', 'cloudscale-code-block' ); ?>
                     </button>
                     <button type="button" class="cs-quick-btn cs-sql-quick" data-sql="SELECT ID, post_title, post_date, post_status FROM <?php echo esc_attr( $prefix ); ?>posts WHERE post_status = 'publish' AND post_type = 'post' ORDER BY post_date DESC LIMIT 20;">
-                        📝 <?php esc_html_e( 'Latest 20 published posts', 'cs-code-block' ); ?>
+                        📝 <?php esc_html_e( 'Latest 20 published posts', 'cloudscale-code-block' ); ?>
                     </button>
                 </div>
 
-                <p class="cs-quick-group-label">🧹 <?php esc_html_e( 'Bloat and Cleanup Checks', 'cs-code-block' ); ?></p>
+                <p class="cs-quick-group-label">🧹 <?php esc_html_e( 'Bloat and Cleanup Checks', 'cloudscale-code-block' ); ?></p>
                 <div class="cs-quick-grid">
                     <button type="button" class="cs-quick-btn cs-sql-quick" data-sql="SELECT COUNT(*) AS orphaned_postmeta FROM <?php echo esc_attr( $prefix ); ?>postmeta pm LEFT JOIN <?php echo esc_attr( $prefix ); ?>posts p ON pm.post_id = p.ID WHERE p.ID IS NULL;">
-                        🗑️ <?php esc_html_e( 'Orphaned postmeta count', 'cs-code-block' ); ?>
+                        🗑️ <?php esc_html_e( 'Orphaned postmeta count', 'cloudscale-code-block' ); ?>
                     </button>
                     <button type="button" class="cs-quick-btn cs-sql-quick" data-sql="SELECT COUNT(*) AS expired_transients FROM <?php echo esc_attr( $prefix ); ?>options WHERE option_name LIKE '_transient_timeout_%' AND option_value < UNIX_TIMESTAMP();">
-                        ⏰ <?php esc_html_e( 'Expired transients count', 'cs-code-block' ); ?>
+                        ⏰ <?php esc_html_e( 'Expired transients count', 'cloudscale-code-block' ); ?>
                     </button>
                     <button type="button" class="cs-quick-btn cs-sql-quick" data-sql="SELECT post_type, COUNT(*) AS total FROM <?php echo esc_attr( $prefix ); ?>posts WHERE post_type = 'revision' OR post_status = 'auto-draft' OR post_status = 'trash' GROUP BY post_type, post_status ORDER BY total DESC;">
-                        📦 <?php esc_html_e( 'Revisions, drafts and trash', 'cs-code-block' ); ?>
+                        📦 <?php esc_html_e( 'Revisions, drafts and trash', 'cloudscale-code-block' ); ?>
                     </button>
                     <button type="button" class="cs-quick-btn cs-sql-quick" data-sql="SELECT LEFT(option_name, 40) AS option_name, LENGTH(option_value) AS value_bytes FROM <?php echo esc_attr( $prefix ); ?>options WHERE autoload = 'yes' ORDER BY LENGTH(option_value) DESC LIMIT 30;">
-                        ⚖️ <?php esc_html_e( 'Largest autoloaded options', 'cs-code-block' ); ?>
+                        ⚖️ <?php esc_html_e( 'Largest autoloaded options', 'cloudscale-code-block' ); ?>
                     </button>
                 </div>
 
-                <p class="cs-quick-group-label">🔍 <?php esc_html_e( 'URL and Migration Helpers', 'cs-code-block' ); ?></p>
+                <p class="cs-quick-group-label">🔍 <?php esc_html_e( 'URL and Migration Helpers', 'cloudscale-code-block' ); ?></p>
                 <div class="cs-quick-grid">
                     <button type="button" class="cs-quick-btn cs-sql-quick" data-sql="SELECT option_id, option_name, option_value FROM <?php echo esc_attr( $prefix ); ?>options WHERE option_value LIKE '%http://andrewbaker%';">
-                        🔗 <?php esc_html_e( 'HTTP references (andrewbaker)', 'cs-code-block' ); ?>
+                        🔗 <?php esc_html_e( 'HTTP references (andrewbaker)', 'cloudscale-code-block' ); ?>
                     </button>
                     <button type="button" class="cs-quick-btn cs-sql-quick" data-sql="SELECT ID, post_title, post_type, post_status, guid FROM <?php echo esc_attr( $prefix ); ?>posts WHERE guid LIKE '%http://%' LIMIT 50;">
-                        📰 <?php esc_html_e( 'Posts with HTTP GUIDs', 'cs-code-block' ); ?>
+                        📰 <?php esc_html_e( 'Posts with HTTP GUIDs', 'cloudscale-code-block' ); ?>
                     </button>
                     <button type="button" class="cs-quick-btn cs-sql-quick" data-sql="SELECT post_id, meta_key, LEFT(meta_value, 200) AS meta_value_preview FROM <?php echo esc_attr( $prefix ); ?>postmeta WHERE meta_value LIKE '%http://54.195%' LIMIT 50;">
-                        🖥️ <?php esc_html_e( 'Old IP references (postmeta)', 'cs-code-block' ); ?>
+                        🖥️ <?php esc_html_e( 'Old IP references (postmeta)', 'cloudscale-code-block' ); ?>
                     </button>
                     <button type="button" class="cs-quick-btn cs-sql-quick" data-sql="SELECT ID, post_title, post_type FROM <?php echo esc_attr( $prefix ); ?>posts WHERE post_status = 'publish' AND ID NOT IN (SELECT post_id FROM <?php echo esc_attr( $prefix ); ?>postmeta WHERE meta_key = '_cs_seo_desc' AND meta_value != '') ORDER BY post_date DESC LIMIT 50;">
-                        📝 <?php esc_html_e( 'Posts missing meta descriptions', 'cs-code-block' ); ?>
+                        📝 <?php esc_html_e( 'Posts missing meta descriptions', 'cloudscale-code-block' ); ?>
                     </button>
                 </div>
             </div>
@@ -1003,14 +1002,14 @@ class CloudScale_Code_Block {
             wp_send_json_error( 'Bad nonce' );
         }
 
-        $theme = isset( $_POST['theme'] ) ? sanitize_text_field( $_POST['theme'] ) : 'dark';
+        $theme = isset( $_POST['theme'] ) ? sanitize_text_field( wp_unslash( $_POST['theme'] ) ) : 'dark';
         if ( ! in_array( $theme, [ 'dark', 'light' ], true ) ) {
             $theme = 'dark';
         }
         update_option( 'cs_code_default_theme', $theme );
 
         $valid_pairs = array_keys( self::get_theme_registry() );
-        $pair        = isset( $_POST['theme_pair'] ) ? sanitize_text_field( $_POST['theme_pair'] ) : 'atom-one';
+        $pair        = isset( $_POST['theme_pair'] ) ? sanitize_text_field( wp_unslash( $_POST['theme_pair'] ) ) : 'atom-one';
         if ( ! in_array( $pair, $valid_pairs, true ) ) {
             $pair = 'atom-one';
         }
