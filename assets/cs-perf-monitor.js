@@ -14,7 +14,7 @@
     var LS_HEIGHT = 'cs_perf_height';
     var LS_TAB    = 'cs_perf_tab';
     var DEFAULT_H = 340;
-    var MIN_H     = 150;
+    var MIN_H     = 260;
     var MAX_H_PCT = 0.82;
 
     var T_MEDIUM   = 10;
@@ -149,6 +149,7 @@
     function restoreState() {
         var open = localStorage.getItem(LS_OPEN) === '1';
         var h    = parseInt(localStorage.getItem(LS_HEIGHT), 10) || DEFAULT_H;
+        if (h < MIN_H) { h = DEFAULT_H; localStorage.removeItem(LS_HEIGHT); }
         if (open) openPanel(h, false);
         switchTab(activeTab, false);
     }
