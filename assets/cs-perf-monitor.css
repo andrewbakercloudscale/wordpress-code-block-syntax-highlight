@@ -373,6 +373,7 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
+    overscroll-behavior: contain;
 }
 .cs-tbl-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
 .cs-tbl-wrap::-webkit-scrollbar-track { background: #1e1e1e; }
@@ -546,6 +547,7 @@
 #cs-err-list {
     padding: 8px 10px;
     overflow-y: auto;
+    overscroll-behavior: contain;
     flex: 1;
 }
 /* ── Debug toggle bar ───────────────────────────────────────────────────── */
@@ -611,6 +613,7 @@
 /* ── Log list ────────────────────────────────────────────────────────────── */
 .cs-log-list {
     overflow-y: auto;
+    overscroll-behavior: contain;
     flex: 1;
     padding: 4px 6px;
 }
@@ -815,6 +818,7 @@ td.c-n { color: #555; font-size: 10px; text-align: right; padding-right: 6px; }
 
 #cs-summary-wrap {
     overflow-y: auto;
+    overscroll-behavior: contain;
     flex: 1;
     padding: 10px 12px 12px;
     display: flex;
@@ -1180,3 +1184,181 @@ td.c-n { color: #555; font-size: 10px; text-align: right; padding-right: 6px; }
     .cs-ptable td.c-r { display: none; }
 }
 
+/* ── Issues tab count badge colours ─────────────────────────────────────── */
+.cs-issues-cnt-critical { background: rgba(244,71,71,.25) !important; color: #f44747 !important; }
+.cs-issues-cnt-warning  { background: rgba(206,145,120,.25) !important; color: #ce9178 !important; }
+
+/* ── Issues list ─────────────────────────────────────────────────────────── */
+.cs-issues-wrap { padding: 0; }
+
+.cs-issues-group { }
+.cs-issues-group-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: #666;
+    padding: 8px 10px 4px;
+    position: sticky;
+    top: 0;
+    background: #1e1e1e;
+    z-index: 1;
+}
+
+.cs-issue-row {
+    padding: 6px 10px 5px;
+    border-left: 3px solid transparent;
+    border-bottom: 1px solid #252525;
+    cursor: pointer;
+    transition: background .1s;
+}
+.cs-issue-row:hover { background: #2a2d2e; }
+
+.cs-issue-critical { border-left-color: #f44747; background: rgba(244,71,71,.05); }
+.cs-issue-warning  { border-left-color: #ce9178; }
+.cs-issue-info     { border-left-color: #4ec9b0; }
+
+.cs-issue-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+.cs-issue-title {
+    flex: 1;
+    font-size: 12px;
+    color: #d4d4d4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cs-issue-arrow { color: #444; font-size: 11px; flex-shrink: 0; }
+.cs-issue-detail {
+    font-size: 10px;
+    color: #777;
+    font-family: 'Consolas', 'Monaco', monospace;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Request tab ─────────────────────────────────────────────────────────── */
+.cs-request-wrap { padding: 0; }
+.cs-req-body { padding: 8px 10px 16px; }
+
+.cs-req-section { margin-bottom: 14px; }
+.cs-req-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: #555;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #2a2a2a;
+    margin-bottom: 4px;
+}
+
+.cs-req-kv {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    border-bottom: 1px solid #1c1c1c;
+    align-items: baseline;
+}
+.cs-req-kv:last-child { border-bottom: none; }
+.cs-req-k {
+    font-size: 11px;
+    color: #9cdcfe;
+    width: 110px;
+    flex-shrink: 0;
+}
+.cs-req-v {
+    font-size: 11px;
+    color: #d4d4d4;
+    flex: 1;
+    word-break: break-all;
+}
+.cs-req-mono {
+    font-family: 'Consolas', 'Monaco', monospace;
+    color: #ce9178;
+    font-size: 11px;
+}
+.cs-req-empty {
+    font-size: 11px;
+    color: #444;
+    font-style: italic;
+    padding: 3px 0;
+}
+.cs-req-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px 0;
+}
+.cs-req-tag {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 10px;
+    background: #2a2a2a;
+    color: #9cdcfe;
+    padding: 1px 6px;
+    border-radius: 3px;
+    border: 1px solid #3c3c3c;
+}
+
+/* ── Environment card ────────────────────────────────────────────────────── */
+.cs-sum-card-env .cs-sum-card-title { color: #dcdcaa; }
+.cs-sum-card-env .cs-sum-card-stat  { color: #dcdcaa; font-size: 13px; }
+
+/* ── Template hierarchy tab ──────────────────────────────────────────────── */
+.cs-template-wrap { padding: 0; }
+
+.cs-tmpl-group { margin-bottom: 6px; }
+.cs-tmpl-type-hdr {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: #555;
+    padding: 7px 10px 4px;
+    background: #1e1e1e;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+.cs-tmpl-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    border-bottom: 1px solid #1c1c1c;
+    font-size: 11px;
+}
+.cs-tmpl-icon { width: 14px; flex-shrink: 0; text-align: center; }
+.cs-tmpl-file { flex: 1; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; }
+
+.cs-tmpl-active  .cs-tmpl-icon { color: #4ec9b0; }
+.cs-tmpl-active  .cs-tmpl-file { color: #4ec9b0; font-weight: 600; }
+.cs-tmpl-found   .cs-tmpl-icon { color: #555; }
+.cs-tmpl-found   .cs-tmpl-file { color: #888; }
+.cs-tmpl-miss    .cs-tmpl-icon { color: #3c3c3c; }
+.cs-tmpl-miss    .cs-tmpl-file { color: #3c3c3c; text-decoration: line-through; }
+
+.cs-tmpl-loc {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+.cs-tmpl-loc-child  { background: rgba(78,201,176,.15); color: #4ec9b0; }
+.cs-tmpl-loc-parent { background: rgba(156,220,254,.12); color: #9cdcfe; }
+
+/* ── Transients tab ──────────────────────────────────────────────────────── */
+.c-tk { flex: 1; min-width: 180px; font-family: 'Consolas','Monaco',monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-tg, .c-th, .c-tm, .c-ts, .c-td, .c-tr { width: 52px; text-align: right; }
+.cs-trans-miss { color: #ce9178; font-weight: 700; }

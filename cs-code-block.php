@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Code Block
  * Plugin URI: https://andrewbaker.ninja
  * Description: Syntax highlighted code block with auto language detection, clipboard copy, dark/light mode toggle, code block migrator, and read only SQL query tool. Works as a Gutenberg block and as a [cs_code] shortcode.
- * Version: 1.7.57
+ * Version: 1.8.0
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -206,6 +206,10 @@ class CloudScale_Code_Block {
     private static $perf_hook_last_ms = null;
     /** @var string|null Name of last hook fired. */
     private static $perf_hook_last_name = null;
+    /** @var array Transient stats: [ key => [ gets, hits, sets, deletes ] ] */
+    private static $perf_transients = [];
+    /** @var array Template hierarchy candidates captured via *_template_hierarchy filters. */
+    private static $perf_template_hierarchy = [];
 
     /**
      * Registers all plugin hooks.
@@ -276,6 +280,13 @@ class CloudScale_Code_Block {
 
         // Hook timing tracker — fires on every action/filter.
         add_action( 'all', [ __CLASS__, 'perf_hook_tracker' ] );
+
+        // Transient + template hierarchy observer (single all-hook for both).
+        add_action( 'all',                      [ __CLASS__, 'perf_misc_tracker' ] );
+        add_action( 'setted_transient',         [ __CLASS__, 'perf_transient_set' ] );
+        add_action( 'setted_site_transient',    [ __CLASS__, 'perf_transient_set' ] );
+        add_action( 'deleted_transient',        [ __CLASS__, 'perf_transient_delete' ] );
+        add_action( 'deleted_site_transient',   [ __CLASS__, 'perf_transient_delete' ] );
 
         // Scripts & styles — collect at footer time (after everything is enqueued).
         add_action( 'admin_footer', [ __CLASS__, 'perf_capture_assets' ], 1 );
@@ -1981,13 +1992,229 @@ class CloudScale_Code_Block {
                                         : ( is_home()    ? 'blog home'
                                         : ( is_front_page() ? 'front page' : 'other' ) ) ) ),
                 'template'           => self::$perf_template,
+                // Environment
+                'php_version'        => PHP_VERSION,
+                'wp_version'         => get_bloginfo( 'version' ),
+                'mysql_version'      => $wpdb->db_version(),
+                'memory_limit'       => ini_get( 'memory_limit' ),
+                'memory_peak_mb'     => round( memory_get_peak_usage( true ) / 1048576, 1 ),
+                'active_theme'       => wp_get_theme()->get( 'Name' ),
+                'is_multisite'       => is_multisite(),
             ],
+            'request'    => self::perf_build_request_data(),
+            'transients' => self::perf_build_transient_data(),
+            'template'   => self::perf_build_template_data(),
         ];
 
         // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         echo '<script>window.csPerfData=' . wp_json_encode( $data ) . ';</script>' . "\n";
         // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         echo self::perf_panel_html();
+    }
+
+    /* ==================================================================
+       PERFORMANCE MONITOR — Request data
+       ================================================================== */
+
+    /**
+     * Collects request context: GET params, POST keys, WP query vars,
+     * matched rewrite rule, and current user roles.
+     *
+     * @return array
+     */
+    private static function perf_build_request_data(): array {
+        global $wp;
+
+        // $_GET — values are in the URL so safe to show; sanitise for output.
+        $get_params = [];
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        foreach ( $_GET as $k => $v ) {
+            $get_params[ sanitize_key( $k ) ] = is_array( $v )
+                ? '(array)'
+                : sanitize_text_field( wp_unslash( (string) $v ) );
+        }
+
+        // $_POST — show keys only; values could contain passwords / nonces.
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        $post_keys = array_map( 'sanitize_key', array_keys( $_POST ) );
+
+        // WP query vars — only available on frontend after parse_request.
+        $query_vars = [];
+        if ( isset( $wp ) && is_object( $wp ) && isset( $wp->query_vars ) && is_array( $wp->query_vars ) ) {
+            foreach ( $wp->query_vars as $k => $v ) {
+                if ( '' === $v || false === $v || null === $v ) {
+                    continue;
+                }
+                $query_vars[ sanitize_key( $k ) ] = is_array( $v )
+                    ? '(array)'
+                    : sanitize_text_field( (string) $v );
+            }
+        }
+
+        return [
+            'method'       => isset( $_SERVER['REQUEST_METHOD'] )
+                ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) )
+                : 'GET',
+            'get'          => $get_params,
+            'post_keys'    => $post_keys,
+            'matched_rule' => ( isset( $wp ) && is_object( $wp ) && isset( $wp->matched_rule ) )
+                ? (string) $wp->matched_rule
+                : '',
+            'query_vars'   => $query_vars,
+            'user_roles'   => wp_get_current_user()->roles,
+        ];
+    }
+
+    /* ==================================================================
+       PERFORMANCE MONITOR — Transient + template hierarchy observers
+       ================================================================== */
+
+    /**
+     * Single all-hook observer for transients and template hierarchy.
+     * Kept in one callback to minimise per-hook overhead (this fires on every hook).
+     *
+     * @param mixed $value First arg of the current filter/action (may not exist).
+     * @return void
+     */
+    public static function perf_misc_tracker( $value = null ): void {
+        $hook = current_filter();
+        $ch   = isset( $hook[0] ) ? $hook[0] : '';
+
+        // ── Transient GET tracking ────────────────────────────────────────────
+        if ( 'p' === $ch && strpos( $hook, 'pre_transient_' ) === 0 ) {
+            $key = substr( $hook, 14 ); // strlen('pre_transient_') = 14
+            if ( ! isset( self::$perf_transients[ $key ] ) ) {
+                self::$perf_transients[ $key ] = [ 'gets' => 0, 'hits' => 0, 'sets' => 0, 'deletes' => 0 ];
+            }
+            self::$perf_transients[ $key ]['gets']++;
+            return;
+        }
+
+        // ── Transient GET result (hits only; misses = gets - hits) ────────────
+        if ( 't' === $ch && strpos( $hook, 'transient_' ) === 0 ) {
+            $key = substr( $hook, 10 ); // strlen('transient_') = 10
+            if ( isset( self::$perf_transients[ $key ] ) && false !== $value ) {
+                self::$perf_transients[ $key ]['hits']++;
+            }
+            return;
+        }
+
+        // ── Template hierarchy capture ────────────────────────────────────────
+        // Hooks like single_template_hierarchy, page_template_hierarchy etc.
+        static $suffix     = '_template_hierarchy';
+        static $suffix_len = 19;
+        if ( strlen( $hook ) > $suffix_len
+            && substr( $hook, -$suffix_len ) === $suffix
+            && is_array( $value )
+        ) {
+            self::$perf_template_hierarchy[] = [
+                'type'      => substr( $hook, 0, -$suffix_len ),
+                'templates' => array_values( $value ),
+            ];
+        }
+    }
+
+    /**
+     * Records a transient SET. Fires on setted_transient / setted_site_transient.
+     *
+     * @param string $transient Transient key.
+     * @return void
+     */
+    public static function perf_transient_set( string $transient ): void {
+        if ( ! isset( self::$perf_transients[ $transient ] ) ) {
+            self::$perf_transients[ $transient ] = [ 'gets' => 0, 'hits' => 0, 'sets' => 0, 'deletes' => 0 ];
+        }
+        self::$perf_transients[ $transient ]['sets']++;
+    }
+
+    /**
+     * Records a transient DELETE. Fires on deleted_transient / deleted_site_transient.
+     *
+     * @param string $transient Transient key.
+     * @return void
+     */
+    public static function perf_transient_delete( string $transient ): void {
+        if ( ! isset( self::$perf_transients[ $transient ] ) ) {
+            self::$perf_transients[ $transient ] = [ 'gets' => 0, 'hits' => 0, 'sets' => 0, 'deletes' => 0 ];
+        }
+        self::$perf_transients[ $transient ]['deletes']++;
+    }
+
+    /**
+     * Builds the transient stats array for the panel.
+     *
+     * @return array
+     */
+    private static function perf_build_transient_data(): array {
+        $result = [];
+        foreach ( self::$perf_transients as $key => $stats ) {
+            // hits only counts DB hits; persistent-cache GETs intercepted via
+            // pre_transient_* may not produce a matching transient_* call.
+            $misses   = max( 0, $stats['gets'] - $stats['hits'] );
+            $hit_rate = $stats['gets'] > 0
+                ? round( ( $stats['hits'] / $stats['gets'] ) * 100 )
+                : null;
+            $result[] = [
+                'key'      => $key,
+                'gets'     => $stats['gets'],
+                'hits'     => $stats['hits'],
+                'misses'   => $misses,
+                'sets'     => $stats['sets'],
+                'deletes'  => $stats['deletes'],
+                'hit_rate' => $hit_rate,
+            ];
+        }
+        usort( $result, function ( $a, $b ) {
+            return ( $b['gets'] + $b['sets'] ) - ( $a['gets'] + $a['sets'] );
+        } );
+        return $result;
+    }
+
+    /**
+     * Builds template hierarchy data: type, ordered candidates, and which was used.
+     *
+     * @return array
+     */
+    private static function perf_build_template_data(): array {
+        if ( empty( self::$perf_template_hierarchy ) ) {
+            return [ 'final' => self::$perf_template, 'hierarchy' => [] ];
+        }
+
+        $child_dir  = trailingslashit( get_stylesheet_directory() );
+        $parent_dir = trailingslashit( get_template_directory() );
+        $is_child   = ( $child_dir !== $parent_dir );
+
+        $hierarchy = [];
+        foreach ( self::$perf_template_hierarchy as $entry ) {
+            $candidates = [];
+            foreach ( $entry['templates'] as $tpl ) {
+                if ( file_exists( $child_dir . $tpl ) ) {
+                    $found    = true;
+                    $location = 'child';
+                } elseif ( $is_child && file_exists( $parent_dir . $tpl ) ) {
+                    $found    = true;
+                    $location = 'parent';
+                } else {
+                    $found    = false;
+                    $location = '';
+                }
+                $candidates[] = [
+                    'file'     => $tpl,
+                    'found'    => $found,
+                    'location' => $location,
+                    'active'   => ( $tpl === self::$perf_template ),
+                ];
+            }
+            $hierarchy[] = [
+                'type'       => $entry['type'],
+                'candidates' => $candidates,
+            ];
+        }
+
+        return [
+            'final'     => self::$perf_template,
+            'hierarchy' => $hierarchy,
+        ];
     }
 
     /* ==================================================================
@@ -2404,6 +2631,10 @@ class CloudScale_Code_Block {
                 . '<h3 class="cs-help-title">&#9889; CS Monitor — What you\'re looking at</h3>'
                 . '<div class="cs-help-grid">'
                     . '<div class="cs-help-card">'
+                        . '<div class="cs-help-card-title" style="color:#f44747">&#128308; Issues</div>'
+                        . '<p>All critical and warning-level problems on this page load in one place — slow queries, N+1 patterns, HTTP errors, PHP errors, cache health. Click any issue to jump to the relevant tab.</p>'
+                    . '</div>'
+                    . '<div class="cs-help-card">'
                         . '<div class="cs-help-card-title cs-help-db">&#128200; DB Queries</div>'
                         . '<p>Every database query WordPress and your plugins ran to build this page. Slow queries hurt page speed. N+1 means the same query is looping — a common plugin performance bug.</p>'
                     . '</div>'
@@ -2424,8 +2655,12 @@ class CloudScale_Code_Block {
                         . '<p>WordPress action and filter hooks fired during this request, sorted by cumulative time. Slow hooks reveal expensive callbacks added by plugins or your theme.</p>'
                     . '</div>'
                     . '<div class="cs-help-card">'
+                        . '<div class="cs-help-card-title" style="color:#9cdcfe">&#128196; Request</div>'
+                        . '<p>Current request context: GET/POST params, matched WordPress rewrite rule, WP query vars, and current user roles. Useful for debugging routing issues and unexpected page behaviour.</p>'
+                    . '</div>'
+                    . '<div class="cs-help-card">'
                         . '<div class="cs-help-card-title cs-help-sum">&#9650; Summary</div>'
-                        . '<p>Which plugin is responsible for the most DB time, the slowest queries, N+1 patterns, and duplicate queries — the fastest way to find what\'s slowing your site.</p>'
+                        . '<p>Which plugin is responsible for the most DB time, the slowest queries, N+1 patterns, duplicate queries — plus environment info (PHP/WP/MySQL versions, memory peak, active theme).</p>'
                     . '</div>'
                 . '</div>'
                 . '<div class="cs-help-legend">'
@@ -2443,12 +2678,16 @@ class CloudScale_Code_Block {
             . '<div id="cs-perf-body">'
                 . '<div id="cs-perf-ctx" aria-label="Page context"></div>'
                 . '<div id="cs-perf-tabs" role="tablist">'
-                    . '<button class="cs-ptab active" data-tab="db"      role="tab" aria-selected="true">DB Queries <span id="cs-ptc-db">0</span></button>'
+                    . '<button class="cs-ptab"         data-tab="issues"  role="tab" aria-selected="false">Issues <span id="cs-ptc-issues">0</span></button>'
+                    . '<button class="cs-ptab active"  data-tab="db"      role="tab" aria-selected="true">DB Queries <span id="cs-ptc-db">0</span></button>'
                     . '<button class="cs-ptab"         data-tab="http"    role="tab" aria-selected="false">HTTP / REST <span id="cs-ptc-http">0</span></button>'
                     . '<button class="cs-ptab"         data-tab="logs"    role="tab" aria-selected="false">Logs <span id="cs-ptc-log">0</span></button>'
                     . '<button class="cs-ptab"         data-tab="assets"  role="tab" aria-selected="false">Assets <span id="cs-ptc-assets">0</span></button>'
                     . '<button class="cs-ptab"         data-tab="hooks"   role="tab" aria-selected="false">Hooks <span id="cs-ptc-hooks">0</span></button>'
-                    . '<button class="cs-ptab"         data-tab="summary" role="tab" aria-selected="false">Summary</button>'
+                    . '<button class="cs-ptab"         data-tab="request"   role="tab" aria-selected="false">Request</button>'
+                    . '<button class="cs-ptab"         data-tab="template"  role="tab" aria-selected="false">Template</button>'
+                    . '<button class="cs-ptab"         data-tab="transients" role="tab" aria-selected="false">Transients <span id="cs-ptc-trans">0</span></button>'
+                    . '<button class="cs-ptab"         data-tab="summary"   role="tab" aria-selected="false">Summary</button>'
                 . '</div>'
                 . '<div id="cs-perf-filters">'
                     . '<input type="search" id="cs-pf-search" placeholder="Filter&#8230;" aria-label="Filter rows">'
@@ -2460,6 +2699,9 @@ class CloudScale_Code_Block {
                         . '<option value="100">Critical &gt;100ms</option>'
                     . '</select>'
                     . '<label class="cs-pf-dupe-lbl"><input type="checkbox" id="cs-pf-dupe"> Dupes only</label>'
+                . '</div>'
+                . '<div id="cs-pp-issues" class="cs-ppane" role="tabpanel">'
+                    . '<div id="cs-issues-wrap" class="cs-tbl-wrap cs-issues-wrap"></div>'
                 . '</div>'
                 . '<div id="cs-pp-db" class="cs-ppane active" role="tabpanel">'
                     . '<div class="cs-tbl-wrap">'
@@ -2539,6 +2781,25 @@ class CloudScale_Code_Block {
                             . '<th class="c-ht cs-sortable cs-sort-hk-time" data-sort="total_ms">Total&nbsp;&#8597;</th>'
                             . '<th class="c-hm cs-sortable" data-sort="max_ms">Max&nbsp;&#8597;</th>'
                         . '</tr></thead><tbody id="cs-hooks-rows"></tbody></table>'
+                    . '</div>'
+                . '</div>'
+                . '<div id="cs-pp-request" class="cs-ppane" role="tabpanel">'
+                    . '<div id="cs-request-wrap" class="cs-tbl-wrap cs-request-wrap"></div>'
+                . '</div>'
+                . '<div id="cs-pp-template" class="cs-ppane" role="tabpanel">'
+                    . '<div id="cs-template-wrap" class="cs-tbl-wrap cs-template-wrap"></div>'
+                . '</div>'
+                . '<div id="cs-pp-transients" class="cs-ppane" role="tabpanel">'
+                    . '<div class="cs-tbl-wrap">'
+                        . '<table class="cs-ptable"><thead><tr>'
+                            . '<th class="c-tk">Transient key</th>'
+                            . '<th class="c-tg">Gets</th>'
+                            . '<th class="c-th">Hits</th>'
+                            . '<th class="c-tm">Misses</th>'
+                            . '<th class="c-ts">Sets</th>'
+                            . '<th class="c-td">Del</th>'
+                            . '<th class="c-tr">Hit&nbsp;%</th>'
+                        . '</tr></thead><tbody id="cs-trans-rows"></tbody></table>'
                     . '</div>'
                 . '</div>'
                 . '<div id="cs-pp-summary" class="cs-ppane" role="tabpanel">'

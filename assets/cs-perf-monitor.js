@@ -23,7 +23,7 @@
     var N1_THRESH  = 3;
 
     // ── State ─────────────────────────────────────────────────────────────────
-    var data      = window.csPerfData || { queries: [], http: [], errors: [], logs: [], assets: { scripts: [], styles: [] }, cache: {}, hooks: [], meta: {} };
+    var data      = window.csPerfData || { queries: [], http: [], errors: [], logs: [], assets: { scripts: [], styles: [] }, cache: {}, hooks: [], meta: {}, request: {}, transients: [], template: { final: '', hierarchy: [] } };
     var meta      = data.meta || {};
     var sortCol   = 'time';
     var sortDir   = 'desc';
@@ -47,6 +47,10 @@
     var logSearch, logLevel, logSource;
     var assetsTbody, assetsCount, assetSearch, assetType, assetPlugin;
     var hooksTbody, hooksCount, hookSearch;
+    var issuesWrap, requestWrap, templateWrap;
+    var transTbody, transCount;
+
+    var issuesList = [];
 
     // ── Bootstrap ─────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', function () {
@@ -85,6 +89,11 @@
         hooksTbody   = document.getElementById('cs-hooks-rows');
         hooksCount   = document.getElementById('cs-ptc-hooks');
         hookSearch   = document.getElementById('cs-hkf-search');
+        issuesWrap   = document.getElementById('cs-issues-wrap');
+        requestWrap  = document.getElementById('cs-request-wrap');
+        templateWrap = document.getElementById('cs-template-wrap');
+        transTbody   = document.getElementById('cs-trans-rows');
+        transCount   = document.getElementById('cs-ptc-trans');
 
         if (!panel) return;
 
@@ -94,6 +103,7 @@
         if (helpPanel) document.body.appendChild(helpPanel);
 
         computeN1Patterns();
+        computeIssues();
         populatePluginFilter();
         populateAssetPluginFilter();
         updateBadges();
@@ -103,6 +113,10 @@
         renderLogs();
         renderAssets();
         renderHooks();
+        renderIssues();
+        renderRequest();
+        renderTemplate();
+        renderTransients();
         renderSummary();
         restoreState();
         bindEvents();
@@ -384,7 +398,19 @@
             var assets = data.assets || {};
             assetsCount.textContent = ((assets.scripts || []).length + (assets.styles || []).length);
         }
-        if (hooksCount) hooksCount.textContent = (data.hooks || []).length;
+        if (hooksCount)  hooksCount.textContent  = (data.hooks       || []).length;
+        if (transCount)  transCount.textContent  = (data.transients  || []).length;
+
+        var issuesCntEl = document.getElementById('cs-ptc-issues');
+        if (issuesCntEl) {
+            var critCnt = issuesList.filter(function (i) { return i.sev === 'critical'; }).length;
+            var warnCnt = issuesList.filter(function (i) { return i.sev === 'warning';  }).length;
+            var shown   = critCnt + warnCnt;
+            issuesCntEl.textContent = shown;
+            issuesCntEl.className   = critCnt > 0 ? 'cs-issues-cnt-critical'
+                                    : warnCnt > 0 ? 'cs-issues-cnt-warning'
+                                    : '';
+        }
     }
 
     // ── Multi-column sort ─────────────────────────────────────────────────────
@@ -694,6 +720,280 @@
         }).join('');
     }
 
+    // ── Issues tab ────────────────────────────────────────────────────────────
+    function computeIssues() {
+        issuesList = [];
+
+        // Critical & slow queries
+        data.queries.forEach(function (q) {
+            if (q.time_ms >= T_CRITICAL) {
+                issuesList.push({ sev: 'critical', tab: 'db',
+                    title: 'Critical query — ' + fmtMs(q.time_ms),
+                    detail: truncate(q.sql, 110), plugin: q.plugin });
+            } else if (q.time_ms >= T_SLOW) {
+                issuesList.push({ sev: 'warning', tab: 'db',
+                    title: 'Slow query — ' + fmtMs(q.time_ms),
+                    detail: truncate(q.sql, 110), plugin: q.plugin });
+            }
+        });
+
+        // N+1 patterns (already computed)
+        Object.keys(n1Patterns).forEach(function (k) {
+            var p = n1Patterns[k];
+            issuesList.push({ sev: 'warning', tab: 'db',
+                title: 'N+1 pattern — ' + p.count + ' identical calls — ' + fmtMs(p.total_ms) + ' total',
+                detail: truncate(normalisePattern(p.example), 110), plugin: p.plugin });
+        });
+
+        // Duplicate queries — one entry per group
+        var dupeMap = {};
+        data.queries.forEach(function (q) {
+            if (!q.is_dupe) return;
+            var fp = q.sql.replace(/\s+/g, ' ').toLowerCase().trim();
+            if (!dupeMap[fp]) dupeMap[fp] = { sql: q.sql, count: 1, plugin: q.plugin };
+            else dupeMap[fp].count++;
+        });
+        Object.keys(dupeMap).forEach(function (k) {
+            var g = dupeMap[k];
+            issuesList.push({ sev: 'warning', tab: 'db',
+                title: 'Duplicate query — ' + g.count + ' extra calls',
+                detail: truncate(g.sql, 110), plugin: g.plugin });
+        });
+
+        // HTTP errors + slow HTTP
+        data.http.forEach(function (h) {
+            if (h.error || (h.status && h.status >= 400)) {
+                issuesList.push({ sev: 'critical', tab: 'http',
+                    title: 'HTTP error' + (h.status ? ' ' + h.status : '') + (h.error ? ' — ' + h.error : '') + ' — ' + fmtMs(h.time_ms),
+                    detail: truncateUrl(h.url, 110), plugin: h.plugin });
+            } else if (h.time_ms >= T_SLOW) {
+                issuesList.push({ sev: 'warning', tab: 'http',
+                    title: 'Slow HTTP — ' + fmtMs(h.time_ms),
+                    detail: truncateUrl(h.url, 110), plugin: h.plugin });
+            }
+        });
+
+        // PHP errors / log entries
+        (data.logs || []).forEach(function (e) {
+            var lvl = (e.level || '').toLowerCase();
+            var isFatal = lvl.indexOf('fatal') !== -1;
+            var isError = lvl.indexOf('error') !== -1;
+            var isWarn  = lvl.indexOf('warn') !== -1 || lvl.indexOf('dep') !== -1;
+            if (isFatal || (isError && e.source === 'php_handler')) {
+                issuesList.push({ sev: 'critical', tab: 'logs',
+                    title: (e.level || 'Error') + (e.source === 'php_handler' ? ' — this request' : ''),
+                    detail: truncate(e.message, 110), plugin: '' });
+            } else if (isError || isWarn) {
+                issuesList.push({ sev: 'warning', tab: 'logs',
+                    title: e.level || 'Warning',
+                    detail: truncate(e.message, 110), plugin: '' });
+            }
+        });
+
+        // Object cache health
+        var cache = data.cache || {};
+        if (cache.available && cache.hit_rate !== null) {
+            if (cache.hit_rate < 30) {
+                issuesList.push({ sev: 'critical', tab: 'summary',
+                    title: 'Object cache hit rate ' + cache.hit_rate + '% — critically low',
+                    detail: cache.hits + ' hits / ' + cache.misses + ' misses', plugin: '' });
+            } else if (cache.hit_rate < 60) {
+                issuesList.push({ sev: 'warning', tab: 'summary',
+                    title: 'Object cache hit rate ' + cache.hit_rate + '% — below 60%',
+                    detail: cache.hits + ' hits / ' + cache.misses + ' misses', plugin: '' });
+            }
+        }
+        if (cache.available && !cache.persistent) {
+            issuesList.push({ sev: 'info', tab: 'summary',
+                title: 'No persistent object cache',
+                detail: 'Redis or Memcached would reduce database load significantly', plugin: '' });
+        }
+
+        // Debug logging
+        if (!meta.wp_debug || !meta.wp_debug_log) {
+            issuesList.push({ sev: 'info', tab: 'logs',
+                title: 'Debug logging is off',
+                detail: 'Enable WP_DEBUG + WP_DEBUG_LOG in wp-config.php to capture PHP errors here', plugin: '' });
+        }
+
+        // Sort: critical → warning → info
+        var order = { critical: 0, warning: 1, info: 2 };
+        issuesList.sort(function (a, b) { return (order[a.sev] || 0) - (order[b.sev] || 0); });
+    }
+
+    function renderIssues() {
+        if (!issuesWrap) return;
+
+        if (issuesList.length === 0) {
+            issuesWrap.innerHTML = '<div class="cs-empty" style="padding:24px 12px">'
+                + '<span class="cs-empty-icon">&#10003;</span>'
+                + 'No issues detected on this page load.</div>';
+            return;
+        }
+
+        var html = '';
+        var lastSev = null;
+        var titles  = { critical: '&#128308;&nbsp;Critical', warning: '&#128993;&nbsp;Warnings', info: '&#128994;&nbsp;Info' };
+        issuesList.forEach(function (issue) {
+            if (issue.sev !== lastSev) {
+                if (lastSev !== null) html += '</div>';
+                html += '<div class="cs-issues-group"><div class="cs-issues-group-title">' + (titles[issue.sev] || issue.sev) + '</div>';
+                lastSev = issue.sev;
+            }
+            html += '<div class="cs-issue-row cs-issue-' + esc(issue.sev) + '" data-tab="' + esc(issue.tab) + '">'
+                + '<div class="cs-issue-top">'
+                    + '<span class="cs-issue-title">' + esc(issue.title) + '</span>'
+                    + (issue.plugin ? pluginChip(issue.plugin) : '')
+                    + '<span class="cs-issue-arrow">&#8594;</span>'
+                + '</div>'
+                + (issue.detail ? '<div class="cs-issue-detail">' + esc(issue.detail) + '</div>' : '')
+                + '</div>';
+        });
+        if (lastSev !== null) html += '</div>';
+
+        issuesWrap.innerHTML = html;
+
+        Array.prototype.forEach.call(issuesWrap.querySelectorAll('.cs-issue-row[data-tab]'), function (row) {
+            row.addEventListener('click', function () { switchTab(row.getAttribute('data-tab')); });
+        });
+    }
+
+    // ── Request tab ───────────────────────────────────────────────────────────
+    function renderRequest() {
+        if (!requestWrap) return;
+        var req = data.request || {};
+
+        var html = '<div class="cs-req-body">';
+
+        // Method / URL / Rewrite
+        html += '<div class="cs-req-section"><div class="cs-req-section-title">Request</div>'
+            + '<div class="cs-req-kv"><span class="cs-req-k">Method</span><span class="cs-req-v">' + methodBadge(req.method || 'GET') + '</span></div>'
+            + '<div class="cs-req-kv"><span class="cs-req-k">URL</span><span class="cs-req-v cs-req-mono">' + esc(meta.url || '—') + '</span></div>'
+            + (req.matched_rule ? '<div class="cs-req-kv"><span class="cs-req-k">Rewrite rule</span><span class="cs-req-v cs-req-mono">' + esc(req.matched_rule) + '</span></div>' : '')
+            + '</div>';
+
+        // GET params
+        var getKeys = Object.keys(req.get || {});
+        html += '<div class="cs-req-section"><div class="cs-req-section-title">GET params (' + getKeys.length + ')</div>';
+        if (getKeys.length === 0) {
+            html += '<div class="cs-req-empty">None</div>';
+        } else {
+            getKeys.forEach(function (k) {
+                html += '<div class="cs-req-kv"><span class="cs-req-k">' + esc(k) + '</span><span class="cs-req-v cs-req-mono">' + esc((req.get || {})[k]) + '</span></div>';
+            });
+        }
+        html += '</div>';
+
+        // POST keys only
+        var postKeys = req.post_keys || [];
+        html += '<div class="cs-req-section"><div class="cs-req-section-title">POST fields (' + postKeys.length + ') — keys only</div>';
+        if (postKeys.length === 0) {
+            html += '<div class="cs-req-empty">None</div>';
+        } else {
+            html += '<div class="cs-req-tags">'
+                + postKeys.map(function (k) { return '<code class="cs-req-tag">' + esc(k) + '</code>'; }).join(' ')
+                + '</div>';
+        }
+        html += '</div>';
+
+        // WP query vars
+        var qvKeys = Object.keys(req.query_vars || {});
+        html += '<div class="cs-req-section"><div class="cs-req-section-title">WP Query Vars (' + qvKeys.length + ')</div>';
+        if (qvKeys.length === 0) {
+            html += '<div class="cs-req-empty">None — admin page, or parse_request has not run</div>';
+        } else {
+            qvKeys.forEach(function (k) {
+                html += '<div class="cs-req-kv"><span class="cs-req-k">' + esc(k) + '</span><span class="cs-req-v cs-req-mono">' + esc((req.query_vars || {})[k]) + '</span></div>';
+            });
+        }
+        html += '</div>';
+
+        // Current user
+        var roles = req.user_roles || [];
+        html += '<div class="cs-req-section"><div class="cs-req-section-title">Current User</div>'
+            + '<div class="cs-req-kv"><span class="cs-req-k">Roles</span><span class="cs-req-v">'
+            + (roles.length
+                ? roles.map(function (r) { return '<code class="cs-req-tag">' + esc(r) + '</code>'; }).join(' ')
+                : '<em style="color:#666">None / not logged in</em>')
+            + '</span></div></div>';
+
+        html += '</div>';
+        requestWrap.innerHTML = html;
+    }
+
+    // ── Template hierarchy tab ────────────────────────────────────────────────
+    function renderTemplate() {
+        if (!templateWrap) return;
+        var tmpl = data.template || {};
+
+        if (!tmpl.final && (!tmpl.hierarchy || tmpl.hierarchy.length === 0)) {
+            templateWrap.innerHTML = '<div class="cs-empty" style="padding:20px 12px">'
+                + '<span class="cs-empty-icon">&#128196;</span>'
+                + 'Template hierarchy is only captured on frontend pages.</div>';
+            return;
+        }
+
+        var html = '';
+
+        if (tmpl.hierarchy && tmpl.hierarchy.length > 0) {
+            tmpl.hierarchy.forEach(function (entry) {
+                html += '<div class="cs-tmpl-group">'
+                    + '<div class="cs-tmpl-type-hdr">' + esc(entry.type) + ' template</div>';
+                entry.candidates.forEach(function (c) {
+                    var cls  = c.active ? 'cs-tmpl-active' : c.found ? 'cs-tmpl-found' : 'cs-tmpl-miss';
+                    var icon = c.active ? '&#9654;' : c.found ? '&#10003;' : '&mdash;';
+                    var locTag = c.location
+                        ? '<span class="cs-tmpl-loc cs-tmpl-loc-' + esc(c.location) + '">' + esc(c.location) + '</span>'
+                        : '';
+                    html += '<div class="cs-tmpl-row ' + cls + '">'
+                        + '<span class="cs-tmpl-icon">' + icon + '</span>'
+                        + '<span class="cs-tmpl-file">' + esc(c.file) + '</span>'
+                        + locTag
+                        + '</div>';
+                });
+                html += '</div>';
+            });
+        } else if (tmpl.final) {
+            // Hierarchy not captured (e.g. full-page templates via template_include only)
+            html = '<div class="cs-tmpl-group"><div class="cs-tmpl-type-hdr">Active template</div>'
+                + '<div class="cs-tmpl-row cs-tmpl-active"><span class="cs-tmpl-icon">&#9654;</span>'
+                + '<span class="cs-tmpl-file">' + esc(tmpl.final) + '</span></div></div>';
+        }
+
+        templateWrap.innerHTML = html;
+    }
+
+    // ── Transients tab ────────────────────────────────────────────────────────
+    function renderTransients() {
+        if (!transTbody) return;
+        var transients = data.transients || [];
+
+        if (transients.length === 0) {
+            transTbody.innerHTML = '<tr><td colspan="7" class="cs-empty">'
+                + '<span class="cs-empty-icon">&#9744;</span>'
+                + 'No transients accessed or set on this page load.</td></tr>';
+            return;
+        }
+
+        var html = '';
+        transients.forEach(function (t) {
+            var hr     = t.hit_rate !== null ? t.hit_rate : null;
+            var hrCls  = hr === null ? '' : hr >= 80 ? 'cs-tv-fast' : hr >= 50 ? 'cs-tv-medium' : 'cs-tv-slow';
+            var hrTxt  = hr !== null ? hr + '%' : '&mdash;';
+            var missCls = t.misses > 0 ? 'cs-trans-miss' : '';
+            html += '<tr>'
+                + '<td class="c-tk" title="' + esc(t.key) + '">' + esc(t.key) + '</td>'
+                + '<td class="c-tg">' + (t.gets    || 0) + '</td>'
+                + '<td class="c-th" style="color:#4ec9b0">' + (t.hits    || 0) + '</td>'
+                + '<td class="c-tm ' + missCls + '">' + (t.misses  || 0) + '</td>'
+                + '<td class="c-ts" style="color:#9cdcfe">' + (t.sets    || 0) + '</td>'
+                + '<td class="c-td" style="color:#888">' + (t.deletes || 0) + '</td>'
+                + '<td class="c-tr"><span class="' + hrCls + '">' + hrTxt + '</span></td>'
+                + '</tr>';
+        });
+        transTbody.innerHTML = html;
+    }
+
     // ── Summary ───────────────────────────────────────────────────────────────
     function renderSummary() {
         if (!summaryWrap) return;
@@ -737,6 +1037,25 @@
             .sort(function (a, b) { return b.count - a.count; }).slice(0, 8);
 
         var html = '<div class="cs-sum-cards">';
+
+        // Environment card
+        if (meta.php_version) {
+            var memPct = 0;
+            if (meta.memory_peak_mb && meta.memory_limit) {
+                var limitMb = parseInt(meta.memory_limit, 10) || 0;
+                if (limitMb > 0) memPct = Math.round((meta.memory_peak_mb / limitMb) * 100);
+            }
+            var memCls = memPct >= 90 ? ' cs-s-crit' : memPct >= 70 ? ' cs-s-warn' : '';
+            html += '<div class="cs-sum-card cs-sum-card-env"><div class="cs-sum-card-title">&#9881; Environment</div>'
+                + '<div class="cs-sum-card-sub">'
+                + '<span>PHP&nbsp;' + esc(meta.php_version) + '</span>'
+                + '<span>WP&nbsp;'  + esc(meta.wp_version  || '?') + '</span>'
+                + (meta.mysql_version ? '<span>MySQL&nbsp;' + esc(meta.mysql_version) + '</span>' : '')
+                + (meta.memory_peak_mb ? '<span class="' + memCls + '">Mem peak:&nbsp;' + meta.memory_peak_mb + 'MB&nbsp;/&nbsp;' + esc(meta.memory_limit || '?') + '</span>' : '')
+                + (meta.active_theme   ? '<span>Theme:&nbsp;' + esc(meta.active_theme) + '</span>' : '')
+                + (meta.is_multisite   ? '<span style="color:#9cdcfe">Multisite</span>' : '')
+                + '</div></div>';
+        }
 
         html += '<div class="cs-sum-card cs-sum-card-db"><div class="cs-sum-card-title">&#128200; DB Queries</div>'
             + '<div class="cs-sum-card-stat">' + meta.query_count + '</div>'
