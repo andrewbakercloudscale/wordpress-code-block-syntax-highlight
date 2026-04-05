@@ -105,21 +105,25 @@
         var helpPanel = document.getElementById('cs-perf-help');
         if (helpPanel) document.body.appendChild(helpPanel);
 
-        computeN1Patterns();
-        populatePluginFilter();
-        populateAssetPluginFilter();
-        updateBadges();
-        updateTotalTime();
-        renderPageContext();
-        applyFilters();
-        renderLogs();
-        renderAssets();
-        renderHooks();
-        renderSummary();
-        restoreState();
-        dbg('BIND_START');
-        bindEvents();
-        dbg('BIND_DONE');
+        try {
+            dbg('N1'); computeN1Patterns();
+            dbg('PLG'); populatePluginFilter();
+            dbg('ASP'); populateAssetPluginFilter();
+            dbg('BAD'); updateBadges();
+            dbg('TTL'); updateTotalTime();
+            dbg('CTX'); renderPageContext();
+            dbg('FLT'); applyFilters();
+            dbg('LOG'); renderLogs();
+            dbg('AST'); renderAssets();
+            dbg('HKS'); renderHooks();
+            dbg('SUM'); renderSummary();
+            dbg('RST'); restoreState();
+            dbg('BIND_START');
+            bindEvents();
+            dbg('BIND_DONE');
+        } catch (e) {
+            dbg('ERR:' + (e && e.message ? e.message.slice(0, 60) : String(e)));
+        }
     });
 
     // ── Page context strip ────────────────────────────────────────────────────
