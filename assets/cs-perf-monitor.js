@@ -171,18 +171,25 @@
 
     // Push the WP content area up so nothing is hidden under the fixed panel.
     function setPadding(px) {
-        // Shrink the sidebar so it ends above the panel — no scrolling needed.
+        // Constrain sidebar height so it stops above the panel.
+        // Use max-height (not bottom) so WP's internal menu positioning is untouched.
+        var adminBar  = document.getElementById('wpadminbar');
+        var adminBarH = adminBar ? adminBar.offsetHeight : 32;
         var adminMenu = document.getElementById('adminmenuwrap');
-        if (adminMenu) adminMenu.style.bottom = px + 'px';
+        if (adminMenu) {
+            adminMenu.style.maxHeight  = 'calc(100vh - ' + (adminBarH + px) + 'px)';
+            adminMenu.style.overflowY  = 'auto';
+            adminMenu.style.bottom     = '';   // clear any previously set bottom
+        }
 
-        // Shrink the main content area height so it fits above the panel.
+        // Shrink the main content area so it fits above the panel.
         var wpcontent = document.getElementById('wpcontent');
         if (wpcontent) {
             wpcontent.style.marginBottom = px + 'px';
-            wpcontent.style.minHeight    = 'calc(100vh - ' + (32 + px) + 'px)';
+            wpcontent.style.minHeight    = 'calc(100vh - ' + (adminBarH + px) + 'px)';
         }
 
-        // Clear any old padding-bottom we may have set previously.
+        // Clear any old padding-bottom.
         document.body.style.paddingBottom = '';
         var wpbody = document.getElementById('wpbody-content');
         if (wpbody) wpbody.style.paddingBottom = '';
