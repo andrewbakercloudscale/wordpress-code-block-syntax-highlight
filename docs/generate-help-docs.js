@@ -29,7 +29,7 @@ helpLib.run({
     docs: {
         'code-block': `
 <div style="background:#f0f9ff;border-left:4px solid #0e6b8f;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:28px;">
-<h2 style="margin:0 0 10px;font-size:1.3em;color:#0f172a;">Why CloudScale DevTools?</h2>
+<h2 style="margin:0 0 10px;font-size:1.3em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">Why CloudScale DevTools?</h2>
 <p style="margin:0 0 10px;">Popular code highlighting plugins like Enlighter and SyntaxHighlighter load external CDN scripts that add 100–300ms to your page load time. Others charge $30–$50/year for features that should come included. Some require you to write custom CSS just to make the output look presentable.</p>
 <p style="margin:0 0 10px;">CloudScale DevTools bundles everything locally — zero external requests, zero impact on your CDN cache hit rate. Auto language detection, clipboard copy button, dark and light theme toggle, and line numbers all work out of the box. It also includes a one-click migrator to import code blocks from other popular plugins.</p>
 <p style="margin:0;"><strong>Completely free.</strong> No premium version, no nag screens, no feature gating. Use it on as many sites as you want.</p>
