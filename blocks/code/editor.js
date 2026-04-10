@@ -224,23 +224,23 @@
 
             return el( Fragment, {},
                 el( InspectorControls, {},
-                    el( PanelBody, { title: __( 'Code Settings', 'cs-code-block' ), initialOpen: true },
+                    el( PanelBody, { title: __( 'Code Settings', 'cloudscale-devtools' ), initialOpen: true },
                         el( SelectControl, {
-                            label: __( 'Language', 'cs-code-block' ),
-                            help: __( 'Leave on Auto Detect to let highlight.js guess the language.', 'cs-code-block' ),
+                            label: __( 'Language', 'cloudscale-devtools' ),
+                            help: __( 'Leave on Auto Detect to let highlight.js guess the language.', 'cloudscale-devtools' ),
                             value: attributes.language,
                             options: languageOptions,
                             onChange: function( val ) { props.setAttributes( { language: val } ); }
                         } ),
                         el( TextControl, {
-                            label: __( 'Title', 'cs-code-block' ),
-                            help: __( 'Optional label shown above the code (e.g. filename).', 'cs-code-block' ),
+                            label: __( 'Title', 'cloudscale-devtools' ),
+                            help: __( 'Optional label shown above the code (e.g. filename).', 'cloudscale-devtools' ),
                             value: attributes.title,
                             onChange: function( val ) { props.setAttributes( { title: val } ); }
                         } ),
                         el( SelectControl, {
-                            label: __( 'Dark / Light Mode', 'cs-code-block' ),
-                            help: __( 'Override for this block. The color theme is set site wide in Tools > CloudScale Code and SQL.', 'cs-code-block' ),
+                            label: __( 'Dark / Light Mode', 'cloudscale-devtools' ),
+                            help: __( 'Override for this block. The color theme is set site wide in Tools > CloudScale Code and SQL.', 'cloudscale-devtools' ),
                             value: attributes.theme,
                             options: themeOptions,
                             onChange: function( val ) { props.setAttributes( { theme: val } ); }
@@ -266,19 +266,19 @@
                             el( 'button', {
                                 className: 'cs-code-editor-btn cs-code-editor-btn-copy',
                                 type: 'button',
-                                title: __( 'Copy code to clipboard', 'cs-code-block' ),
+                                title: __( 'Copy code to clipboard', 'cloudscale-devtools' ),
                                 onClick: onCopyCode
                             }, getCopyLabel ),
                             el( 'button', {
                                 className: 'cs-code-editor-btn cs-code-editor-btn-paste',
                                 type: 'button',
-                                title: __( 'Paste clipboard content', 'cs-code-block' ),
+                                title: __( 'Paste clipboard content', 'cloudscale-devtools' ),
                                 onClick: onPasteCode
                             }, 'Paste' ),
                             el( 'button', {
                                 className: 'cs-code-editor-btn cs-code-editor-btn-clear',
                                 type: 'button',
-                                title: __( 'Clear all code', 'cs-code-block' ),
+                                title: __( 'Clear all code', 'cloudscale-devtools' ),
                                 onClick: onClearCode
                             }, 'Clear' )
                         )
@@ -289,7 +289,7 @@
                         onChange: onChangeCode,
                         onKeyDown: onKeyDown,
                         onPaste: onPasteCode,
-                        placeholder: __( 'Paste or type your code here...', 'cs-code-block' ),
+                        placeholder: __( 'Paste or type your code here...', 'cloudscale-devtools' ),
                         rows: Math.max( 8, ( ( attributes.content || '' ).split( '\n' ).length || 1 ) + 2 ),
                         spellCheck: false,
                         autoComplete: 'off',

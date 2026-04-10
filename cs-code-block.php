@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale DevTools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.8.86
+ * Version: 1.8.88
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'cs_devtools_perf_monitor_enabled
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.8.86';
+    const VERSION      = '1.8.88';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -260,6 +260,15 @@ class CloudScale_DevTools {
         add_action( 'profile_update',       [ __CLASS__, 'on_profile_update' ], 10, 2 );
         CS_DevTools_Passkey::register_hooks();
 
+        // Thumbnails / Social Preview AJAX
+        add_action( 'wp_ajax_cs_devtools_social_check_url',   [ __CLASS__, 'ajax_social_check_url' ] );
+        add_action( 'wp_ajax_cs_devtools_social_scan_posts',  [ __CLASS__, 'ajax_social_scan_posts' ] );
+        add_action( 'wp_ajax_cs_devtools_social_scan_media',  [ __CLASS__, 'ajax_social_scan_media' ] );
+        add_action( 'wp_ajax_cs_devtools_social_fix_image',   [ __CLASS__, 'ajax_social_fix_image' ] );
+        add_action( 'wp_ajax_cs_devtools_social_cf_test',     [ __CLASS__, 'ajax_social_cf_test' ] );
+        add_action( 'wp_ajax_cs_devtools_cf_purge',           [ __CLASS__, 'ajax_cf_purge' ] );
+        add_action( 'wp_ajax_cs_devtools_cf_save',            [ __CLASS__, 'ajax_cf_save' ] );
+
         // SMTP AJAX
         add_action( 'wp_ajax_cs_devtools_smtp_save',      [ __CLASS__, 'ajax_smtp_save' ] );
         add_action( 'wp_ajax_cs_devtools_smtp_test',      [ __CLASS__, 'ajax_smtp_test' ] );
@@ -301,6 +310,10 @@ class CloudScale_DevTools {
         add_filter( 'network_site_url',    [ __CLASS__, 'login_custom_network_url' ], 10, 3 );
         add_filter( 'site_url',            [ __CLASS__, 'login_custom_site_url' ], 10, 4 );
 
+        // Brute-force protection — check before authentication (priority 1, before password check).
+        add_filter( 'authenticate',     [ __CLASS__, 'login_brute_force_check' ], 1, 3 );
+        // Force persistent cookie when a custom session duration is configured.
+        add_action( 'login_form_login', [ __CLASS__, 'login_force_remember' ] );
         // Security monitor — always track failed logins regardless of monitor toggle.
         add_action( 'wp_login_failed', [ __CLASS__, 'perf_track_failed_login' ] );
 
@@ -768,6 +781,27 @@ class CloudScale_DevTools {
             },
             'default' => 'default',
         ] );
+        register_setting( 'cs_devtools_login_settings', 'cs_devtools_brute_force_enabled', [
+            'type'              => 'string',
+            'sanitize_callback' => static function ( $v ) { return $v === '1' ? '1' : '0'; },
+            'default'           => '1',
+        ] );
+        register_setting( 'cs_devtools_login_settings', 'cs_devtools_brute_force_attempts', [
+            'type'              => 'string',
+            'sanitize_callback' => static function ( $v ) {
+                $n = (int) $v;
+                return ( $n >= 1 && $n <= 100 ) ? (string) $n : '5';
+            },
+            'default' => '5',
+        ] );
+        register_setting( 'cs_devtools_login_settings', 'cs_devtools_brute_force_lockout', [
+            'type'              => 'string',
+            'sanitize_callback' => static function ( $v ) {
+                $n = (int) $v;
+                return ( $n >= 1 && $n <= 1440 ) ? (string) $n : '5';
+            },
+            'default' => '5',
+        ] );
 
         // SMTP settings
         register_setting( 'cs_devtools_smtp_settings', 'cs_devtools_smtp_enabled', [
@@ -998,6 +1032,22 @@ class CloudScale_DevTools {
                 'previewUrl' => home_url( '/this-page-does-not-exist' ),
             ] );
         }
+
+        if ( $active_tab === 'thumbnails' ) {
+            $thumb_js = plugin_dir_path( __FILE__ ) . 'assets/cs-thumbnails.js';
+            wp_enqueue_script(
+                'cs-thumbnails',
+                plugins_url( 'assets/cs-thumbnails.js', __FILE__ ),
+                [],
+                file_exists( $thumb_js ) ? filemtime( $thumb_js ) : self::VERSION,
+                true
+            );
+            wp_localize_script( 'cs-thumbnails', 'csDevtoolsThumbs', [
+                'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
+                'nonce'    => wp_create_nonce( 'cs_devtools_thumbnails' ),
+                'siteUrl'  => home_url( '/' ),
+            ] );
+        }
     }
 
     /**
@@ -1048,6 +1098,10 @@ class CloudScale_DevTools {
                    class="cs-tab <?php echo $active_tab === '404' ? 'active' : ''; ?>">
                     🎮 <?php esc_html_e( '404 Games', 'cloudscale-devtools' ); ?>
                 </a>
+                <a href="<?php echo esc_url( $base_url . '&tab=thumbnails' ); ?>"
+                   class="cs-tab <?php echo $active_tab === 'thumbnails' ? 'active' : ''; ?>">
+                    🖼️ <?php esc_html_e( 'Thumbnails', 'cloudscale-devtools' ); ?>
+                </a>
             </div>
 
             <?php if ( $active_tab === 'migrate' ) : ?>
@@ -1070,6 +1124,10 @@ class CloudScale_DevTools {
             <?php elseif ( $active_tab === '404' ) : ?>
                 <div class="cs-tab-content active">
                     <?php self::render_404_panel(); ?>
+                </div>
+            <?php elseif ( $active_tab === 'thumbnails' ) : ?>
+                <div class="cs-tab-content active">
+                    <?php self::render_thumbnails_panel(); ?>
                 </div>
             <?php endif; ?>
 
@@ -1533,6 +1591,53 @@ class CloudScale_DevTools {
                 <div style="margin-top:18px;display:flex;align-items:center;gap:10px">
                     <button type="button" class="cs-btn-primary" id="cs-session-save">💾 <?php esc_html_e( 'Save Session Settings', 'cloudscale-devtools' ); ?></button>
                     <span class="cs-settings-saved" id="cs-session-saved">✓ <?php esc_html_e( 'Saved', 'cloudscale-devtools' ); ?></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Brute-Force Protection ───────────────── -->
+        <?php
+        $bf_enabled  = get_option( 'cs_devtools_brute_force_enabled', '1' );
+        $bf_attempts = get_option( 'cs_devtools_brute_force_attempts', '5' );
+        $bf_lockout  = get_option( 'cs_devtools_brute_force_lockout', '5' );
+        ?>
+        <div class="cs-panel" id="cs-panel-brute-force">
+            <div class="cs-section-header cs-section-header-red">
+                <span>🔒 BRUTE-FORCE PROTECTION</span>
+                <span class="cs-header-hint"><?php esc_html_e( 'Temporarily lock accounts after repeated failed logins', 'cloudscale-devtools' ); ?></span>
+                <?php self::render_explain_btn( 'brute-force', 'Brute-Force Protection', [
+                    [ 'name' => 'How it works',   'rec' => 'Info',        'desc' => 'After N consecutive failed login attempts for the same username, the account is locked for the configured duration. The lock is per-username, not per-IP, so it also stops distributed attacks across multiple IPs. The counter resets automatically after the lockout period expires.' ],
+                    [ 'name' => 'Failed attempts', 'rec' => 'Recommended', 'desc' => 'Default is 5 attempts. Lower values (3) give tighter security but risk locking out users who mistype their password a few times. Higher values (10) are more forgiving. Admins can unlock an account immediately by flushing that user\'s lockout transient from the database.' ],
+                    [ 'name' => 'Lockout period',  'rec' => 'Recommended', 'desc' => 'Default is 5 minutes. The lock lifts automatically — no admin action needed. Longer periods (15–30 minutes) slow down attacks further but delay legitimate users who forgot their password.' ],
+                ] ); ?>
+            </div>
+            <div class="cs-panel-body">
+                <div class="cs-field-row">
+                    <div class="cs-field">
+                        <label class="cs-label">
+                            <input type="checkbox" id="cs-bf-enabled" <?php checked( $bf_enabled, '1' ); ?>>
+                            <?php esc_html_e( 'Enable brute-force account lockout', 'cloudscale-devtools' ); ?>
+                        </label>
+                        <span class="cs-hint"><?php esc_html_e( 'Locks the account after too many failed login attempts.', 'cloudscale-devtools' ); ?></span>
+                    </div>
+                </div>
+                <div class="cs-field-row" id="cs-bf-options">
+                    <div class="cs-field" style="margin-right:32px">
+                        <label class="cs-label" for="cs-bf-attempts"><?php esc_html_e( 'Failed attempts before lockout:', 'cloudscale-devtools' ); ?></label>
+                        <input type="number" id="cs-bf-attempts" class="cs-input" min="1" max="100"
+                               value="<?php echo esc_attr( $bf_attempts ); ?>" style="max-width:100px">
+                        <span class="cs-hint"><?php esc_html_e( 'Consecutive failures for the same username. Default: 5.', 'cloudscale-devtools' ); ?></span>
+                    </div>
+                    <div class="cs-field">
+                        <label class="cs-label" for="cs-bf-lockout"><?php esc_html_e( 'Lockout duration (minutes):', 'cloudscale-devtools' ); ?></label>
+                        <input type="number" id="cs-bf-lockout" class="cs-input" min="1" max="1440"
+                               value="<?php echo esc_attr( $bf_lockout ); ?>" style="max-width:100px">
+                        <span class="cs-hint"><?php esc_html_e( 'How long the account stays locked. Default: 5.', 'cloudscale-devtools' ); ?></span>
+                    </div>
+                </div>
+                <div style="margin-top:18px;display:flex;align-items:center;gap:10px">
+                    <button type="button" class="cs-btn-primary" id="cs-bf-save">💾 <?php esc_html_e( 'Save Brute-Force Settings', 'cloudscale-devtools' ); ?></button>
+                    <span class="cs-settings-saved" id="cs-bf-saved">✓ <?php esc_html_e( 'Saved', 'cloudscale-devtools' ); ?></span>
                 </div>
             </div>
         </div>
@@ -3288,6 +3393,25 @@ class CloudScale_DevTools {
         // 24-hour rolling window.
         $c24h = (int) get_transient( 'cs_devtools_failed_logins_24h' );
         set_transient( 'cs_devtools_failed_logins_24h', $c24h + 1, DAY_IN_SECONDS );
+
+        // ── Brute-force per-account lockout ──────────────────────────────────
+        if ( get_option( 'cs_devtools_brute_force_enabled', '1' ) !== '1' || empty( $username ) ) {
+            return;
+        }
+        $max_attempts = max( 1, (int) get_option( 'cs_devtools_brute_force_attempts', '5' ) );
+        $lockout_secs = max( 60, (int) get_option( 'cs_devtools_brute_force_lockout', '5' ) * MINUTE_IN_SECONDS );
+        $slug         = md5( strtolower( $username ) );
+        $count_key    = 'cs_devtools_bf_count_' . $slug;
+        $lock_key     = 'cs_devtools_bf_lock_' . $slug;
+        $attempts     = (int) get_transient( $count_key ) + 1;
+        if ( $attempts >= $max_attempts ) {
+            // Threshold reached — lock the account and clear the counter.
+            set_transient( $lock_key, time() + $lockout_secs, $lockout_secs );
+            delete_transient( $count_key );
+        } else {
+            // Still within the window — keep counting.
+            set_transient( $count_key, $attempts, $lockout_secs * 2 );
+        }
     }
 
     /**
@@ -4090,6 +4214,78 @@ class CloudScale_DevTools {
     }
 
     /**
+     * When a custom session duration is configured, forces "remember me" on the
+     * standard WordPress login form so the auth cookie is written as a persistent
+     * cookie (non-zero expiry) rather than a session cookie that browsers clear
+     * when closed.
+     *
+     * @since  1.9.5
+     * @return void
+     */
+    public static function login_force_remember(): void {
+        if ( get_option( 'cs_devtools_session_duration', 'default' ) !== 'default' ) {
+            $_POST['rememberme'] = 'forever'; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        }
+    }
+
+    /**
+     * Returns true when the auth cookie should be written as a persistent cookie.
+     * Respects the custom session duration setting (always persistent) and falls
+     * back to the user's original "Remember Me" choice stored in the 2FA transient.
+     *
+     * @since  1.9.5
+     * @param  array $pending  2FA pending transient data (may be empty for non-2FA logins).
+     * @return bool
+     */
+    private static function login_should_remember( array $pending = [] ): bool {
+        if ( get_option( 'cs_devtools_session_duration', 'default' ) !== 'default' ) {
+            return true;
+        }
+        return ! empty( $pending['remember'] );
+    }
+
+    /**
+     * Hooked to `authenticate` at priority 1. Returns a WP_Error when the
+     * submitted username has been temporarily locked due to repeated failed attempts.
+     *
+     * @since  1.9.5
+     * @param  \WP_User|\WP_Error|null $user
+     * @param  string                  $username
+     * @param  string                  $password
+     * @return \WP_User|\WP_Error|null
+     */
+    public static function login_brute_force_check( $user, string $username, string $password ) {
+        if ( get_option( 'cs_devtools_brute_force_enabled', '1' ) !== '1' ) {
+            return $user;
+        }
+        if ( empty( $username ) ) {
+            return $user;
+        }
+        $lock_key     = 'cs_devtools_bf_lock_' . md5( strtolower( $username ) );
+        $locked_until = get_transient( $lock_key );
+        if ( $locked_until === false ) {
+            return $user;
+        }
+        $remaining = (int) $locked_until - time();
+        if ( $remaining <= 0 ) {
+            delete_transient( $lock_key );
+            return $user;
+        }
+        $mins  = (int) ceil( $remaining / 60 );
+        $label = $mins <= 1
+            ? __( 'less than a minute', 'cloudscale-devtools' )
+            : sprintf( _n( '%d minute', '%d minutes', $mins, 'cloudscale-devtools' ), $mins );
+        return new \WP_Error(
+            'cs_devtools_account_locked',
+            sprintf(
+                /* translators: %s = remaining lockout time, e.g. "5 minutes" */
+                __( 'This account has been temporarily locked due to too many failed login attempts. Please try again in %s.', 'cloudscale-devtools' ),
+                $label
+            )
+        );
+    }
+
+    /**
      * Fired on `login_init` at priority 0 — before any other login hook.
      * If the visitor already has a valid WordPress session, redirect them
      * straight to the dashboard instead of showing the login form.
@@ -4308,9 +4504,10 @@ class CloudScale_DevTools {
         // Generate a short-lived pending token.
         $token = wp_generate_password( 32, false, false );
         $data  = [
-            'user_id' => $user->ID,
-            'method'  => $method,
-            'created' => time(),
+            'user_id'  => $user->ID,
+            'method'   => $method,
+            'created'  => time(),
+            'remember' => ! empty( $_POST['rememberme'] ), // phpcs:ignore WordPress.Security.NonceVerification.Missing
         ];
 
         if ( $method === 'email' ) {
@@ -4392,7 +4589,7 @@ class CloudScale_DevTools {
             $result = CS_DevTools_Passkey::verify_login_assertion( $token, $user_id );
             if ( $result === true ) {
                 delete_transient( self::LOGIN_2FA_TRANSIENT . $token );
-                wp_set_auth_cookie( $user_id, false );
+                wp_set_auth_cookie( $user_id, self::login_should_remember( $pending ) );
                 $redirect = isset( $_POST['redirect_to'] ) ? esc_url_raw( wp_unslash( $_POST['redirect_to'] ) ) : admin_url();
                 wp_safe_redirect( $redirect );
                 exit;
@@ -4434,7 +4631,7 @@ class CloudScale_DevTools {
                 if ( $valid ) {
                     delete_transient( self::LOGIN_2FA_TRANSIENT . $token );
                     // Complete the login.
-                    wp_set_auth_cookie( $user_id, false );
+                    wp_set_auth_cookie( $user_id, self::login_should_remember( $pending ) );
                     $redirect = isset( $_POST['redirect_to'] ) ? esc_url_raw( wp_unslash( $_POST['redirect_to'] ) ) : admin_url();
                     wp_safe_redirect( $redirect );
                     exit;
@@ -4707,6 +4904,16 @@ class CloudScale_DevTools {
             $duration = 'default';
         }
         update_option( 'cs_devtools_session_duration', $duration );
+
+        // Brute-force protection
+        $bf_enabled  = isset( $_POST['bf_enabled'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['bf_enabled'] ) ) ? '1' : '0';
+        $bf_attempts = isset( $_POST['bf_attempts'] ) ? (int) sanitize_text_field( wp_unslash( $_POST['bf_attempts'] ) ) : 5;
+        $bf_lockout  = isset( $_POST['bf_lockout'] )  ? (int) sanitize_text_field( wp_unslash( $_POST['bf_lockout'] ) )  : 5;
+        if ( $bf_attempts < 1 || $bf_attempts > 100 )   { $bf_attempts = 5; }
+        if ( $bf_lockout  < 1 || $bf_lockout  > 1440 )  { $bf_lockout  = 5; }
+        update_option( 'cs_devtools_brute_force_enabled',  $bf_enabled );
+        update_option( 'cs_devtools_brute_force_attempts', (string) $bf_attempts );
+        update_option( 'cs_devtools_brute_force_lockout',  (string) $bf_lockout );
 
         $new_url = $hide === '1' && $slug ? home_url( '/' . $slug . '/' ) : wp_login_url();
         wp_send_json_success( [ 'login_url' => $new_url ] );
@@ -6124,6 +6331,672 @@ class CloudScale_DevTools {
             </div>
         </div>
         <?php
+    }
+
+    /* ==================================================================
+       17. THUMBNAILS — Social Preview Diagnostics
+       ================================================================== */
+
+    // ─── Nonce / constants ──────────────────────────────────────────────
+    private const THUMB_NONCE = 'cs_devtools_thumbnails';
+
+    private const SOCIAL_UAS = [
+        'WhatsApp'            => 'WhatsApp/2.23.24.82 A',
+        'Facebook'            => 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+        'Facebot'             => 'Facebot',
+        'LinkedInBot'         => 'LinkedInBot/1.0 (compatible; Mozilla/5.0; Apache-HttpClient +http://www.linkedin.com)',
+        'Twitterbot'          => 'Twitterbot/1.0',
+    ];
+
+    // ─── Panel render ────────────────────────────────────────────────────
+
+    private static function render_thumbnails_panel(): void {
+        $cf_zone  = get_option( 'cs_devtools_cf_zone_id', '' );
+        $cf_token = get_option( 'cs_devtools_cf_api_token', '' );
+        $cf_token_masked = $cf_token ? str_repeat( '•', 12 ) . substr( $cf_token, -4 ) : '';
+        ?>
+        <div class="cs-panel" id="cs-panel-thumbs-checker">
+            <div class="cs-section-header" style="background:linear-gradient(135deg,#1565c0,#0d47a1);">
+                <span>🔍 URL SOCIAL PREVIEW CHECKER</span>
+                <span class="cs-header-hint"><?php esc_html_e( 'Run a full social-preview diagnostic on any URL', 'cloudscale-devtools' ); ?></span>
+            </div>
+            <div class="cs-panel-body">
+                <p class="cs-hint" style="margin-bottom:10px"><?php esc_html_e( 'Checks OG tags, og:image size/dimensions, HTTPS, robots.txt, and verifies each platform crawler can actually read the page.', 'cloudscale-devtools' ); ?></p>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                    <input type="url" id="cs-thumb-check-url" class="cs-input" style="max-width:520px;flex:1"
+                           placeholder="<?php echo esc_attr( home_url( '/' ) ); ?>"
+                           value="<?php echo esc_attr( home_url( '/' ) ); ?>">
+                    <button type="button" class="cs-btn-primary" id="cs-thumb-check-btn">🔍 <?php esc_html_e( 'Run Diagnostic', 'cloudscale-devtools' ); ?></button>
+                </div>
+                <div id="cs-thumb-check-results" style="margin-top:14px;display:none"></div>
+            </div>
+        </div>
+
+        <div class="cs-panel" id="cs-panel-thumbs-posts">
+            <div class="cs-section-header" style="background:linear-gradient(135deg,#2e7d32,#1b5e20);">
+                <span>📋 RECENT POSTS SCAN</span>
+                <span class="cs-header-hint"><?php esc_html_e( 'Auto-check the last 10 posts that have a featured image', 'cloudscale-devtools' ); ?></span>
+            </div>
+            <div class="cs-panel-body">
+                <p class="cs-hint" style="margin-bottom:10px"><?php esc_html_e( 'Fetches your 10 most recent published posts with featured images and runs the full diagnostic on each. Results show the overall status per post.', 'cloudscale-devtools' ); ?></p>
+                <button type="button" class="cs-btn-primary" id="cs-thumb-scan-btn">📋 <?php esc_html_e( 'Scan Recent Posts', 'cloudscale-devtools' ); ?></button>
+                <div id="cs-thumb-scan-results" style="margin-top:14px;display:none"></div>
+            </div>
+        </div>
+
+        <div class="cs-panel" id="cs-panel-thumbs-cloudflare">
+            <div class="cs-section-header" style="background:linear-gradient(135deg,#e65100,#bf360c);">
+                <span>☁️ CLOUDFLARE SETUP &amp; DIAGNOSTICS</span>
+                <span class="cs-header-hint"><?php esc_html_e( 'Configure WAF bypass rules and test cache behaviour', 'cloudscale-devtools' ); ?></span>
+            </div>
+            <div class="cs-panel-body">
+
+                <!-- CF Setup Guide -->
+                <div class="cs-thumb-cf-guide">
+                    <h3 style="margin-top:0;font-size:14px;color:#333"><?php esc_html_e( 'Why social previews fail with Cloudflare', 'cloudscale-devtools' ); ?></h3>
+                    <p class="cs-hint"><?php esc_html_e( 'Cloudflare\'s Bot Fight Mode and Super Bot Fight Mode block social crawler user agents (WhatsApp, Facebook, LinkedIn, X/Twitter) before they can read your page\'s OG tags. The fix is a WAF Custom Rule that skips Bot Fight Mode for those specific UAs.', 'cloudscale-devtools' ); ?></p>
+
+                    <div class="cs-thumb-cf-steps">
+                        <div class="cs-thumb-cf-step">
+                            <span class="cs-thumb-cf-step-num">1</span>
+                            <div>
+                                <strong><?php esc_html_e( 'Open Cloudflare Dashboard', 'cloudscale-devtools' ); ?></strong>
+                                <p class="cs-hint"><?php esc_html_e( 'Go to your Cloudflare dashboard → select your domain → Security → WAF → Custom Rules.', 'cloudscale-devtools' ); ?></p>
+                            </div>
+                        </div>
+                        <div class="cs-thumb-cf-step">
+                            <span class="cs-thumb-cf-step-num">2</span>
+                            <div>
+                                <strong><?php esc_html_e( 'Create a Custom Rule: "Allow Social Crawlers"', 'cloudscale-devtools' ); ?></strong>
+                                <p class="cs-hint"><?php esc_html_e( 'Use the Expression Editor and paste this expression:', 'cloudscale-devtools' ); ?></p>
+                                <pre class="cs-thumb-cf-code">(http.user_agent contains "WhatsApp") or (http.user_agent contains "facebookexternalhit") or (http.user_agent contains "Facebot") or (http.user_agent contains "LinkedInBot") or (http.user_agent contains "Twitterbot")</pre>
+                                <p class="cs-hint"><?php esc_html_e( 'Set the Action to "Skip" and tick "Bot Fight Mode" and "Super Bot Fight Mode".', 'cloudscale-devtools' ); ?></p>
+                            </div>
+                        </div>
+                        <div class="cs-thumb-cf-step">
+                            <span class="cs-thumb-cf-step-num">3</span>
+                            <div>
+                                <strong><?php esc_html_e( 'Deploy and verify', 'cloudscale-devtools' ); ?></strong>
+                                <p class="cs-hint"><?php esc_html_e( 'Save the rule, then use the "Test Crawler Access" button below to confirm each crawler UA gets a 200 response with OG tags present.', 'cloudscale-devtools' ); ?></p>
+                            </div>
+                        </div>
+                        <div class="cs-thumb-cf-step">
+                            <span class="cs-thumb-cf-step-num">4</span>
+                            <div>
+                                <strong><?php esc_html_e( 'Cache note', 'cloudscale-devtools' ); ?></strong>
+                                <p class="cs-hint"><?php esc_html_e( 'If social platforms have already cached a failed preview, purge the Cloudflare cache for that URL and then use each platform\'s debug tool to force a re-scrape (Facebook Sharing Debugger, LinkedIn Post Inspector, etc.).', 'cloudscale-devtools' ); ?></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Crawler UA Test -->
+                <div style="margin-top:18px;padding-top:16px;border-top:1px solid #e0e0e0">
+                    <h3 style="font-size:14px;color:#333;margin-top:0"><?php esc_html_e( 'Test Crawler Access', 'cloudscale-devtools' ); ?></h3>
+                    <p class="cs-hint"><?php esc_html_e( 'Fetches a page using each social crawler\'s user agent from the server. If all return HTTP 200 with OG tags present, your WAF rule is working.', 'cloudscale-devtools' ); ?></p>
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+                        <input type="url" id="cs-thumb-cf-test-url" class="cs-input" style="max-width:480px;flex:1"
+                               placeholder="<?php echo esc_attr( home_url( '/' ) ); ?>"
+                               value="<?php echo esc_attr( home_url( '/' ) ); ?>">
+                        <button type="button" class="cs-btn-primary" id="cs-thumb-cf-test-btn">🤖 <?php esc_html_e( 'Test Crawler Access', 'cloudscale-devtools' ); ?></button>
+                    </div>
+                    <div id="cs-thumb-cf-test-results" style="display:none"></div>
+                </div>
+
+                <!-- CF Cache Purge -->
+                <div style="margin-top:18px;padding-top:16px;border-top:1px solid #e0e0e0">
+                    <h3 style="font-size:14px;color:#333;margin-top:0"><?php esc_html_e( 'Cloudflare Cache Purge', 'cloudscale-devtools' ); ?></h3>
+                    <p class="cs-hint"><?php esc_html_e( 'After fixing OG tags or image issues, purge the Cloudflare cache to force crawlers to re-fetch the page. Requires a Cloudflare API Token with Cache Purge permission and your Zone ID.', 'cloudscale-devtools' ); ?></p>
+
+                    <div class="cs-field-row" style="flex-wrap:wrap;gap:12px">
+                        <div class="cs-field" style="min-width:240px">
+                            <label class="cs-label" for="cs-cf-zone-id"><?php esc_html_e( 'Zone ID', 'cloudscale-devtools' ); ?></label>
+                            <input type="text" id="cs-cf-zone-id" class="cs-input" value="<?php echo esc_attr( $cf_zone ); ?>"
+                                   placeholder="<?php esc_attr_e( '32-character hex string', 'cloudscale-devtools' ); ?>">
+                        </div>
+                        <div class="cs-field" style="min-width:280px">
+                            <label class="cs-label" for="cs-cf-api-token"><?php esc_html_e( 'API Token (Cache Purge permission)', 'cloudscale-devtools' ); ?></label>
+                            <input type="password" id="cs-cf-api-token" class="cs-input" value=""
+                                   placeholder="<?php echo esc_attr( $cf_token_masked ?: __( 'Paste token here', 'cloudscale-devtools' ) ); ?>">
+                            <span class="cs-hint"><?php esc_html_e( 'Leave blank to keep the saved token. Clear and save to remove.', 'cloudscale-devtools' ); ?></span>
+                        </div>
+                    </div>
+
+                    <div style="margin:12px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                        <input type="url" id="cs-cf-purge-url" class="cs-input" style="max-width:420px;flex:1"
+                               placeholder="<?php esc_attr_e( 'https://yoursite.com/your-post/ (leave blank to purge everything)', 'cloudscale-devtools' ); ?>">
+                        <button type="button" class="cs-btn-primary" id="cs-cf-purge-btn">🗑️ <?php esc_html_e( 'Purge Cache', 'cloudscale-devtools' ); ?></button>
+                        <button type="button" class="cs-btn-secondary" id="cs-cf-save-btn" style="background:#555;color:#fff;padding:7px 14px;border:none;border-radius:4px;cursor:pointer;font-size:13px">💾 <?php esc_html_e( 'Save CF Settings', 'cloudscale-devtools' ); ?></button>
+                    </div>
+                    <div id="cs-cf-purge-result" style="display:none;margin-top:8px"></div>
+                    <span class="cs-settings-saved" id="cs-cf-saved">✓ <?php esc_html_e( 'CF Settings Saved', 'cloudscale-devtools' ); ?></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="cs-panel" id="cs-panel-thumbs-media">
+            <div class="cs-section-header" style="background:linear-gradient(135deg,#6a1b9a,#4a148c);">
+                <span>📦 MEDIA LIBRARY AUDIT</span>
+                <span class="cs-header-hint"><?php esc_html_e( 'Find images that exceed the WhatsApp 300 KB threshold or are too small', 'cloudscale-devtools' ); ?></span>
+            </div>
+            <div class="cs-panel-body">
+                <p class="cs-hint" style="margin-bottom:10px"><?php esc_html_e( 'Scans your media library for images that may cause silent failures on WhatsApp (>300 KB) or render low-quality previews on any platform (under 1200×630 px). Use "Recompress" to auto-fix oversized JPEGs/PNGs.', 'cloudscale-devtools' ); ?></p>
+                <button type="button" class="cs-btn-primary" id="cs-thumb-audit-btn">🔎 <?php esc_html_e( 'Audit Media Library', 'cloudscale-devtools' ); ?></button>
+                <span id="cs-thumb-audit-progress" style="margin-left:10px;font-size:12px;color:#888"></span>
+                <div id="cs-thumb-audit-results" style="margin-top:14px;display:none"></div>
+            </div>
+        </div>
+
+        <style>
+        .cs-thumb-cf-steps { display:flex;flex-direction:column;gap:12px;margin-top:10px }
+        .cs-thumb-cf-step  { display:flex;gap:12px;align-items:flex-start }
+        .cs-thumb-cf-step-num { min-width:26px;height:26px;background:#e65100;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:2px }
+        .cs-thumb-cf-code  { background:#1e1e1e;color:#e8e8e8;padding:10px 14px;border-radius:4px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin:6px 0 }
+        .cs-thumb-report-hdr { display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-radius:4px;margin-bottom:10px;font-size:13px;font-weight:600 }
+        .cs-thumb-pass-hdr { background:#edfaed;color:#276227 }
+        .cs-thumb-warn-hdr { background:#fff8e5;color:#7a5a00 }
+        .cs-thumb-fail-hdr { background:#fdf0f0;color:#8c2020 }
+        .cs-thumb-tally { display:flex;gap:12px;font-size:13px }
+        .cs-thumb-section { border:1px solid #e0e0e0;border-radius:4px;margin-bottom:10px;overflow:hidden }
+        .cs-thumb-section-title { background:#f6f7f7;padding:6px 12px;font-size:12px;font-weight:700;color:#333;border-bottom:1px solid #e0e0e0;text-transform:uppercase;letter-spacing:.4px }
+        .cs-thumb-results-list { margin:0;padding:6px 10px;list-style:none }
+        .cs-thumb-result { display:flex;gap:8px;padding:3px 0;font-size:12px;align-items:flex-start }
+        .cs-thumb-pass { color:#276227 }
+        .cs-thumb-warn { color:#7a5a00 }
+        .cs-thumb-fail { color:#8c2020 }
+        .cs-thumb-info { color:#555 }
+        .cs-thumb-ua-grid { display:flex;flex-wrap:wrap;gap:8px;margin-top:8px }
+        .cs-thumb-ua-chip { padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600 }
+        .cs-thumb-ua-ok   { background:#edfaed;color:#276227 }
+        .cs-thumb-ua-fail { background:#fdf0f0;color:#8c2020 }
+        .cs-thumb-ua-warn { background:#fff8e5;color:#7a5a00 }
+        .cs-thumb-posts-table { width:100%;border-collapse:collapse;font-size:13px }
+        .cs-thumb-posts-table th { background:#f6f7f7;padding:7px 10px;text-align:left;border-bottom:2px solid #ddd }
+        .cs-thumb-posts-table td { padding:7px 10px;border-bottom:1px solid #eee;vertical-align:top }
+        .cs-thumb-badge-ok   { display:inline-block;background:#edfaed;color:#276227;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600 }
+        .cs-thumb-badge-warn { display:inline-block;background:#fff8e5;color:#7a5a00;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600 }
+        .cs-thumb-badge-fail { display:inline-block;background:#fdf0f0;color:#8c2020;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600 }
+        .cs-thumb-audit-table { font-size:12px;width:100%;border-collapse:collapse }
+        .cs-thumb-audit-table th { background:#f6f7f7;padding:6px 10px;text-align:left;border-bottom:2px solid #ddd }
+        .cs-thumb-audit-table td { padding:6px 10px;border-bottom:1px solid #eee;vertical-align:top }
+        </style>
+        <?php
+    }
+
+    // ─── AJAX: check a single URL ────────────────────────────────────────
+
+    public static function ajax_social_check_url(): void {
+        check_ajax_referer( self::THUMB_NONCE, 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+        $url = isset( $_POST['url'] ) ? esc_url_raw( wp_unslash( $_POST['url'] ) ) : '';
+        if ( ! $url ) {
+            wp_send_json_error( [ 'message' => 'No URL provided.' ] );
+        }
+        wp_send_json_success( self::social_diagnose_url( $url ) );
+    }
+
+    // ─── AJAX: scan last 10 posts ────────────────────────────────────────
+
+    public static function ajax_social_scan_posts(): void {
+        check_ajax_referer( self::THUMB_NONCE, 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+        $posts = get_posts( [
+            'post_type'      => 'post',
+            'post_status'    => 'publish',
+            'posts_per_page' => 10,
+            'meta_query'     => [ [ 'key' => '_thumbnail_id', 'compare' => 'EXISTS' ] ],
+        ] );
+        $results = [];
+        foreach ( $posts as $post ) {
+            $url  = get_permalink( $post );
+            $diag = self::social_diagnose_url( $url );
+            $results[] = [
+                'id'      => $post->ID,
+                'title'   => get_the_title( $post ),
+                'url'     => $url,
+                'totals'  => $diag['totals'],
+                'og_image'=> $diag['og_image'] ?? '',
+                'img_kb'  => $diag['img_kb'] ?? null,
+                'img_w'   => $diag['img_w'] ?? null,
+                'img_h'   => $diag['img_h'] ?? null,
+            ];
+        }
+        wp_send_json_success( $results );
+    }
+
+    // ─── AJAX: media library audit ───────────────────────────────────────
+
+    public static function ajax_social_scan_media(): void {
+        check_ajax_referer( self::THUMB_NONCE, 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+        global $wpdb;
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            "SELECT p.ID, p.post_title, pm.meta_value AS attach_meta
+             FROM {$wpdb->posts} p
+             LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = '_wp_attachment_metadata'
+             WHERE p.post_type = 'attachment' AND p.post_status = 'inherit'
+               AND p.post_mime_type LIKE 'image/%'
+             ORDER BY p.ID DESC LIMIT 500"
+        );
+        $upload  = wp_upload_dir();
+        $basedir = $upload['basedir'];
+        $baseurl = $upload['baseurl'];
+        $total   = 0;
+        $issues  = [];
+
+        foreach ( $rows as $row ) {
+            $total++;
+            $meta = maybe_unserialize( $row->attach_meta );
+            if ( ! is_array( $meta ) || empty( $meta['file'] ) ) {
+                continue;
+            }
+            $abs  = $basedir . '/' . $meta['file'];
+            $url  = $baseurl . '/' . $meta['file'];
+            if ( ! file_exists( $abs ) ) {
+                continue;
+            }
+            $bytes  = (int) filesize( $abs );
+            $kb     = round( $bytes / 1024, 1 );
+            $width  = (int) ( $meta['width']  ?? 0 );
+            $height = (int) ( $meta['height'] ?? 0 );
+            $ext    = strtolower( pathinfo( $abs, PATHINFO_EXTENSION ) );
+            $flags  = [];
+
+            if ( $bytes > 307200 ) {
+                $flags[] = [ 'severity' => 'fail',  'issue' => "{$kb} KB — exceeds WhatsApp 300 KB threshold (silent failure)" ];
+            } elseif ( $bytes > 204800 ) {
+                $flags[] = [ 'severity' => 'warn', 'issue' => "{$kb} KB — approaching 300 KB WhatsApp limit" ];
+            }
+            if ( in_array( $ext, [ 'jpg', 'jpeg', 'png', 'webp' ], true ) ) {
+                if ( $width > 0 && $height > 0 && ( $width < 1200 || $height < 630 ) ) {
+                    $flags[] = [ 'severity' => $width < 600 ? 'fail' : 'warn', 'issue' => "{$width}×{$height}px — below 1200×630 minimum recommendation" ];
+                }
+            }
+            if ( empty( $flags ) ) {
+                continue;
+            }
+            $issues[] = [
+                'id'      => (int) $row->ID,
+                'title'   => esc_html( $row->post_title ),
+                'file'    => esc_html( basename( $abs ) ),
+                'url'     => esc_url( $url ),
+                'size_kb' => $kb,
+                'width'   => $width,
+                'height'  => $height,
+                'ext'     => $ext,
+                'flags'   => $flags,
+                'can_fix' => in_array( $ext, [ 'jpg', 'jpeg', 'png' ], true ) && $bytes > 204800,
+            ];
+        }
+        wp_send_json_success( [ 'total_scanned' => $total, 'issues_found' => count( $issues ), 'issues' => $issues ] );
+    }
+
+    // ─── AJAX: recompress an oversized image ─────────────────────────────
+
+    public static function ajax_social_fix_image(): void {
+        check_ajax_referer( self::THUMB_NONCE, 'nonce' );
+        if ( ! current_user_can( 'upload_files' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+        $attachment_id = absint( $_POST['attachment_id'] ?? 0 );
+        if ( ! $attachment_id ) {
+            wp_send_json_error( [ 'message' => 'No attachment ID.' ] );
+        }
+        $result = self::social_recompress_image( $attachment_id );
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( [ 'message' => $result->get_error_message() ] );
+        }
+        wp_send_json_success( $result );
+    }
+
+    // ─── AJAX: Cloudflare crawler UA test ────────────────────────────────
+
+    public static function ajax_social_cf_test(): void {
+        check_ajax_referer( self::THUMB_NONCE, 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+        $url = isset( $_POST['url'] ) ? esc_url_raw( wp_unslash( $_POST['url'] ) ) : home_url( '/' );
+        wp_send_json_success( self::social_test_crawlers( $url ) );
+    }
+
+    // ─── AJAX: Cloudflare cache purge ────────────────────────────────────
+
+    public static function ajax_cf_purge(): void {
+        check_ajax_referer( self::THUMB_NONCE, 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+        $zone_id = get_option( 'cs_devtools_cf_zone_id', '' );
+        $token   = get_option( 'cs_devtools_cf_api_token', '' );
+        if ( ! $zone_id || ! $token ) {
+            wp_send_json_error( [ 'message' => __( 'Cloudflare Zone ID and API Token are required. Please save them above.', 'cloudscale-devtools' ) ] );
+        }
+        $purge_url = isset( $_POST['purge_url'] ) ? esc_url_raw( wp_unslash( $_POST['purge_url'] ) ) : '';
+        $cf_api    = "https://api.cloudflare.com/client/v4/zones/{$zone_id}/purge_cache";
+        $body      = $purge_url
+            ? wp_json_encode( [ 'files' => [ $purge_url ] ] )
+            : wp_json_encode( [ 'purge_everything' => true ] );
+        $response = wp_remote_post( $cf_api, [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $token,
+                'Content-Type'  => 'application/json',
+            ],
+            'body'    => $body,
+            'timeout' => 15,
+        ] );
+        if ( is_wp_error( $response ) ) {
+            wp_send_json_error( [ 'message' => $response->get_error_message() ] );
+        }
+        $data = json_decode( wp_remote_retrieve_body( $response ), true );
+        if ( ! empty( $data['success'] ) ) {
+            wp_send_json_success( [
+                'message' => $purge_url
+                    ? sprintf( __( 'Cache purged for: %s', 'cloudscale-devtools' ), $purge_url )
+                    : __( 'Entire Cloudflare cache purged successfully.', 'cloudscale-devtools' ),
+            ] );
+        } else {
+            $errors = isset( $data['errors'] ) ? wp_json_encode( $data['errors'] ) : __( 'Unknown error', 'cloudscale-devtools' );
+            wp_send_json_error( [ 'message' => $errors ] );
+        }
+    }
+
+    // ─── AJAX: save CF credentials ───────────────────────────────────────
+
+    public static function ajax_cf_save(): void {
+        check_ajax_referer( self::THUMB_NONCE, 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+        $zone_id = isset( $_POST['zone_id'] ) ? sanitize_text_field( wp_unslash( $_POST['zone_id'] ) ) : '';
+        $token   = isset( $_POST['api_token'] ) ? sanitize_text_field( wp_unslash( $_POST['api_token'] ) ) : '';
+        update_option( 'cs_devtools_cf_zone_id', $zone_id );
+        if ( $token !== '' ) {
+            update_option( 'cs_devtools_cf_api_token', $token );
+        }
+        wp_send_json_success( [ 'message' => __( 'Cloudflare settings saved.', 'cloudscale-devtools' ) ] );
+    }
+
+    // ─── Private: full URL diagnostic ────────────────────────────────────
+
+    /**
+     * Runs all social-preview checks against a URL and returns a structured
+     * result array with sections (title + result items) and summary totals.
+     */
+    private static function social_diagnose_url( string $url ): array {
+        $sections = [];
+        $og_image = '';
+        $img_kb   = null;
+        $img_w    = null;
+        $img_h    = null;
+
+        $wa_ua = self::SOCIAL_UAS['WhatsApp'];
+
+        // 1. HTTPS
+        $pass = str_starts_with( $url, 'https://' );
+        $sections[] = [
+            'title'   => 'HTTPS',
+            'results' => [ $pass
+                ? [ 'type' => 'pass', 'msg' => 'URL uses HTTPS' ]
+                : [ 'type' => 'fail', 'msg' => 'URL uses HTTP — WhatsApp requires HTTPS for link previews.' ] ],
+        ];
+
+        // 2. HTTP response (WhatsApp UA)
+        $head = wp_remote_head( $url, [ 'user-agent' => $wa_ua, 'redirection' => 5, 'timeout' => 12, 'sslverify' => true ] );
+        $http_ok = false;
+        if ( is_wp_error( $head ) ) {
+            $sections[] = [ 'title' => 'HTTP Response', 'results' => [ [ 'type' => 'fail', 'msg' => 'Could not connect: ' . $head->get_error_message() ] ] ];
+        } else {
+            $code = wp_remote_retrieve_response_code( $head );
+            $http_ok = ( $code === 200 );
+            $sections[] = [ 'title' => 'HTTP Response (WhatsApp UA)', 'results' => [ $code === 200
+                ? [ 'type' => 'pass', 'msg' => 'HTTP 200 OK' ]
+                : [ 'type' => in_array( $code, [ 301, 302, 307, 308 ], true ) ? 'warn' : 'fail',
+                    'msg'  => "HTTP $code — " . ( in_array( $code, [ 301, 302, 307, 308 ], true ) ? 'Redirect (crawlers follow, but adds latency)' : 'Non-200 response; crawler may not read OG tags' ) ] ] ];
+        }
+
+        // 3. Fetch HTML + measure response time
+        $start = microtime( true );
+        $resp  = wp_remote_get( $url, [ 'user-agent' => $wa_ua, 'redirection' => 5, 'timeout' => 18 ] );
+        $elapsed = round( microtime( true ) - $start, 2 );
+        $html = is_wp_error( $resp ) ? '' : wp_remote_retrieve_body( $resp );
+
+        $sections[] = [ 'title' => 'Response Time', 'results' => [ $elapsed < 3.0
+            ? [ 'type' => 'pass', 'msg' => "{$elapsed}s — within 3s crawler timeout" ]
+            : ( $elapsed < 5.0
+                ? [ 'type' => 'warn', 'msg' => "{$elapsed}s — approaching WhatsApp 3–5s timeout" ]
+                : [ 'type' => 'fail', 'msg' => "{$elapsed}s — exceeds 5s; crawler will likely abort before reading OG tags" ] ) ] ];
+
+        // 4. OG tags
+        $og_results = [];
+        foreach ( [ 'og:title', 'og:description', 'og:image', 'og:url', 'og:type' ] as $prop ) {
+            $val = self::social_extract_property( $html, $prop );
+            $og_results[] = $val
+                ? [ 'type' => 'pass', 'msg' => "$prop: " . mb_substr( $val, 0, 80 ) ]
+                : [ 'type' => 'fail', 'msg' => "$prop is missing" ];
+        }
+        foreach ( [ 'twitter:card', 'twitter:image' ] as $name ) {
+            $val = self::social_extract_name( $html, $name );
+            $og_results[] = $val
+                ? [ 'type' => 'pass', 'msg' => "$name: " . mb_substr( $val, 0, 80 ) ]
+                : [ 'type' => 'warn', 'msg' => "$name missing — X/Twitter may not render large card" ];
+        }
+        $sections[] = [ 'title' => 'Open Graph Tags', 'results' => $og_results ];
+
+        // 5. og:image analysis
+        $og_image = self::social_extract_property( $html, 'og:image' );
+        $img_results = [];
+        if ( ! $og_image ) {
+            $img_results[] = [ 'type' => 'fail', 'msg' => 'og:image is missing — cannot analyse image.' ];
+        } else {
+            $img_head = wp_remote_head( $og_image, [ 'user-agent' => $wa_ua, 'timeout' => 10, 'redirection' => 3 ] );
+            if ( is_wp_error( $img_head ) ) {
+                $img_results[] = [ 'type' => 'fail', 'msg' => 'og:image URL unreachable: ' . $img_head->get_error_message() ];
+            } else {
+                $img_code = wp_remote_retrieve_response_code( $img_head );
+                $img_results[] = $img_code === 200
+                    ? [ 'type' => 'pass', 'msg' => 'og:image URL returns HTTP 200' ]
+                    : [ 'type' => 'fail', 'msg' => "og:image URL returns HTTP $img_code — image inaccessible" ];
+                $ct = wp_remote_retrieve_header( $img_head, 'content-type' );
+                $img_results[] = str_contains( (string) $ct, 'image/' )
+                    ? [ 'type' => 'pass', 'msg' => "Content-Type: $ct" ]
+                    : [ 'type' => 'warn', 'msg' => "Unexpected Content-Type: '$ct'" ];
+            }
+            $img_results[] = str_starts_with( $og_image, 'https://' )
+                ? [ 'type' => 'pass', 'msg' => 'og:image uses HTTPS' ]
+                : [ 'type' => 'fail', 'msg' => 'og:image uses HTTP — WhatsApp requires HTTPS images' ];
+
+            $img_resp = wp_remote_get( $og_image, [ 'user-agent' => $wa_ua, 'timeout' => 20, 'redirection' => 3 ] );
+            if ( ! is_wp_error( $img_resp ) ) {
+                $img_body = wp_remote_retrieve_body( $img_resp );
+                $img_bytes = strlen( $img_body );
+                $img_kb    = round( $img_bytes / 1024, 1 );
+                if ( $img_bytes > 307200 ) {
+                    $img_results[] = [ 'type' => 'fail', 'msg' => "Image is {$img_kb} KB — exceeds WhatsApp's 300 KB silent-failure threshold. Compress to under 250 KB." ];
+                } elseif ( $img_bytes > 204800 ) {
+                    $img_results[] = [ 'type' => 'warn', 'msg' => "Image is {$img_kb} KB — approaching 300 KB WhatsApp limit. Consider optimising." ];
+                } else {
+                    $img_results[] = [ 'type' => 'pass', 'msg' => "Image is {$img_kb} KB — within the 300 KB WhatsApp limit." ];
+                }
+                if ( function_exists( 'imagecreatefromstring' ) ) {
+                    $res = @imagecreatefromstring( $img_body ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+                    if ( $res ) {
+                        $img_w = imagesx( $res );
+                        $img_h = imagesy( $res );
+                        imagedestroy( $res );
+                        if ( $img_w >= 1200 && $img_h >= 630 ) {
+                            $img_results[] = [ 'type' => 'pass', 'msg' => "Dimensions: {$img_w}×{$img_h}px — meets 1200×630 minimum" ];
+                        } elseif ( $img_w >= 600 ) {
+                            $img_results[] = [ 'type' => 'warn', 'msg' => "Dimensions: {$img_w}×{$img_h}px — below recommended 1200×630" ];
+                        } else {
+                            $img_results[] = [ 'type' => 'fail', 'msg' => "Dimensions: {$img_w}×{$img_h}px — too small for reliable social previews" ];
+                        }
+                    }
+                }
+            }
+        }
+        $sections[] = [ 'title' => 'og:image Analysis', 'results' => $img_results ];
+
+        // 6. robots.txt
+        $base_url    = preg_replace( '#(https?://[^/]+).*#', '$1', $url );
+        $robots_resp = wp_remote_get( "$base_url/robots.txt", [ 'timeout' => 8 ] );
+        $rb_results  = [];
+        if ( is_wp_error( $robots_resp ) || wp_remote_retrieve_response_code( $robots_resp ) !== 200 ) {
+            $rb_results[] = [ 'type' => 'warn', 'msg' => 'robots.txt not found — ensure crawlers are not blocked elsewhere' ];
+        } else {
+            $rb_body = wp_remote_retrieve_body( $robots_resp );
+            foreach ( [ 'facebookexternalhit', 'WhatsApp', 'Facebot', 'LinkedInBot', 'Twitterbot' ] as $bot ) {
+                if ( preg_match( '/User-agent:\s*' . preg_quote( $bot, '/' ) . '.*?Disallow:\s*\//si', $rb_body ) ) {
+                    $rb_results[] = [ 'type' => 'fail', 'msg' => "robots.txt blocks $bot — this prevents all previews from that platform" ];
+                } else {
+                    $rb_results[] = [ 'type' => 'pass', 'msg' => "robots.txt does not block $bot" ];
+                }
+            }
+        }
+        $sections[] = [ 'title' => 'robots.txt', 'results' => $rb_results ];
+
+        // 7. Cloudflare detection
+        $cf_results = [];
+        $cf_ray = wp_remote_retrieve_header( is_wp_error( $head ) ? [] : $head, 'cf-ray' );
+        if ( $cf_ray ) {
+            $cf_cache = wp_remote_retrieve_header( is_wp_error( $head ) ? [] : $head, 'cf-cache-status' );
+            $cf_results[] = [ 'type' => 'pass', 'msg' => "Cloudflare active: cf-ray $cf_ray" . ( $cf_cache ? " | Cache: $cf_cache" : '' ) ];
+            $cf_results[] = [ 'type' => 'info', 'msg' => 'If any crawler UA test above failed, set up a WAF Skip rule in Cloudflare for social crawler user agents (see Cloudflare Setup panel below).' ];
+        } else {
+            $cf_results[] = [ 'type' => 'pass', 'msg' => 'No Cloudflare detected — WAF skip rule not required' ];
+        }
+        $sections[] = [ 'title' => 'Cloudflare', 'results' => $cf_results ];
+
+        // Totals
+        $pass = $warn = $fail = 0;
+        foreach ( $sections as $s ) {
+            foreach ( $s['results'] as $r ) {
+                match ( $r['type'] ) { 'pass' => $pass++, 'warn' => $warn++, 'fail' => $fail++, default => null };
+            }
+        }
+
+        return [
+            'url'      => $url,
+            'sections' => $sections,
+            'totals'   => [ 'pass' => $pass, 'warn' => $warn, 'fail' => $fail ],
+            'og_image' => $og_image,
+            'img_kb'   => $img_kb,
+            'img_w'    => $img_w,
+            'img_h'    => $img_h,
+        ];
+    }
+
+    /** Runs the five social crawler UA tests against a URL — used by the CF test button. */
+    private static function social_test_crawlers( string $url ): array {
+        $results = [];
+        foreach ( self::SOCIAL_UAS as $label => $ua ) {
+            $resp = wp_remote_get( $url, [ 'user-agent' => $ua, 'redirection' => 5, 'timeout' => 15 ] );
+            if ( is_wp_error( $resp ) ) {
+                $results[ $label ] = [ 'type' => 'fail', 'code' => 0, 'og' => false, 'msg' => $resp->get_error_message() ];
+                continue;
+            }
+            $code = wp_remote_retrieve_response_code( $resp );
+            $body = wp_remote_retrieve_body( $resp );
+            $has_og = (bool) preg_match( '/property=["\']og:image["\']/', $body );
+            $challenged = str_contains( $body, 'challenge-platform' );
+            if ( $code === 200 && $has_og ) {
+                $results[ $label ] = [ 'type' => 'pass', 'code' => $code, 'og' => true, 'msg' => $challenged ? 'HTTP 200, og:image present (Cloudflare challenge script detected — WAF skip rule is working)' : 'HTTP 200, og:image present' ];
+            } elseif ( $code === 200 && ! $has_og ) {
+                $results[ $label ] = [ 'type' => 'fail', 'code' => $code, 'og' => false, 'msg' => $challenged ? 'HTTP 200 but og:image absent — Bot Fight Mode is blocking this crawler. WAF skip rule needed.' : 'HTTP 200 but og:image absent in response' ];
+            } else {
+                $results[ $label ] = [ 'type' => 'fail', 'code' => $code, 'og' => false, 'msg' => "HTTP $code — crawler is being blocked" ];
+            }
+        }
+        return $results;
+    }
+
+    /** Helper: extract og:meta property content. */
+    private static function social_extract_property( string $html, string $prop ): string {
+        if ( preg_match( '/property=["\']' . preg_quote( $prop, '/' ) . '["\'][^>]+content=["\']([^"\']+)["\']/', $html, $m ) ) {
+            return trim( $m[1] );
+        }
+        if ( preg_match( '/content=["\']([^"\']+)["\'][^>]+property=["\']' . preg_quote( $prop, '/' ) . '["\']/', $html, $m ) ) {
+            return trim( $m[1] );
+        }
+        return '';
+    }
+
+    /** Helper: extract meta name content. */
+    private static function social_extract_name( string $html, string $name ): string {
+        if ( preg_match( '/name=["\']' . preg_quote( $name, '/' ) . '["\'][^>]+content=["\']([^"\']+)["\']/', $html, $m ) ) {
+            return trim( $m[1] );
+        }
+        if ( preg_match( '/content=["\']([^"\']+)["\'][^>]+name=["\']' . preg_quote( $name, '/' ) . '["\']/', $html, $m ) ) {
+            return trim( $m[1] );
+        }
+        return '';
+    }
+
+    /**
+     * Helper: recompress an attachment to under 300 KB using WP_Image_Editor.
+     *
+     * @return array|\WP_Error
+     */
+    private static function social_recompress_image( int $attachment_id ) {
+        $file_path = get_attached_file( $attachment_id );
+        if ( ! $file_path || ! file_exists( $file_path ) ) {
+            return new \WP_Error( 'not_found', __( 'Attachment file not found on disk.', 'cloudscale-devtools' ) );
+        }
+        $ext = strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
+        if ( ! in_array( $ext, [ 'jpg', 'jpeg', 'png' ], true ) ) {
+            return new \WP_Error( 'unsupported', __( 'Only JPEG and PNG images can be recompressed.', 'cloudscale-devtools' ) );
+        }
+        // Backup the original.
+        $backup = $file_path . '.cs-backup';
+        if ( ! copy( $file_path, $backup ) ) {
+            return new \WP_Error( 'backup_failed', __( 'Could not create backup — aborting to protect original.', 'cloudscale-devtools' ) );
+        }
+        $editor = wp_get_image_editor( $file_path );
+        if ( is_wp_error( $editor ) ) {
+            unlink( $backup );
+            return $editor;
+        }
+        // Resize if larger than 1200×630 (maintaining aspect ratio, no upscaling).
+        $size = $editor->get_size();
+        if ( $size['width'] > 1200 || $size['height'] > 630 ) {
+            $editor->resize( 1200, 630, false );
+        }
+        $editor->set_quality( 80 );
+        $saved = $editor->save( $file_path );
+        if ( is_wp_error( $saved ) ) {
+            copy( $backup, $file_path );
+            unlink( $backup );
+            return $saved;
+        }
+        $new_bytes = filesize( $file_path );
+        // Still over 300 KB? Try quality 65.
+        if ( $new_bytes > 307200 ) {
+            $e2 = wp_get_image_editor( $backup );
+            if ( ! is_wp_error( $e2 ) ) {
+                $e2->set_quality( 65 );
+                $e2->save( $file_path );
+                $new_bytes = filesize( $file_path );
+            }
+        }
+        $new_kb = round( $new_bytes / 1024, 1 );
+        // Regenerate attachment metadata.
+        $meta = wp_generate_attachment_metadata( $attachment_id, $file_path );
+        wp_update_attachment_metadata( $attachment_id, $meta );
+        return [
+            'attachment_id' => $attachment_id,
+            'new_size_kb'   => $new_kb,
+            'backup'        => basename( $backup ),
+            'under_limit'   => $new_bytes <= 307200,
+            'message'       => $new_bytes <= 307200
+                ? sprintf( __( 'Recompressed to %s KB — within the WhatsApp 300 KB threshold.', 'cloudscale-devtools' ), $new_kb )
+                : sprintf( __( 'Recompressed to %s KB — still above threshold. Manual intervention needed.', 'cloudscale-devtools' ), $new_kb ),
+        ];
     }
 }
 

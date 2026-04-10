@@ -32,7 +32,7 @@
             "default": ""
         }
     },
-    "textdomain": "cs-code-block",
+    "textdomain": "cloudscale-devtools",
     "editorStyle": "cs-code-block-editor",
     "style": "cs-code-block-frontend",
     "viewScript": "cs-code-block-frontend"

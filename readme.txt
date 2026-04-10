@@ -4,7 +4,7 @@ Tags: code block, syntax highlighting, gutenberg block, dark mode, highlight.js
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.8.86
+Stable tag: 1.8.88
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -79,7 +79,12 @@ Yes. Press Enter to run the query. Use Shift+Enter to insert a newline. Ctrl+Ent
 
 == Changelog ==
 
-= 1.8.86 =
+= 1.8.88 =
+* Added: Brute-force protection — configurable per-account lockout after N failed login attempts (default 5 attempts, 5-minute lock), with admin UI to adjust both thresholds
+* Fixed: Session persistence — login sessions now survive browser close when a custom session duration is set (auth cookie was a session cookie; now writes a persistent cookie)
+* Added: Thumbnails tab — Social Preview Diagnostics with URL checker (9-point OG/image diagnostic), recent posts auto-scan, Cloudflare WAF setup guide + crawler UA tester + cache purge, and Media Library auditor with one-click recompress for oversized images
+
+= 1.8.87 =
 * Fixed: PDF button moved from cramped header toolbar into the Summary pane itself — blue "↓ Download PDF" button at top of Summary tab, always visible
 * Fixed: ms precision — all timings now show 1 decimal place consistently (was 0–4dp depending on magnitude)
 

@@ -205,7 +205,7 @@ test('Email 2FA — enable flow (test user)', async ({ page }) => {
     }
     await page.waitForTimeout(1000);
     await wpLogin(page, TEST_USER, TEST_PASS);
-    await page.goto(`${SITE}/wp-admin/admin.php?page=cs-code-block&tab=login-security`);
+    await page.goto(`${SITE}/wp-admin/admin.php?page=cloudscale-devtools&tab=login-security`);
 
     const enableBtn = page.locator('#cs-email-enable-btn');
     await expect(enableBtn).toBeVisible({ timeout: 5000 });
@@ -230,7 +230,7 @@ test('Email 2FA — enable flow (test user)', async ({ page }) => {
     if (verifyUrl) {
         await page.goto(verifyUrl);
         // Should land back in admin with badge now showing "Active"
-        await page.goto(`${SITE}/wp-admin/admin.php?page=cs-code-block&tab=login-security`);
+        await page.goto(`${SITE}/wp-admin/admin.php?page=cloudscale-devtools&tab=login-security`);
         const badge = page.locator('#cs-email-badge');
         await expect(badge).toBeVisible({ timeout: 5000 });
         const badgeText = await badge.textContent();
@@ -345,7 +345,169 @@ test('TOTP setup wizard', async ({ page }) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 7. Cleanup — disable 2FA, reset method to Off
+// 7. Brute-force protection — UI renders and saves
+// ─────────────────────────────────────────────────────────────────────────────
+test('Brute-force protection — panel renders with correct fields', async ({ page }) => {
+    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
+    await page.goto(SECURITY_TAB_URL);
+
+    // Panel elements exist
+    await expect(page.locator('#cs-bf-enabled')).toBeAttached();
+    await expect(page.locator('#cs-bf-attempts')).toBeVisible();
+    await expect(page.locator('#cs-bf-lockout')).toBeVisible();
+    await expect(page.locator('#cs-bf-save')).toBeVisible();
+
+    // Default values
+    const attempts = await page.locator('#cs-bf-attempts').inputValue();
+    const lockout  = await page.locator('#cs-bf-lockout').inputValue();
+    expect(Number(attempts)).toBeGreaterThanOrEqual(1);
+    expect(Number(lockout)).toBeGreaterThanOrEqual(1);
+
+    console.log(`✅  Brute-force panel: ${attempts} attempts, ${lockout}m lockout.`);
+});
+
+test('Brute-force protection — saves updated values', async ({ page }) => {
+    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
+    await page.goto(SECURITY_TAB_URL);
+
+    // Ensure enabled
+    await page.evaluate(() => {
+        const cb = document.getElementById('cs-bf-enabled');
+        if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+    });
+
+    // Set 7 attempts, 10-minute lockout
+    await page.locator('#cs-bf-attempts').fill('7');
+    await page.locator('#cs-bf-lockout').fill('10');
+    await page.locator('#cs-bf-save').click();
+    await expect(page.locator('#cs-bf-saved')).toBeVisible({ timeout: 5000 });
+    console.log('✅  Brute-force settings saved (7 attempts, 10m lockout).');
+
+    // Reload and verify persistence
+    await page.reload();
+    const savedAttempts = await page.locator('#cs-bf-attempts').inputValue();
+    const savedLockout  = await page.locator('#cs-bf-lockout').inputValue();
+    expect(savedAttempts).toBe('7');
+    expect(savedLockout).toBe('10');
+    console.log('✅  Brute-force settings persisted after reload.');
+
+    // Restore defaults
+    await page.locator('#cs-bf-attempts').fill('5');
+    await page.locator('#cs-bf-lockout').fill('5');
+    await page.locator('#cs-bf-save').click();
+    await expect(page.locator('#cs-bf-saved')).toBeVisible({ timeout: 5000 });
+    console.log('✅  Brute-force defaults restored.');
+});
+
+test('Brute-force protection — lockout triggered after N failures', async ({ page }) => {
+    // First make sure brute-force is enabled with low thresholds
+    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
+    await page.goto(SECURITY_TAB_URL);
+    await page.evaluate(() => {
+        const cb = document.getElementById('cs-bf-enabled');
+        if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+    });
+    await page.locator('#cs-bf-attempts').fill('3');
+    await page.locator('#cs-bf-lockout').fill('1');
+    await page.locator('#cs-bf-save').click();
+    await expect(page.locator('#cs-bf-saved')).toBeVisible({ timeout: 5000 });
+    console.log('✅  Set lockout threshold: 3 attempts, 1 minute.');
+
+    // Log out
+    await page.goto(`${SITE}/wp-login.php?action=logout`);
+    const confirmBtn = page.locator('a[href*="action=logout"]');
+    if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await confirmBtn.click();
+    }
+    await page.waitForTimeout(500);
+
+    // Attempt 3 failed logins for the test user
+    for (let i = 1; i <= 3; i++) {
+        await addWpTestCookie(page.context());
+        await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
+        await page.fill('#user_login', TEST_USER);
+        await page.fill('#user_pass', 'definitely-wrong-password-' + i);
+        await page.click('#wp-submit');
+        await page.waitForURL(/wp-login/, { timeout: 8000 }).catch(() => null);
+        console.log(`  Attempt ${i}: ${page.url()}`);
+    }
+
+    // 4th attempt should see the lockout error
+    await addWpTestCookie(page.context());
+    await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
+    await page.fill('#user_login', TEST_USER);
+    await page.fill('#user_pass', TEST_PASS);  // correct password — should still be blocked
+    await page.click('#wp-submit');
+    await page.waitForURL(/wp-login/, { timeout: 8000 }).catch(() => null);
+
+    const errorText = await page.locator('#login_error').textContent().catch(() => '');
+    console.log('🔒  Login error after lockout:', errorText.trim());
+    expect(errorText.toLowerCase()).toMatch(/locked|temporarily/);
+    console.log('✅  Account lockout confirmed.');
+
+    // Restore defaults (log back in as admin after lockout expires — wait 65s or do direct DB)
+    // In automated tests just restore the setting; the 1-minute lockout will self-clear.
+    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
+    await page.goto(SECURITY_TAB_URL);
+    await page.locator('#cs-bf-attempts').fill('5');
+    await page.locator('#cs-bf-lockout').fill('5');
+    await page.locator('#cs-bf-save').click();
+    await expect(page.locator('#cs-bf-saved')).toBeVisible({ timeout: 5000 });
+    console.log('✅  Brute-force threshold restored to defaults.');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. Session persistence — 30-day session survives simulated browser restart
+// ─────────────────────────────────────────────────────────────────────────────
+test('Session — custom duration persists cookies across browser restart', async ({ browser }) => {
+    // Set session to 30 days (as admin)
+    const adminCtx = await browser.newContext();
+    const adminPage = await adminCtx.newPage();
+    await wpLogin(adminPage, ADMIN_USER, ADMIN_PASS);
+    await adminPage.goto(SECURITY_TAB_URL);
+
+    // Set 30-day session
+    await adminPage.locator('#cs-session-duration').selectOption('30');
+    await adminPage.locator('#cs-session-save').click();
+    await expect(adminPage.locator('#cs-session-saved')).toBeVisible({ timeout: 5000 });
+    console.log('✅  Session duration set to 30 days.');
+
+    // Log in as test user and capture the cookies
+    const testCtx = await browser.newContext();
+    const testPage = await testCtx.newPage();
+    await addWpTestCookie(testCtx);
+    await testPage.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
+    await testPage.fill('#user_login', TEST_USER);
+    await testPage.fill('#user_pass', TEST_PASS);
+    await Promise.all([
+        testPage.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }),
+        testPage.click('#wp-submit'),
+    ]);
+
+    // Verify the auth cookie has a non-zero expiry (i.e. it is a persistent cookie, not a session cookie)
+    const cookies = await testCtx.cookies();
+    const authCookies = cookies.filter(c => c.name.startsWith('wordpress_logged_in_'));
+    console.log('🍪  Auth cookies:', authCookies.map(c => `${c.name} expires=${c.expires}`).join(', '));
+    for (const c of authCookies) {
+        // expires = -1 means "session cookie" (cleared on browser close).
+        // A real expiry is a Unix timestamp > 0.
+        expect(c.expires).toBeGreaterThan(0);
+    }
+    console.log('✅  Auth cookie is persistent (non-zero expiry) — survives browser close.');
+
+    // Restore default session
+    await adminPage.goto(SECURITY_TAB_URL);
+    await adminPage.locator('#cs-session-duration').selectOption('default');
+    await adminPage.locator('#cs-session-save').click();
+    await expect(adminPage.locator('#cs-session-saved')).toBeVisible({ timeout: 5000 });
+    console.log('✅  Session duration restored to default.');
+
+    await adminCtx.close();
+    await testCtx.close();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. Cleanup — disable 2FA, reset method to Off
 // ─────────────────────────────────────────────────────────────────────────────
 test('Cleanup — reset 2FA method to Off', async ({ page }) => {
     await wpLogin(page, ADMIN_USER, ADMIN_PASS);

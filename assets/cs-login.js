@@ -1,6 +1,7 @@
 /* ===========================================================
-   CloudScale Code Block — Login Security admin JS  v1.9.0
+   CloudScale Code Block — Login Security admin JS  v1.9.5
    Handles: Hide Login save, 2FA site settings save,
+            session duration, brute-force protection,
             TOTP setup wizard, email 2FA enable/disable.
    =========================================================== */
 ( function () {
@@ -48,6 +49,9 @@
             method:           document.querySelector( 'input[name="cs_devtools_2fa_method"]:checked' )?.value || 'off',
             force_admins:     document.getElementById( 'cs-2fa-force' )?.checked ? '1' : '0',
             session_duration: document.getElementById( 'cs-session-duration' )?.value || 'default',
+            bf_enabled:       document.getElementById( 'cs-bf-enabled' )?.checked ? '1' : '0',
+            bf_attempts:      document.getElementById( 'cs-bf-attempts' )?.value || '5',
+            bf_lockout:       document.getElementById( 'cs-bf-lockout' )?.value || '5',
         };
     }
 
@@ -92,6 +96,35 @@
                 }
             } ).catch( () => {
                 sessionSaveBtn.disabled = false;
+                alert( 'Save failed. Check your connection.' );
+            } );
+        } );
+    }
+
+    const bfSaveBtn  = document.getElementById( 'cs-bf-save' );
+    const bfSaved    = document.getElementById( 'cs-bf-saved' );
+    const bfEnabled  = document.getElementById( 'cs-bf-enabled' );
+    const bfOptions  = document.getElementById( 'cs-bf-options' );
+
+    // Toggle numeric fields based on the enable checkbox.
+    if ( bfEnabled && bfOptions ) {
+        const syncBfOptions = () => { bfOptions.style.opacity = bfEnabled.checked ? '' : '0.4'; };
+        syncBfOptions();
+        bfEnabled.addEventListener( 'change', syncBfOptions );
+    }
+
+    if ( bfSaveBtn ) {
+        bfSaveBtn.addEventListener( 'click', () => {
+            bfSaveBtn.disabled = true;
+            post( 'cs_devtools_login_save', collectLoginPayload() ).then( res => {
+                bfSaveBtn.disabled = false;
+                if ( res.success ) {
+                    flash( bfSaved, true );
+                } else {
+                    alert( res.data || 'Save failed.' );
+                }
+            } ).catch( () => {
+                bfSaveBtn.disabled = false;
                 alert( 'Save failed. Check your connection.' );
             } );
         } );
