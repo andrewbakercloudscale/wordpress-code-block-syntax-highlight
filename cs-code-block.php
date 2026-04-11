@@ -7024,6 +7024,10 @@ class CloudScale_DevTools {
         if ( ! in_array( $ext, [ 'jpg', 'jpeg', 'png', 'webp' ], true ) ) {
             $ext = 'jpg';
         }
+        // Convert PNG/WebP to JPEG so lossy quality reduction can actually shrink the file.
+        if ( in_array( $ext, [ 'png', 'webp' ], true ) ) {
+            $ext = 'jpg';
+        }
 
         $results = [];
 
