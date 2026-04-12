@@ -2,13 +2,6 @@
  * CloudScale Code Block — Editor Styles v1.1.0
  */
 
-/* Force full width in the editor content area */
-.wp-block-cloudscale-code-block,
-.wp-block[data-type="cloudscale/code-block"] {
-    width: 100% !important;
-    max-width: 100% !important;
-}
-
 .cs-code-editor-wrapper {
     width: 100% !important;
     max-width: 100% !important;
