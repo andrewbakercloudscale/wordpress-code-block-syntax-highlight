@@ -8176,7 +8176,7 @@ class CloudScale_DevTools {
             'site' => [
                 'url'              => home_url( '/' ),
                 'is_https'         => is_ssl(),
-                'login_url_hidden' => get_option( 'csdt_devtools_hide_login_enabled', '0' ) === '1',
+                'login_url_hidden' => get_option( 'csdt_devtools_login_hide_enabled', '0' ) === '1',
                 'xmlrpc_exists'    => file_exists( ABSPATH . 'xmlrpc.php' ),
             ],
             'security_features' => [
