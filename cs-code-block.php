@@ -8180,10 +8180,32 @@ class CloudScale_DevTools {
                 'xmlrpc_exists'    => file_exists( ABSPATH . 'xmlrpc.php' ),
             ],
             'security_features' => [
-                'brute_force_enabled' => get_option( 'csdt_devtools_brute_force_enabled', '1' ) === '1',
-                'two_fa_method'       => get_option( 'csdt_devtools_2fa_method', 'off' ),
-                'failed_logins_1h'    => (int) get_transient( 'csdt_devtools_failed_logins_1h' ),
-                'failed_logins_24h'   => (int) get_transient( 'csdt_devtools_failed_logins_24h' ),
+                'brute_force_enabled'  => get_option( 'csdt_devtools_brute_force_enabled', '1' ) === '1',
+                'two_fa_site_method'   => get_option( 'csdt_devtools_2fa_method', 'off' ),
+                'two_fa_totp_admins'   => ( function () {
+                    $admins = get_users( [ 'role' => 'administrator', 'fields' => 'ID' ] );
+                    $count  = 0;
+                    foreach ( $admins as $id ) {
+                        if ( get_user_meta( (int) $id, 'csdt_devtools_totp_enabled', true ) === '1' ) {
+                            $count++;
+                        }
+                    }
+                    return $count;
+                } )(),
+                'passkeys_admin_count' => ( function () {
+                    $admins = get_users( [ 'role' => 'administrator', 'fields' => 'ID' ] );
+                    $count  = 0;
+                    foreach ( $admins as $id ) {
+                        $keys = get_user_meta( (int) $id, 'csdt_devtools_passkeys', true );
+                        if ( ! empty( $keys ) && is_array( $keys ) ) {
+                            $count++;
+                        }
+                    }
+                    return $count;
+                } )(),
+                'admin_count'          => count( get_users( [ 'role' => 'administrator', 'fields' => 'ID' ] ) ),
+                'failed_logins_1h'     => (int) get_transient( 'csdt_devtools_failed_logins_1h' ),
+                'failed_logins_24h'    => (int) get_transient( 'csdt_devtools_failed_logins_24h' ),
             ],
             'exposed_files'    => $exposed,
             'security_headers' => $sec_headers,
