@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale DevTools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.25
+ * Version: 1.9.26
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.25';
+    const VERSION      = '1.9.26';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -4917,7 +4917,13 @@ class CloudScale_DevTools {
                 delete_transient( self::LOGIN_2FA_TRANSIENT . $token );
                 wp_set_auth_cookie( $user_id, self::login_should_remember( $pending ) );
                 $redirect = isset( $_POST['redirect_to'] ) ? esc_url_raw( wp_unslash( $_POST['redirect_to'] ) ) : admin_url();
-                wp_safe_redirect( $redirect );
+                // Use JS top-level navigation: on macOS/Windows, the browser runs the passkey
+                // ceremony inside an OS overlay. wp_safe_redirect() navigates that overlay's
+                // frame instead of the main tab, painting the dashboard inside the sheet.
+                // window.top.location.href escapes any sub-frame and lands the user correctly.
+                echo '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>';
+                echo '<script>window.top.location.href=' . wp_json_encode( $redirect ) . ';</script>';
+                echo '</body></html>';
                 exit;
             }
             // Verification failed — re-render challenge with error.
