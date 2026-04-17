@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale DevTools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.23
+ * Version: 1.9.24
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.23';
+    const VERSION      = '1.9.24';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -289,6 +289,7 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_devtools_vuln_scan',          [ __CLASS__, 'ajax_vuln_scan' ] );
         add_action( 'wp_ajax_csdt_devtools_deep_scan',          [ __CLASS__, 'ajax_deep_scan' ] );
         add_action( 'wp_ajax_csdt_devtools_scan_status',        [ __CLASS__, 'ajax_scan_status' ] );
+        add_action( 'wp_ajax_csdt_devtools_cancel_scan',        [ __CLASS__, 'ajax_cancel_scan' ] );
         add_action( 'wp_ajax_csdt_devtools_vuln_save_key',      [ __CLASS__, 'ajax_vuln_save_key' ] );
         add_action( 'wp_ajax_csdt_devtools_security_test_key',  [ __CLASS__, 'ajax_security_test_key' ] );
 
@@ -8315,6 +8316,9 @@ class CloudScale_DevTools {
                             <button id="cs-vuln-scan-btn" class="cs-btn-primary" disabled>
                                 🔍 <?php esc_html_e( 'Run AI Security Audit', 'cloudscale-devtools' ); ?>
                             </button>
+                            <button id="cs-vuln-cancel-btn" class="cs-btn-secondary" style="display:none">
+                                ✕ <?php esc_html_e( 'Cancel', 'cloudscale-devtools' ); ?>
+                            </button>
                         </div>
                         <span id="cs-vuln-scan-status" class="cs-vuln-inline-msg"></span>
                         <div id="cs-vuln-progress" class="cs-scan-progress">
@@ -8331,6 +8335,9 @@ class CloudScale_DevTools {
                         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                             <button id="cs-deep-scan-btn" class="cs-btn-primary cs-btn-deep" disabled>
                                 🕵️ <?php esc_html_e( 'Run Cyber Deep Dive', 'cloudscale-devtools' ); ?>
+                            </button>
+                            <button id="cs-deep-cancel-btn" class="cs-btn-secondary" style="display:none">
+                                ✕ <?php esc_html_e( 'Cancel', 'cloudscale-devtools' ); ?>
                             </button>
                             <span id="cs-deep-model-badge" class="cs-scan-model-badge"></span>
                         </div>
@@ -8462,6 +8469,160 @@ class CloudScale_DevTools {
         }
     }
 
+    // ── Parallel AI calls via curl_multi ─────────────────────────────
+
+    private static function build_ai_curl_handle( string $provider, string $system, string $user_message, string $model, int $max_tokens ): \CurlHandle {
+        if ( $provider === 'gemini' ) {
+            $key = get_option( 'csdt_devtools_gemini_key', '' );
+            if ( ! $key ) { throw new \RuntimeException( 'No Gemini API key configured.' ); }
+            if ( $model === '_auto' || $model === '_auto_deep' ) { $model = 'gemini-2.0-flash'; }
+            $url     = 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode( $model ) . ':generateContent?key=' . rawurlencode( $key );
+            $body    = wp_json_encode( [
+                'systemInstruction' => [ 'parts' => [ [ 'text' => $system ] ] ],
+                'contents'          => [ [ 'role' => 'user', 'parts' => [ [ 'text' => $user_message ] ] ] ],
+                'generationConfig'  => [ 'maxOutputTokens' => $max_tokens ],
+            ] );
+            $headers = [ 'Content-Type: application/json' ];
+        } else {
+            $key = get_option( 'csdt_devtools_anthropic_key', '' );
+            if ( ! $key ) { throw new \RuntimeException( 'No Anthropic API key configured.' ); }
+            if ( $model === '_auto' )      { $model = 'claude-sonnet-4-6'; }
+            if ( $model === '_auto_deep' ) { $model = 'claude-opus-4-7'; }
+            $url     = 'https://api.anthropic.com/v1/messages';
+            $body    = wp_json_encode( [
+                'model'      => $model,
+                'max_tokens' => $max_tokens,
+                'system'     => $system,
+                'messages'   => [ [ 'role' => 'user', 'content' => $user_message ] ],
+            ] );
+            $headers = [
+                'x-api-key: ' . $key,
+                'anthropic-version: 2023-06-01',
+                'content-type: application/json',
+            ];
+        }
+        $ch = curl_init();
+        curl_setopt_array( $ch, [
+            CURLOPT_URL            => $url,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 180,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ] );
+        return $ch;
+    }
+
+    private static function parse_ai_curl_text( string $provider, string $body ): string {
+        $data = json_decode( $body, true );
+        if ( ! $data ) { throw new \RuntimeException( 'Empty or invalid API response.' ); }
+        if ( $provider === 'gemini' ) {
+            if ( isset( $data['error'] ) ) { throw new \RuntimeException( $data['error']['message'] ?? 'Gemini API error.' ); }
+            return trim( $data['candidates'][0]['content']['parts'][0]['text'] ?? '' );
+        }
+        if ( isset( $data['error'] ) ) { throw new \RuntimeException( $data['error']['message'] ?? 'Anthropic API error.' ); }
+        return trim( $data['content'][0]['text'] ?? '' );
+    }
+
+    private static function dispatch_parallel_ai_calls( array $calls ): array {
+        $provider = get_option( 'csdt_devtools_ai_provider', 'anthropic' );
+        $mh       = curl_multi_init();
+        $handles  = [];
+        foreach ( $calls as $i => $call ) {
+            $ch          = self::build_ai_curl_handle( $provider, $call['system'], $call['user'], $call['model'], $call['max_tokens'] );
+            $handles[$i] = $ch;
+            curl_multi_add_handle( $mh, $ch );
+        }
+        $running = null;
+        do {
+            curl_multi_exec( $mh, $running );
+            if ( $running ) { curl_multi_select( $mh, 1.0 ); }
+        } while ( $running > 0 );
+
+        $texts = [];
+        foreach ( $handles as $i => $ch ) {
+            $texts[$i] = self::parse_ai_curl_text( $provider, (string) curl_multi_getcontent( $ch ) );
+            curl_multi_remove_handle( $mh, $ch );
+            curl_close( $ch );
+        }
+        curl_multi_close( $mh );
+        return $texts;
+    }
+
+    private static function parse_ai_json( string $text ): array {
+        $text   = preg_replace( '/^```(?:json)?\s*/i', '', trim( $text ) );
+        $text   = preg_replace( '/\s*```$/', '', $text );
+        $report = json_decode( $text, true );
+        if ( ! $report || ! isset( $report['score'] ) ) {
+            throw new \RuntimeException( 'AI returned unexpected format.' );
+        }
+        return $report;
+    }
+
+    private static function merge_reports( array $a, array $b ): array {
+        $score = (int) round( $a['score'] * 0.45 + $b['score'] * 0.55 );
+        $label = $score >= 90 ? 'Excellent' : ( $score >= 75 ? 'Good' : ( $score >= 55 ? 'Fair' : ( $score >= 35 ? 'Poor' : 'Critical' ) ) );
+        $sum_a = rtrim( $a['summary'] ?? '', '. ' );
+        $sum_b = ltrim( $b['summary'] ?? '' );
+        return [
+            'score'       => $score,
+            'score_label' => $label,
+            'summary'     => $sum_a . '. ' . $sum_b,
+            'critical'    => array_merge( $a['critical'] ?? [], $b['critical'] ?? [] ),
+            'high'        => array_merge( $a['high']     ?? [], $b['high']     ?? [] ),
+            'medium'      => array_merge( $a['medium']   ?? [], $b['medium']   ?? [] ),
+            'low'         => array_merge( $a['low']      ?? [], $b['low']      ?? [] ),
+            'good'        => array_merge( $a['good']     ?? [], $b['good']     ?? [] ),
+        ];
+    }
+
+    private static function default_internal_scan_prompt(): string {
+        return <<<'PROMPT'
+You are a WordPress security expert. Analyse the provided internal WordPress configuration data only.
+
+Focus on: WordPress/PHP/MySQL version currency, WP_DEBUG flags, DISALLOW_FILE_EDIT/MODS, database prefix, user accounts (admin username, counts, roles), active plugin list, brute force protection settings, 2FA configuration (email/TOTP/passkey counts), login URL obfuscation, wp-config.php hardening flags.
+
+Return ONLY a JSON object (no markdown, no code fences) with this exact schema:
+{"score":0-100,"score_label":"Excellent|Good|Fair|Poor|Critical","summary":"1-2 sentences on internal config security posture","critical":[{"title":"...","detail":"...","fix":"..."}],"high":[...],"medium":[...],"low":[...],"good":[{"title":"...","detail":"..."}]}
+
+Score the internal configuration on a 0-100 scale. Be strict. Include good practices for hardened settings.
+PROMPT;
+    }
+
+    private static function default_external_scan_prompt(): string {
+        return <<<'PROMPT'
+You are a penetration tester. Analyse the provided external exposure checks and plugin code scan data only.
+
+For external checks focus on: HTTP security headers (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy), exposed endpoints (wp-login.php accessibility, xmlrpc.php, wp-json user enumeration, author enumeration via /?author=1, directory listing, sensitive files), SSL certificate validity and expiry.
+
+For plugin code scan: flag dangerous PHP functions (eval, exec, shell_exec, base64_decode, create_function, system, passthru) with plugin name and severity context.
+
+Return ONLY a JSON object (no markdown, no code fences) with this exact schema:
+{"score":0-100,"score_label":"Excellent|Good|Fair|Poor|Critical","summary":"1-2 sentences on external exposure and code scan posture","critical":[{"title":"...","detail":"...","fix":"..."}],"high":[...],"medium":[...],"low":[...],"good":[{"title":"...","detail":"..."}]}
+
+Score external exposure on a 0-100 scale. Prioritise externally reachable issues at critical/high. Include good practices for blocked endpoints and hardened headers.
+PROMPT;
+    }
+
+    // ── Cancel scan ───────────────────────────────────────────────────
+
+    public static function ajax_cancel_scan(): void {
+        check_ajax_referer( 'csdt_devtools_security_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+        $type = isset( $_POST['type'] ) ? sanitize_key( $_POST['type'] ) : 'deep';
+        if ( $type === 'deep' ) {
+            set_transient( 'csdt_deep_scan_cancelled', '1', 300 );
+            delete_transient( 'csdt_deep_scan_status' );
+        } else {
+            set_transient( 'csdt_vuln_scan_cancelled', '1', 300 );
+            delete_transient( 'csdt_vuln_scan_status' );
+        }
+        wp_send_json_success( [ 'cancelled' => true ] );
+    }
+
     // ── AI dispatcher — Anthropic or Gemini ──────────────────────────
 
     private static function dispatch_ai_call( string $system, string $user_message, string $model, int $max_tokens ): string {
@@ -8563,6 +8724,11 @@ class CloudScale_DevTools {
 
     public static function cron_vuln_scan(): void {
         if ( function_exists( 'set_time_limit' ) ) { set_time_limit( 0 ); }
+
+        if ( get_transient( 'csdt_vuln_scan_cancelled' ) ) {
+            delete_transient( 'csdt_vuln_scan_cancelled' );
+            return;
+        }
 
         try {
             $model         = get_option( 'csdt_devtools_security_model', '_auto' );
@@ -8920,22 +9086,48 @@ PROMPT;
         if ( function_exists( 'set_time_limit' ) ) { set_time_limit( 0 ); }
 
         try {
-            $model        = get_option( 'csdt_devtools_deep_scan_model', '_auto_deep' );
-            $user_message = 'WordPress site full security data (JSON):' . "\n\n" . wp_json_encode( self::gather_deep_security_data(), JSON_PRETTY_PRINT );
+            if ( get_transient( 'csdt_deep_scan_cancelled' ) ) {
+                delete_transient( 'csdt_deep_scan_cancelled' );
+                return;
+            }
 
-            error_log( '[CSDT-DEEP] cron running, model=' . $model );
-            $text = self::dispatch_ai_call( self::default_deep_scan_prompt(), $user_message, $model, 8192 );
+            $model     = get_option( 'csdt_devtools_deep_scan_model', '_auto_deep' );
+            $base_data = self::gather_security_data();
+            $external  = self::gather_external_checks();
+            $code_scan = self::scan_plugin_code();
+
+            if ( get_transient( 'csdt_deep_scan_cancelled' ) ) {
+                delete_transient( 'csdt_deep_scan_cancelled' );
+                return;
+            }
+
+            $msg_internal = 'WordPress internal configuration data (JSON):' . "\n\n" . wp_json_encode( $base_data, JSON_PRETTY_PRINT );
+            $msg_external = 'WordPress external exposure and plugin code scan data (JSON):' . "\n\n" . wp_json_encode( [
+                'external_checks'  => $external,
+                'plugin_code_scan' => $code_scan,
+            ], JSON_PRETTY_PRINT );
+
+            if ( function_exists( 'curl_multi_init' ) ) {
+                error_log( '[CSDT-DEEP] firing two parallel AI calls, model=' . $model );
+                $texts    = self::dispatch_parallel_ai_calls( [
+                    [ 'system' => self::default_internal_scan_prompt(), 'user' => $msg_internal, 'model' => $model, 'max_tokens' => 4096 ],
+                    [ 'system' => self::default_external_scan_prompt(), 'user' => $msg_external, 'model' => $model, 'max_tokens' => 4096 ],
+                ] );
+                $report = self::merge_reports( self::parse_ai_json( $texts[0] ), self::parse_ai_json( $texts[1] ) );
+            } else {
+                // Fallback: single sequential call
+                error_log( '[CSDT-DEEP] curl_multi unavailable, falling back to sequential, model=' . $model );
+                $text   = self::dispatch_ai_call( self::default_deep_scan_prompt(), 'WordPress site full security data (JSON):' . "\n\n" . wp_json_encode( [ 'internal' => $base_data, 'external_checks' => $external, 'plugin_code_scan' => $code_scan ], JSON_PRETTY_PRINT ), $model, 8192 );
+                $report = self::parse_ai_json( $text );
+            }
+
         } catch ( \Throwable $e ) {
             set_transient( 'csdt_deep_scan_status', [ 'status' => 'error', 'message' => $e->getMessage() ], 300 );
             return;
         }
 
-        $text   = preg_replace( '/^```(?:json)?\s*/i', '', trim( $text ) );
-        $text   = preg_replace( '/\s*```$/', '', $text );
-        $report = json_decode( $text, true );
-
-        if ( ! $report || ! isset( $report['score'] ) ) {
-            set_transient( 'csdt_deep_scan_status', [ 'status' => 'error', 'message' => 'AI returned unexpected format.' ], 300 );
+        if ( get_transient( 'csdt_deep_scan_cancelled' ) ) {
+            delete_transient( 'csdt_deep_scan_cancelled' );
             return;
         }
 
@@ -8948,7 +9140,7 @@ PROMPT;
 
         set_transient( 'csdt_deep_scan_v1', $output, DAY_IN_SECONDS );
         set_transient( 'csdt_deep_scan_status', [ 'status' => 'complete', 'completed_at' => time() ], 900 );
-        error_log( '[CSDT-DEEP] cron complete, score=' . $report['score'] );
+        error_log( '[CSDT-DEEP] cron complete (parallel), score=' . $report['score'] );
     }
 
     public static function ajax_scan_status(): void {

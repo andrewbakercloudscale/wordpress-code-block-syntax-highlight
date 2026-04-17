@@ -278,9 +278,15 @@
 
     // ── Polling ───────────────────────────────────────────────────────
 
-    function startPolling(type, scanBtn, statusEl, resultsEl, progressEl) {
-        var bar   = new ProgressBar(progressEl);
-        bar.tick(); // first immediate tick
+    function startPolling(type, scanBtn, cancelBtn, statusEl, resultsEl, progressEl) {
+        var bar = new ProgressBar(progressEl);
+        bar.tick();
+        if (cancelBtn) cancelBtn.style.display = '';
+
+        function finish() {
+            if (cancelBtn) cancelBtn.style.display = 'none';
+            if (scanBtn)   scanBtn.disabled = false;
+        }
 
         var timer = setInterval(function () {
             bar.tick();
@@ -288,10 +294,10 @@
                 .then(function (res) {
                     if (!res.success) return;
                     var d = res.data;
-                    if (d.status === 'running') return; // keep waiting
+                    if (d.status === 'running') return;
 
                     clearInterval(timer);
-                    if (scanBtn) scanBtn.disabled = false;
+                    finish();
 
                     if (d.status === 'complete') {
                         bar.complete();
@@ -308,8 +314,18 @@
                         if (statusEl) { statusEl.textContent = ''; statusEl.className = 'cs-vuln-inline-msg'; }
                     }
                 })
-                .catch(function () {}); // ignore transient poll errors
+                .catch(function () {});
         }, POLL_INTERVAL);
+
+        if (cancelBtn) {
+            cancelBtn.onclick = function () {
+                clearInterval(timer);
+                finish();
+                bar.reset();
+                if (statusEl) { statusEl.textContent = ''; statusEl.className = 'cs-vuln-inline-msg'; }
+                post('csdt_devtools_cancel_scan', { type: type }).catch(function () {});
+            };
+        }
     }
 
     // ── Standard scan ────────────────────────────────────────────────
@@ -343,7 +359,7 @@
                     if (statusEl) { statusEl.textContent = '❌ ' + err; statusEl.className = 'cs-vuln-inline-msg cs-vuln-msg-err'; }
                     return;
                 }
-                startPolling('standard', scanBtn, statusEl, resultsEl, progressEl);
+                startPolling('standard', scanBtn, document.getElementById('cs-vuln-cancel-btn'), statusEl, resultsEl, progressEl);
             })
             .catch(function (e) {
                 if (scanBtn) scanBtn.disabled = false;
@@ -382,7 +398,7 @@
                     if (statusEl) { statusEl.textContent = '❌ ' + err; statusEl.className = 'cs-vuln-inline-msg cs-vuln-msg-err'; }
                     return;
                 }
-                startPolling('deep', scanBtn, statusEl, resultsEl, progressEl);
+                startPolling('deep', scanBtn, document.getElementById('cs-deep-cancel-btn'), statusEl, resultsEl, progressEl);
             })
             .catch(function (e) {
                 if (scanBtn) scanBtn.disabled = false;
