@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Devtools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.70
+ * Version: 1.9.72
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.70';
+    const VERSION      = '1.9.72';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -1490,14 +1490,15 @@ class CloudScale_DevTools {
     private static function get_log_sources(): array {
         $sources = [];
 
-        // PHP error log (from php.ini)
+        // PHP error log — skip device files (/dev/stderr etc.) and unreadable paths
         $php_log = ini_get( 'error_log' );
-        if ( $php_log ) {
+        if ( $php_log && is_file( $php_log ) ) {
             $sources['php_error'] = [ 'label' => 'PHP Error Log', 'path' => $php_log ];
         }
 
-        // WordPress debug.log
-        $wp_debug_log = WP_CONTENT_DIR . '/debug.log';
+        // WordPress debug.log — prefer relocated path set by quick-fix mu-plugin
+        $relocated = get_option( 'csdt_debug_log_path', '' );
+        $wp_debug_log = $relocated ?: WP_CONTENT_DIR . '/debug.log';
         $sources['wp_debug'] = [ 'label' => 'WordPress Debug Log', 'path' => $wp_debug_log ];
 
         // Apache / Nginx error log — common paths
