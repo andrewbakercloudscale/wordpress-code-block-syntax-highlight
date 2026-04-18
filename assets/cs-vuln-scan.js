@@ -590,6 +590,48 @@
             });
         }
 
+        // ── Scheduled scan UI ────────────────────────────────────────
+
+        var schedEnabled  = document.getElementById('cs-sched-enabled');
+        var schedOptions  = document.getElementById('cs-sched-options');
+        var schedFreq     = document.getElementById('cs-sched-freq');
+        var schedType     = document.getElementById('cs-sched-type');
+        var schedEmail    = document.getElementById('cs-sched-email');
+        var schedNtfyUrl  = document.getElementById('cs-sched-ntfy-url');
+        var schedNtfyTok  = document.getElementById('cs-sched-ntfy-token');
+        var schedSaveBtn  = document.getElementById('cs-sched-save');
+        var schedSavedMsg = document.getElementById('cs-sched-saved');
+
+        if (schedEnabled && schedOptions) {
+            schedEnabled.addEventListener('change', function () {
+                schedOptions.style.display = schedEnabled.checked ? '' : 'none';
+            });
+        }
+
+        if (schedSaveBtn) {
+            schedSaveBtn.addEventListener('click', function () {
+                schedSaveBtn.disabled = true;
+                var params = {
+                    enabled:      schedEnabled && schedEnabled.checked ? '1' : '0',
+                    freq:         schedFreq    ? schedFreq.value    : 'weekly',
+                    type:         schedType    ? schedType.value    : 'deep',
+                    email_notify: schedEmail   && schedEmail.checked ? '1' : '0',
+                    ntfy_url:     schedNtfyUrl ? schedNtfyUrl.value.trim() : '',
+                    ntfy_token:   schedNtfyTok ? schedNtfyTok.value.trim() : '',
+                };
+                post('csdt_devtools_save_schedule', params)
+                    .then(function (res) {
+                        schedSaveBtn.disabled = false;
+                        if (res.success && schedSavedMsg) {
+                            schedSavedMsg.style.opacity = '1';
+                            setTimeout(function () { schedSavedMsg.style.opacity = '0'; }, 2500);
+                            if (schedNtfyTok) { schedNtfyTok.value = ''; schedNtfyTok.placeholder = '••••••••'; }
+                        }
+                    })
+                    .catch(function () { schedSaveBtn.disabled = false; });
+            });
+        }
+
         // ── Scan buttons ──────────────────────────────────────────────
 
         if (scanBtn) scanBtn.addEventListener('click', function () { runScan(false); });
