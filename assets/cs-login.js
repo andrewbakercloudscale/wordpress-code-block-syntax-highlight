@@ -435,7 +435,7 @@
                 <div class="cs-bf-day-label">${d.label}</div>
             </div>`;
         } ).join( '' );
-        bfChart.innerHTML = yAxis + `<div class="cs-bf-bars">${bars}</div>`;
+        bfChart.innerHTML = yAxis + bars;
     }
 
     function renderBfTable( log, now ) {

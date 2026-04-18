@@ -1224,36 +1224,34 @@
     padding: 1px 8px;
 }
 .cs-bf-chart {
-    display: flex;
-    gap: 0;
-    align-items: flex-start;
-    margin-bottom: 16px;
-}
-.cs-bf-yaxis {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 70px;
-    margin-bottom: 20px;
-    font-size: 9px;
-    color: #999;
-    text-align: right;
-    padding-right: 5px;
-    min-width: 22px;
-    flex-shrink: 0;
-    user-select: none;
-    line-height: 1;
-}
-.cs-bf-ytick {
-    display: block;
-}
-.cs-bf-bars {
-    flex: 1;
+    position: relative;
     display: flex;
     gap: 4px;
     align-items: flex-end;
+    margin-bottom: 16px;
+    padding-left: 30px;
+    padding-right: 12px;
+}
+.cs-bf-yaxis {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 26px;
+    height: 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
     padding-right: 4px;
-    min-width: 0;
+    font-size: 10px;
+    font-weight: 600;
+    color: #666;
+    user-select: none;
+    line-height: 1;
+    box-sizing: border-box;
+}
+.cs-bf-ytick {
+    display: block;
 }
 .cs-bf-day {
     flex: 1;
