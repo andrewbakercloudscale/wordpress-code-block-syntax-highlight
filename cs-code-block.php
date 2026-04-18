@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.88
+ * Version: 1.9.89
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.88';
+    const VERSION      = '1.9.89';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -324,6 +324,7 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_devtools_save_schedule',      [ __CLASS__, 'ajax_save_schedule' ] );
         add_action( 'wp_ajax_csdt_devtools_quick_fix',          [ __CLASS__, 'ajax_apply_quick_fix' ] );
         add_action( 'wp_ajax_csdt_devtools_csp_save',           [ __CLASS__, 'ajax_csp_save' ] );
+        add_action( 'wp_ajax_csdt_devtools_csp_rollback',       [ __CLASS__, 'ajax_csp_rollback' ] );
         add_action( 'send_headers',                             [ __CLASS__, 'output_security_headers' ] );
         add_action( 'wp_ajax_csdt_test_account_create',          [ __CLASS__, 'ajax_create_test_account' ] );
         add_action( 'wp_ajax_csdt_test_account_revoke',          [ __CLASS__, 'ajax_revoke_test_account' ] );
@@ -8958,6 +8959,8 @@ class CloudScale_DevTools {
         $csp_services = json_decode( get_option( 'csdt_devtools_csp_services', '[]' ), true );
         if ( ! is_array( $csp_services ) ) { $csp_services = []; }
         $csp_custom   = get_option( 'csdt_devtools_csp_custom', '' );
+        $csp_backup   = json_decode( get_option( 'csdt_devtools_csp_backup', '' ), true );
+        $backup_time  = is_array( $csp_backup ) ? ( $csp_backup['saved_at'] ?? 0 ) : 0;
 
         $services = [
             'google_analytics'    => 'Google Analytics (GA4 / gtag.js)',
@@ -9020,9 +9023,16 @@ class CloudScale_DevTools {
                 <pre id="cs-csp-preview" style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:6px;font-size:11px;white-space:pre-wrap;word-break:break-all;margin:0;max-height:140px;overflow-y:auto;"></pre>
             </div>
 
-            <div style="display:flex;align-items:center;gap:12px;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                 <button type="button" id="cs-csp-save-btn" class="cs-btn-primary cs-btn-sm"><?php esc_html_e( 'Save CSP Settings', 'cloudscale-devtools' ); ?></button>
-                <span id="cs-csp-saved" style="display:none;color:#16a34a;font-size:13px;font-weight:600;">✓ <?php esc_html_e( 'Saved', 'cloudscale-devtools' ); ?></span>
+                <?php if ( $backup_time ) : ?>
+                <button type="button" id="cs-csp-rollback-btn" class="cs-btn-secondary cs-btn-sm" style="border-color:#f87171;color:#dc2626;">
+                    ↩ <?php esc_html_e( 'Rollback to previous settings', 'cloudscale-devtools' ); ?>
+                    <span style="font-weight:400;font-size:11px;opacity:.8;">(<?php echo esc_html( human_time_diff( $backup_time ) . ' ' . __( 'ago', 'cloudscale-devtools' ) ); ?>)</span>
+                </button>
+                <?php endif; ?>
+                <span id="cs-csp-saved"    style="display:none;color:#16a34a;font-size:13px;font-weight:600;">✓ <?php esc_html_e( 'Saved', 'cloudscale-devtools' ); ?></span>
+                <span id="cs-csp-rolledback" style="display:none;color:#d97706;font-size:13px;font-weight:600;">↩ <?php esc_html_e( 'Rolled back', 'cloudscale-devtools' ); ?></span>
             </div>
         </div>
 
@@ -9088,13 +9098,59 @@ class CloudScale_DevTools {
                     fd.append('custom',   customIn ? customIn.value.trim() : '');
                     fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
                         .then(function(r){ return r.json(); })
-                        .then(function(){
-                            saveBtn.disabled = false;
-                            if (savedMsg) { savedMsg.style.display = 'inline'; setTimeout(function(){ savedMsg.style.display = 'none'; }, 2000); }
-                        })
-                        .catch(function(){ saveBtn.disabled = false; });
+                        .then(function(resp){
+                        saveBtn.disabled = false;
+                        if (savedMsg) { savedMsg.style.display = 'inline'; setTimeout(function(){ savedMsg.style.display = 'none'; }, 2500); }
+                        // Show rollback button if one wasn't already visible.
+                        if (resp && resp.data && resp.data.has_backup) {
+                            var rb = document.getElementById('cs-csp-rollback-btn');
+                            if (!rb) {
+                                rb = document.createElement('button');
+                                rb.id = 'cs-csp-rollback-btn';
+                                rb.type = 'button';
+                                rb.className = 'cs-btn-secondary cs-btn-sm';
+                                rb.style.cssText = 'border-color:#f87171;color:#dc2626;';
+                                rb.textContent = '↩ Rollback to previous settings';
+                                saveBtn.parentNode.insertBefore(rb, saveBtn.nextSibling);
+                                wireRollback(rb);
+                            }
+                        }
+                    })
+                    .catch(function(){ saveBtn.disabled = false; });
                 });
             }
+
+            function wireRollback(btn) {
+                if (!btn) return;
+                btn.addEventListener('click', function(){
+                    if (!confirm('Restore the previous CSP settings? This will overwrite the current configuration.')) { return; }
+                    btn.disabled = true;
+                    var fd = new FormData();
+                    fd.append('action', 'csdt_devtools_csp_rollback');
+                    fd.append('nonce',  csdtVulnScan.nonce);
+                    fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
+                        .then(function(r){ return r.json(); })
+                        .then(function(resp){
+                            if (!resp.success) { alert('Rollback failed: ' + (resp.data || 'unknown error')); btn.disabled = false; return; }
+                            var d = resp.data;
+                            // Restore UI state.
+                            var en = document.getElementById('cs-csp-enabled');
+                            if (en) en.checked = d.enabled === '1';
+                            var modeEl = document.querySelector('input[name="cs-csp-mode"][value="' + (d.mode || 'enforce') + '"]');
+                            if (modeEl) modeEl.checked = true;
+                            document.querySelectorAll('.cs-csp-service').forEach(function(cb){
+                                cb.checked = Array.isArray(d.services) && d.services.indexOf(cb.value) !== -1;
+                            });
+                            if (customIn) customIn.value = d.custom || '';
+                            buildPreview();
+                            btn.remove();
+                            var rb2 = document.getElementById('cs-csp-rolledback');
+                            if (rb2) { rb2.style.display = 'inline'; setTimeout(function(){ rb2.style.display = 'none'; }, 3000); }
+                        })
+                        .catch(function(){ btn.disabled = false; });
+                });
+            }
+            wireRollback(document.getElementById('cs-csp-rollback-btn'));
         })();
         </script>
         <?php
@@ -9104,21 +9160,54 @@ class CloudScale_DevTools {
         check_ajax_referer( 'csdt_devtools_security_nonce', 'nonce' );
         if ( ! current_user_can( 'manage_options' ) ) { wp_send_json_error( 'Unauthorized', 403 ); }
 
-        $enabled  = isset( $_POST['enabled'] )  ? sanitize_key( wp_unslash( $_POST['enabled'] ) )                       : '0';
-        $mode     = isset( $_POST['mode'] )     ? sanitize_key( wp_unslash( $_POST['mode'] ) )                          : 'enforce';
+        $enabled  = isset( $_POST['enabled'] )  ? sanitize_key( wp_unslash( $_POST['enabled'] ) )                            : '0';
+        $mode     = isset( $_POST['mode'] )     ? sanitize_key( wp_unslash( $_POST['mode'] ) )                               : 'enforce';
         $services = isset( $_POST['services'] ) ? json_decode( sanitize_text_field( wp_unslash( $_POST['services'] ) ), true ) : [];
-        $custom   = isset( $_POST['custom'] )   ? sanitize_textarea_field( wp_unslash( $_POST['custom'] ) )             : '';
+        $custom   = isset( $_POST['custom'] )   ? sanitize_textarea_field( wp_unslash( $_POST['custom'] ) )                  : '';
 
         if ( ! is_array( $services ) ) { $services = []; }
         $allowed_services = [ 'google_analytics', 'google_adsense', 'google_tag_manager', 'cloudflare_insights', 'facebook_pixel', 'recaptcha', 'youtube', 'vimeo' ];
         $services = array_values( array_intersect( $services, $allowed_services ) );
+
+        // Snapshot current settings before overwriting so rollback is always possible.
+        update_option( 'csdt_devtools_csp_backup', wp_json_encode( [
+            'enabled'  => get_option( 'csdt_devtools_csp_enabled', '0' ),
+            'mode'     => get_option( 'csdt_devtools_csp_mode', 'enforce' ),
+            'services' => get_option( 'csdt_devtools_csp_services', '[]' ),
+            'custom'   => get_option( 'csdt_devtools_csp_custom', '' ),
+            'saved_at' => time(),
+        ] ) );
 
         update_option( 'csdt_devtools_csp_enabled',  $enabled === '1' ? '1' : '0' );
         update_option( 'csdt_devtools_csp_mode',     in_array( $mode, [ 'enforce', 'report_only' ], true ) ? $mode : 'enforce' );
         update_option( 'csdt_devtools_csp_services', wp_json_encode( $services ) );
         update_option( 'csdt_devtools_csp_custom',   $custom );
 
-        wp_send_json_success();
+        wp_send_json_success( [ 'has_backup' => true ] );
+    }
+
+    public static function ajax_csp_rollback(): void {
+        check_ajax_referer( 'csdt_devtools_security_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) { wp_send_json_error( 'Unauthorized', 403 ); }
+
+        $raw = get_option( 'csdt_devtools_csp_backup', '' );
+        if ( ! $raw ) { wp_send_json_error( 'No backup available' ); }
+
+        $backup = json_decode( $raw, true );
+        if ( ! is_array( $backup ) ) { wp_send_json_error( 'Backup corrupt' ); }
+
+        update_option( 'csdt_devtools_csp_enabled',  $backup['enabled']  ?? '0' );
+        update_option( 'csdt_devtools_csp_mode',     $backup['mode']     ?? 'enforce' );
+        update_option( 'csdt_devtools_csp_services', $backup['services'] ?? '[]' );
+        update_option( 'csdt_devtools_csp_custom',   $backup['custom']   ?? '' );
+        delete_option( 'csdt_devtools_csp_backup' );
+
+        wp_send_json_success( [
+            'enabled'  => $backup['enabled']  ?? '0',
+            'mode'     => $backup['mode']      ?? 'enforce',
+            'services' => json_decode( $backup['services'] ?? '[]', true ),
+            'custom'   => $backup['custom']    ?? '',
+        ] );
     }
 
     public static function register_dashboard_widget(): void {
