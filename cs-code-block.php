@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Devtools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.73
+ * Version: 1.9.75
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.73';
+    const VERSION      = '1.9.75';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -8791,8 +8791,12 @@ class CloudScale_DevTools {
             [
                 'id'        => 'disable_app_passwords',
                 'title'     => 'Application passwords enabled',
-                'detail'    => 'App passwords allow REST API authentication and can bypass two-factor authentication. Disable unless needed.',
-                'fixed'     => get_option( 'csdt_devtools_disable_app_passwords', '0' ) === '1' || ! $app_pw_available,
+                'detail'    => get_option( 'csdt_devtools_test_accounts_enabled', '0' ) === '1'
+                    ? 'App passwords are required for the Test Account Manager feature and are intentionally enabled.'
+                    : 'App passwords allow REST API authentication and can bypass two-factor authentication. Disable unless needed.',
+                'fixed'     => get_option( 'csdt_devtools_disable_app_passwords', '0' ) === '1'
+                              || ! $app_pw_available
+                              || get_option( 'csdt_devtools_test_accounts_enabled', '0' ) === '1',
                 'fix_label' => 'Disable App Passwords',
             ],
             [
@@ -8826,8 +8830,7 @@ class CloudScale_DevTools {
                 'id'        => 'block_debug_log',
                 'title'     => 'debug.log exposed publicly',
                 'detail'    => 'debug.log is HTTP-accessible. On nginx, .htaccess rules are ignored — the only PHP-level fix is to move the file one directory above the web root. It stays readable via the Server Logs tab.',
-                'fixed'     => ! file_exists( WP_CONTENT_DIR . '/debug.log' )
-                              && file_exists( WP_CONTENT_DIR . '/mu-plugins/csdt-secure-logs.php' ),
+                'fixed'     => ! file_exists( WP_CONTENT_DIR . '/debug.log' ),
                 'fix_label' => 'Move Outside Web Root',
             ],
         ];
@@ -9299,24 +9302,26 @@ class CloudScale_DevTools {
                 }
                 break;
             case 'block_debug_log':
-                // Move debug.log outside web root so it stays readable but isn't HTTP-accessible.
-                $old_log  = WP_CONTENT_DIR . '/debug.log';
-                $new_log  = dirname( ABSPATH ) . '/wordpress-debug.log';
-                // Migrate existing content then remove from web root
-                if ( file_exists( $old_log ) ) {
-                    // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-                    $existing = file_get_contents( $old_log );
-                    if ( $existing !== false ) {
-                        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-                        file_put_contents( $new_log, $existing, FILE_APPEND );
-                    }
-                    wp_delete_file( $old_log );
+                $old_log = WP_CONTENT_DIR . '/debug.log';
+                if ( ! file_exists( $old_log ) ) {
+                    // Already removed or never existed — nothing to do, fixed.
+                    break;
                 }
-                // Store the new path so the Server Logs tab can find it
+                // Move debug.log outside web root (one level above ABSPATH).
+                $new_log = rtrim( dirname( rtrim( ABSPATH, '/\\' ) ), '/\\' ) . '/wordpress-debug.log';
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+                $existing = file_get_contents( $old_log );
+                if ( $existing !== false ) {
+                    // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+                    if ( file_put_contents( $new_log, $existing, FILE_APPEND ) === false ) {
+                        wp_send_json_error( 'Could not write to ' . esc_html( $new_log ) . '. The parent directory may not be writable by the web server user.' );
+                        return;
+                    }
+                }
+                wp_delete_file( $old_log );
                 update_option( 'csdt_debug_log_path', $new_log, false );
-                // mu-plugin: redirect PHP error_log to new path on every request
-                // This runs after wp-settings.php sets up WP_DEBUG_LOG so it takes precedence
-                $mu_dir  = WP_CONTENT_DIR . '/mu-plugins';
+                // mu-plugin: redirect future WP_DEBUG_LOG writes to new path
+                $mu_dir = WP_CONTENT_DIR . '/mu-plugins';
                 if ( ! is_dir( $mu_dir ) ) { wp_mkdir_p( $mu_dir ); }
                 // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
                 file_put_contents(
