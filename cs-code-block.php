@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.102
+ * Version: 1.9.103
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.102';
+    const VERSION      = '1.9.103';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -8855,7 +8855,24 @@ class CloudScale_DevTools {
                 'id'        => 'security_headers',
                 'title'     => 'Security headers not set',
                 'detail'    => 'X-Content-Type-Options, X-Frame-Options, Referrer-Policy, and Permissions-Policy are missing. These prevent MIME sniffing, clickjacking, and referrer leakage.',
-                'fixed'     => get_option( 'csdt_devtools_safe_headers_enabled', '0' ) === '1',
+                'fixed'     => ( function () {
+                    if ( get_option( 'csdt_devtools_safe_headers_enabled', '0' ) === '1' ) {
+                        return true;
+                    }
+                    $cached = get_transient( 'csdt_sec_headers_check' );
+                    if ( $cached !== false ) {
+                        return (bool) $cached;
+                    }
+                    $resp = wp_remote_get( home_url( '/' ), [ 'timeout' => 4, 'sslverify' => false ] );
+                    if ( is_wp_error( $resp ) ) {
+                        return false;
+                    }
+                    $h        = wp_remote_retrieve_headers( $resp );
+                    $required = [ 'x-content-type-options', 'x-frame-options', 'referrer-policy', 'permissions-policy' ];
+                    $all_set  = empty( array_filter( $required, fn( $n ) => empty( $h[ $n ] ) ) );
+                    set_transient( 'csdt_sec_headers_check', $all_set ? '1' : '0', 300 );
+                    return $all_set;
+                } )(),
                 'fix_label' => 'Enable Headers',
             ],
             [
