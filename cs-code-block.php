@@ -971,7 +971,7 @@ class CloudScale_DevTools {
     public static function add_tools_page() {
         add_management_page(
             'CloudScale Cyber and Devtools',
-            '🌩️ Cyber & Devtools',
+            '🌩️ Cyber and Devtools',
             'manage_options',
             self::TOOLS_SLUG,
             [ __CLASS__, 'render_tools_page' ]
