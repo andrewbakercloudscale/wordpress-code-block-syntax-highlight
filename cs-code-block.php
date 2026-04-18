@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.101
+ * Version: 1.9.102
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.101';
+    const VERSION      = '1.9.102';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -9261,10 +9261,10 @@ class CloudScale_DevTools {
         #csdt_security_summary .cs-dw-row:last-child{border-bottom:none;}
         #csdt_security_summary .cs-dw-lbl{color:#94a3b8;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
         #csdt_security_summary .cs-dw-section{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;padding:12px 0 6px;border-bottom:2px solid #e5e7eb;margin-bottom:4px;}
-        #csdt_security_summary .cs-dw-actions{margin-top:14px;display:flex;gap:8px;}
-        #csdt_security_summary .cs-dw-actions a{flex:1;text-align:center;padding:7px 10px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;}
-        #csdt_security_summary .cs-dw-btn-pri{background:#0e6b8f;color:#fff!important;}
-        #csdt_security_summary .cs-dw-btn-sec{background:#f1f5f9;color:#1e293b!important;border:1px solid #e2e8f0;}
+        #csdt_security_summary .cs-dw-actions{margin-top:14px;display:flex;}
+        #csdt_security_summary .cs-dw-actions a{flex:1;text-align:center;padding:8px 10px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;transition:opacity .15s;}
+        #csdt_security_summary .cs-dw-btn-pri{background:linear-gradient(135deg,#1a3a8f,#1e6fd9);color:#fff!important;}
+        #csdt_security_summary .cs-dw-btn-pri:hover{opacity:.88;}
         </style>
 
         <div class="cs-dw-section">🤖 <?php esc_html_e( 'AI Security', 'cloudscale-devtools' ); ?></div>
@@ -9319,7 +9319,7 @@ class CloudScale_DevTools {
         </div>
 
         <div class="cs-dw-actions">
-            <a href="<?php echo esc_url( $base_url ); ?>" class="cs-dw-btn-pri" style="flex:1;text-align:center;"><?php esc_html_e( 'View Cyber Devtools', 'cloudscale-devtools' ); ?></a>
+            <a href="<?php echo esc_url( $base_url ); ?>" class="cs-dw-btn-pri" style="flex:1;text-align:center;"><?php esc_html_e( 'View Cyber and Devtools', 'cloudscale-devtools' ); ?></a>
         </div>
         <?php
     }
