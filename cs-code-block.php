@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.38
+ * Version: 1.9.40
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.38';
+    const VERSION      = '1.9.40';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -8642,7 +8642,10 @@ class CloudScale_DevTools {
             <div id="cs-scan-history-wrap" style="padding:12px 0;">
                 <?php
                 $history = get_option( 'csdt_scan_history', [] );
-                if ( empty( $history ) ) :
+                if ( ! empty( $history ) ) : ?>
+                <canvas id="cs-scan-history-chart" height="140"
+                    style="width:100%;max-width:100%;display:block;margin-bottom:20px;border-radius:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);"></canvas>
+                <?php endif; if ( empty( $history ) ) :
                 ?>
                     <p style="color:#888;font-size:13px;margin:0;padding:8px 0;"><?php esc_html_e( 'No scan history yet. Run your first AI Cyber Audit above.', 'cloudscale-devtools' ); ?></p>
                 <?php else : ?>
@@ -10022,12 +10025,14 @@ PROMPT;
         $history = get_option( 'csdt_scan_history', [] );
         if ( ! is_array( $history ) ) { $history = []; }
         array_unshift( $history, [
-            'type'        => $type,
-            'score'       => $report['score']       ?? null,
-            'score_label' => $report['score_label'] ?? '',
-            'summary'     => $report['summary']     ?? '',
-            'model_used'  => $model_used,
-            'scanned_at'  => $scanned_at,
+            'type'           => $type,
+            'score'          => $report['score']       ?? null,
+            'score_label'    => $report['score_label'] ?? '',
+            'summary'        => $report['summary']     ?? '',
+            'critical_count' => count( $report['critical'] ?? [] ),
+            'high_count'     => count( $report['high']     ?? [] ),
+            'model_used'     => $model_used,
+            'scanned_at'     => $scanned_at,
         ] );
         // Keep last 10 across both scan types
         $history = array_slice( $history, 0, 10 );
