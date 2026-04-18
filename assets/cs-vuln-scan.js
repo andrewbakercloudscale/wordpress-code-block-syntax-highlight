@@ -600,5 +600,160 @@
             runScan(true);
             runDeepScan(true);
         }
+
+        // ── Scan history chart ────────────────────────────────────────
+        renderScanHistoryChart(cfg.scanHistory || []);
     });
+
+    function renderScanHistoryChart(history) {
+        var canvas = document.getElementById('cs-scan-history-chart');
+        if (!canvas || !history.length) { return; }
+
+        // Reverse so oldest → newest left → right
+        var data = history.slice().reverse();
+
+        var dpr    = window.devicePixelRatio || 1;
+        var W      = canvas.offsetWidth  || canvas.parentElement.offsetWidth || 600;
+        var H      = 140;
+        canvas.width  = W * dpr;
+        canvas.height = H * dpr;
+        canvas.style.height = H + 'px';
+
+        var ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        var PAD_L = 40, PAD_R = 44, PAD_T = 16, PAD_B = 28;
+        var cW = W - PAD_L - PAD_R;
+        var cH = H - PAD_T - PAD_B;
+
+        // ── Background ────────────────────────────────────────────────
+        ctx.clearRect(0, 0, W, H);
+
+        // ── Grid lines ────────────────────────────────────────────────
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.lineWidth   = 1;
+        var scoreGridLines = [0, 25, 50, 75, 100];
+        scoreGridLines.forEach(function (v) {
+            var y = PAD_T + cH - (v / 100) * cH;
+            ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(PAD_L + cW, y); ctx.stroke();
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(v, PAD_L - 5, y + 3.5);
+        });
+
+        // ── X-axis labels ─────────────────────────────────────────────
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        var step = cW / Math.max(data.length - 1, 1);
+        data.forEach(function (entry, i) {
+            var x   = PAD_L + i * step;
+            var d   = new Date((entry.scanned_at || 0) * 1000);
+            var lbl = (d.getMonth() + 1) + '/' + d.getDate();
+            ctx.fillText(lbl, x, H - 6);
+            // Vertical tick
+            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x, PAD_T); ctx.lineTo(x, PAD_T + cH); ctx.stroke();
+        });
+
+        // ── Max critical+high for right-axis scale ────────────────────
+        var maxIssues = 1;
+        data.forEach(function (e) {
+            var tot = (e.critical_count || 0) + (e.high_count || 0);
+            if (tot > maxIssues) { maxIssues = tot; }
+        });
+        maxIssues = Math.ceil(maxIssues / 2) * 2 || 2; // round up to even
+
+        // Right-axis labels (critical+high scale)
+        ctx.fillStyle = 'rgba(255,100,100,0.5)';
+        ctx.textAlign = 'left';
+        [0, Math.round(maxIssues / 2), maxIssues].forEach(function (v) {
+            var y = PAD_T + cH - (v / maxIssues) * cH;
+            ctx.fillText(v, PAD_L + cW + 5, y + 3.5);
+        });
+
+        // ── Helper: point coords ──────────────────────────────────────
+        function scoreX(i) { return PAD_L + i * step; }
+        function scoreY(v) { return PAD_T + cH - ((v || 0) / 100) * cH; }
+        function issueY(v) { return PAD_T + cH - ((v || 0) / maxIssues) * cH; }
+
+        // ── Score area fill ───────────────────────────────────────────
+        var grad = ctx.createLinearGradient(0, PAD_T, 0, PAD_T + cH);
+        grad.addColorStop(0,   'rgba(56,189,248,0.25)');
+        grad.addColorStop(1,   'rgba(56,189,248,0.02)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(scoreX(0), PAD_T + cH);
+        data.forEach(function (e, i) { ctx.lineTo(scoreX(i), scoreY(e.score)); });
+        ctx.lineTo(scoreX(data.length - 1), PAD_T + cH);
+        ctx.closePath();
+        ctx.fill();
+
+        // ── Score line ────────────────────────────────────────────────
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth   = 2;
+        ctx.lineJoin    = 'round';
+        ctx.beginPath();
+        data.forEach(function (e, i) {
+            if (i === 0) { ctx.moveTo(scoreX(i), scoreY(e.score)); }
+            else         { ctx.lineTo(scoreX(i), scoreY(e.score)); }
+        });
+        ctx.stroke();
+
+        // ── High count bars (stacked base) ───────────────────────────
+        var barW = Math.max(4, Math.min(16, step * 0.35));
+        data.forEach(function (e, i) {
+            var x  = scoreX(i) - barW / 2;
+            var hc = e.high_count || 0;
+            var cc = e.critical_count || 0;
+            var yBase = PAD_T + cH;
+            // High — orange
+            if (hc > 0) {
+                var hH = (hc / maxIssues) * cH;
+                ctx.fillStyle = 'rgba(251,146,60,0.7)';
+                ctx.fillRect(x, yBase - hH, barW, hH);
+            }
+            // Critical — red (stacked on top of high)
+            if (cc > 0) {
+                var cHt  = (cc / maxIssues) * cH;
+                var hHt  = (hc / maxIssues) * cH;
+                ctx.fillStyle = 'rgba(239,68,68,0.85)';
+                ctx.fillRect(x, yBase - hHt - cHt, barW, cHt);
+            }
+        });
+
+        // ── Score dots ────────────────────────────────────────────────
+        data.forEach(function (e, i) {
+            var x = scoreX(i), y = scoreY(e.score);
+            ctx.beginPath();
+            ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+            ctx.fillStyle   = '#38bdf8';
+            ctx.strokeStyle = '#0d1117';
+            ctx.lineWidth   = 1.5;
+            ctx.fill();
+            ctx.stroke();
+        });
+
+        // ── Legend ────────────────────────────────────────────────────
+        var legX = PAD_L, legY = PAD_T - 4;
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'left';
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(legX, legY - 7, 12, 3);
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.fillText('Score', legX + 16, legY);
+
+        ctx.fillStyle = 'rgba(239,68,68,0.85)';
+        ctx.fillRect(legX + 60, legY - 7, 10, 8);
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.fillText('Critical', legX + 74, legY);
+
+        ctx.fillStyle = 'rgba(251,146,60,0.7)';
+        ctx.fillRect(legX + 128, legY - 7, 10, 8);
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.fillText('High', legX + 142, legY);
+    }
 })();
