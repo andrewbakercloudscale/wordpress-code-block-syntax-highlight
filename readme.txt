@@ -4,7 +4,7 @@ Tags: security, code block, syntax highlighting, AI security scan, WordPress har
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.9.80
+Stable tag: 1.9.84
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,6 +82,13 @@ highlight.js with auto-detection — 190+ languages including Bash, Python, Java
 
 == Changelog ==
 
+= 1.9.84 =
+* feat: Home dashboard tab — security summary cards showing AI setup status, last scan score (critical/high counts), quick fixes resolved, and login security posture
+
+= 1.9.83 =
+* feat: 8 deep scan improvements — CSP quality analysis, HSTS quality, DMARC policy strength, SPF strictness, auto-updates check, PHP display_errors detection, inactive plugins list, server header version leak
+* feat: MX record gate — SPF/DMARC/DKIM checks are skipped when the domain has no email configured; audit report notes "no email configured" as a good finding
+
 = 1.9.80 =
 * feat: Explain button added to AI Cyber Audit panel (covers Quick Fixes, Standard scan, Deep Dive, Code Triage, Scan History, Scheduled Scans, AI Providers)
 * feat: Explain button added to Server Logs panel (covers log sources, PHP setup, filters, tail mode, custom paths, permissions)
@@ -158,5 +165,5 @@ Google Terms of Service: https://policies.google.com/terms
 
 == Upgrade Notice ==
 
-= 1.9.80 =
-Explain buttons added to Security and Server Logs panels. Help docs expanded to 18 sections. Plugin renamed to CloudScale Cyber and Devtools throughout.
+= 1.9.84 =
+New Home dashboard tab with security summary cards. Deep scan now checks CSP/HSTS quality, DMARC/SPF policy strength, auto-updates, display_errors, inactive plugins, and server header version leaks. MX gate prevents false positives on non-email domains.
