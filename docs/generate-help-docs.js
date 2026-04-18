@@ -20,7 +20,7 @@ helpLib.run({
 
     sections: [
         { id: 'security',   label: 'AI Cyber Audit',        file: 'panel-security.png',    tabSelector: 'a[href*="tab=security"]', elementSelector: '#cs-panel-security' },
-        { id: 'server-logs',label: 'Server Logs',           file: 'panel-server-logs.png', tabSelector: 'a[href*="tab=security"]', elementSelector: '#cs-panel-server-logs' },
+        { id: 'server-logs',label: 'Server Logs',           file: 'panel-server-logs.png', tabSelector: 'a[href*="tab=logs"]', elementSelector: '#cs-panel-logs' },
         { id: 'hide-login', label: 'Hide Login URL',        file: 'panel-hide-login.png',  tabSelector: 'a[href*="tab=login"]', elementSelector: '#cs-panel-hide-login' },
         { id: '2fa',        label: 'Two-Factor Auth',       file: 'panel-2fa.png',         tabSelector: 'a[href*="tab=login"]', elementSelector: '#cs-panel-2fa' },
         { id: 'passkeys',   label: 'Passkeys (WebAuthn)',   file: 'panel-passkeys.png',    tabSelector: 'a[href*="tab=login"]', elementSelector: '#cs-panel-passkeys' },
