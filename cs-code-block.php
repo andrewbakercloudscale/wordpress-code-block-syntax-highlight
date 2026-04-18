@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.72
+ * Version: 1.9.73
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.72';
+    const VERSION      = '1.9.73';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -315,8 +315,10 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_devtools_cancel_scan',        [ __CLASS__, 'ajax_cancel_scan' ] );
         add_action( 'wp_ajax_csdt_devtools_vuln_save_key',      [ __CLASS__, 'ajax_vuln_save_key' ] );
         add_action( 'wp_ajax_csdt_devtools_security_test_key',  [ __CLASS__, 'ajax_security_test_key' ] );
-        add_action( 'wp_ajax_csdt_devtools_server_logs_status', [ __CLASS__, 'ajax_server_logs_status' ] );
-        add_action( 'wp_ajax_csdt_devtools_server_logs_fetch',  [ __CLASS__, 'ajax_server_logs_fetch' ] );
+        add_action( 'wp_ajax_csdt_devtools_server_logs_status',     [ __CLASS__, 'ajax_server_logs_status' ] );
+        add_action( 'wp_ajax_csdt_devtools_server_logs_fetch',      [ __CLASS__, 'ajax_server_logs_fetch' ] );
+        add_action( 'wp_ajax_csdt_devtools_logs_setup_php',         [ __CLASS__, 'ajax_logs_setup_php' ] );
+        add_action( 'wp_ajax_csdt_devtools_logs_custom_save',       [ __CLASS__, 'ajax_logs_custom_save' ] );
         add_action( 'wp_ajax_csdt_devtools_scan_history',       [ __CLASS__, 'ajax_scan_history' ] );
         add_action( 'wp_ajax_csdt_devtools_save_schedule',      [ __CLASS__, 'ajax_save_schedule' ] );
         add_action( 'wp_ajax_csdt_devtools_quick_fix',          [ __CLASS__, 'ajax_apply_quick_fix' ] );
@@ -1490,55 +1492,133 @@ class CloudScale_DevTools {
     private static function get_log_sources(): array {
         $sources = [];
 
-        // PHP error log — skip device files (/dev/stderr etc.) and unreadable paths
-        $php_log = ini_get( 'error_log' );
-        if ( $php_log && is_file( $php_log ) ) {
+        // PHP error log — prefer path set by our mu-plugin; fall back to php.ini if it's a real file
+        $php_log = get_option( 'csdt_php_error_log_path', '' );
+        if ( ! $php_log ) {
+            $ini_log = ini_get( 'error_log' );
+            if ( $ini_log && is_file( $ini_log ) ) {
+                $php_log = $ini_log;
+            }
+        }
+        if ( $php_log ) {
             $sources['php_error'] = [ 'label' => 'PHP Error Log', 'path' => $php_log ];
         }
 
         // WordPress debug.log — prefer relocated path set by quick-fix mu-plugin
-        $relocated = get_option( 'csdt_debug_log_path', '' );
+        $relocated    = get_option( 'csdt_debug_log_path', '' );
         $wp_debug_log = $relocated ?: WP_CONTENT_DIR . '/debug.log';
         $sources['wp_debug'] = [ 'label' => 'WordPress Debug Log', 'path' => $wp_debug_log ];
 
-        // Apache / Nginx error log — common paths
-        $apache_candidates = [
+        // Web server error log — check common paths that may be readable by the web user
+        $web_error_candidates = [
             '/var/log/apache2/error.log',
             '/var/log/httpd/error_log',
             '/var/log/nginx/error.log',
             '/var/log/apache2/error_log',
         ];
-        foreach ( $apache_candidates as $path ) {
-            if ( file_exists( $path ) ) {
+        foreach ( $web_error_candidates as $path ) {
+            if ( is_readable( $path ) ) {
                 $sources['web_error'] = [ 'label' => 'Web Server Error Log', 'path' => $path ];
                 break;
             }
         }
 
-        // Apache access log
-        $access_candidates = [
+        // Web server access log
+        $web_access_candidates = [
             '/var/log/apache2/access.log',
             '/var/log/httpd/access_log',
             '/var/log/nginx/access.log',
         ];
-        foreach ( $access_candidates as $path ) {
-            if ( file_exists( $path ) ) {
+        foreach ( $web_access_candidates as $path ) {
+            if ( is_readable( $path ) ) {
                 $sources['web_access'] = [ 'label' => 'Web Server Access Log', 'path' => $path ];
                 break;
             }
         }
 
-        // WordPress cron log if it exists
+        // WP Cron log
         $cron_log = WP_CONTENT_DIR . '/cron.log';
         if ( file_exists( $cron_log ) ) {
             $sources['wp_cron'] = [ 'label' => 'WP Cron Log', 'path' => $cron_log ];
         }
 
+        // Admin-configured custom paths
+        $custom = get_option( 'csdt_custom_log_paths', [] );
+        if ( is_array( $custom ) ) {
+            foreach ( $custom as $i => $cp ) {
+                if ( ! empty( $cp['label'] ) && ! empty( $cp['path'] ) ) {
+                    $sources[ 'custom_' . $i ] = [
+                        'label'  => sanitize_text_field( $cp['label'] ),
+                        'path'   => $cp['path'],
+                        'custom' => true,
+                    ];
+                }
+            }
+        }
+
         return $sources;
     }
 
+    public static function ajax_logs_setup_php(): void {
+        check_ajax_referer( 'csdt_devtools_server_logs', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        $log_path = WP_CONTENT_DIR . '/php-error.log';
+        $mu_dir   = WP_CONTENT_DIR . '/mu-plugins';
+        if ( ! is_dir( $mu_dir ) ) {
+            wp_mkdir_p( $mu_dir );
+        }
+
+        $mu_file = $mu_dir . '/csdt-php-error-log.php';
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+        $written = file_put_contents(
+            $mu_file,
+            '<?php' . "\n" .
+            '// Redirects PHP error_log to a readable file — managed by CloudScale DevTools.' . "\n" .
+            '// phpcs:ignore WordPress.PHP.IniSet.Risky' . "\n" .
+            '@ini_set( \'error_log\', ' . var_export( $log_path, true ) . ' );' . "\n"
+        );
+
+        if ( false === $written ) {
+            wp_send_json_error( __( 'Could not write mu-plugin. Check that wp-content/mu-plugins is writable.', 'cloudscale-devtools' ) );
+            return;
+        }
+
+        update_option( 'csdt_php_error_log_path', $log_path, false );
+        wp_send_json_success( [ 'path' => $log_path, 'sources' => self::get_log_sources() ] );
+    }
+
+    public static function ajax_logs_custom_save(): void {
+        check_ajax_referer( 'csdt_devtools_server_logs', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        $raw   = isset( $_POST['paths'] ) ? wp_unslash( $_POST['paths'] ) : '[]'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $paths = json_decode( $raw, true );
+        if ( ! is_array( $paths ) ) {
+            $paths = [];
+        }
+
+        $clean = [];
+        foreach ( $paths as $p ) {
+            $label = sanitize_text_field( $p['label'] ?? '' );
+            $path  = sanitize_text_field( $p['path']  ?? '' );
+            if ( $label !== '' && $path !== '' ) {
+                $clean[] = [ 'label' => $label, 'path' => $path ];
+            }
+        }
+
+        update_option( 'csdt_custom_log_paths', $clean );
+        wp_send_json_success( [ 'sources' => self::get_log_sources() ] );
+    }
+
     private static function render_server_logs_panel(): void {
-        $sources = self::get_log_sources();
+        $sources        = self::get_log_sources();
+        $php_configured = ! empty( get_option( 'csdt_php_error_log_path', '' ) );
+        $custom_paths   = get_option( 'csdt_custom_log_paths', [] );
         ?>
         <div class="cs-panel" id="cs-panel-logs">
             <div class="cs-section-header" style="background:linear-gradient(90deg,#1a2035 0%,#1e2d40 100%);border-left:3px solid #4a9eff;">
@@ -1546,6 +1626,18 @@ class CloudScale_DevTools {
                 <span class="cs-header-hint"><?php esc_html_e( 'Read-only view of PHP error log, WordPress debug log, and web server logs', 'cloudscale-devtools' ); ?></span>
             </div>
             <div class="cs-panel-body">
+
+                <?php if ( ! $php_configured ) : ?>
+                <div id="cs-logs-php-setup" style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;margin-bottom:16px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;">
+                    <div style="flex:1;font-size:13px;color:#92400e;line-height:1.5;">
+                        <strong><?php esc_html_e( 'PHP Error Log not writing to a file', 'cloudscale-devtools' ); ?></strong><br>
+                        <?php esc_html_e( 'PHP is currently logging to a system stream (e.g. /dev/stderr) that cannot be read here. Click Enable to install a mu-plugin that redirects PHP errors to wp-content/php-error.log.', 'cloudscale-devtools' ); ?>
+                    </div>
+                    <button type="button" class="cs-btn-primary cs-btn-sm" id="cs-logs-php-setup-btn" style="flex-shrink:0;white-space:nowrap;">
+                        ⚡ <?php esc_html_e( 'Enable', 'cloudscale-devtools' ); ?>
+                    </button>
+                </div>
+                <?php endif; ?>
 
                 <!-- Source picker -->
                 <div id="cs-logs-sources" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
@@ -1598,6 +1690,30 @@ class CloudScale_DevTools {
                 ">
                     <div class="cs-logs-placeholder" style="color:#555;padding:20px;text-align:center;">
                         <?php esc_html_e( 'Select a log source above to view entries.', 'cloudscale-devtools' ); ?>
+                    </div>
+                </div>
+
+                <!-- Custom log paths -->
+                <div style="margin-top:20px;border-top:1px solid #e8edf5;padding-top:16px;">
+                    <div style="font-weight:600;font-size:13px;color:#1d2327;margin-bottom:8px;">
+                        <?php esc_html_e( 'Custom log paths', 'cloudscale-devtools' ); ?>
+                    </div>
+                    <p style="font-size:12px;color:#6b7280;margin:0 0 10px;">
+                        <?php esc_html_e( 'Add any log file your web server user can read (e.g. a custom nginx log, a container log written to a shared volume, or any application log file).', 'cloudscale-devtools' ); ?>
+                    </p>
+                    <div id="cs-logs-custom-list">
+                        <?php foreach ( (array) $custom_paths as $i => $cp ) : ?>
+                        <div class="cs-logs-custom-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+                            <input type="text" class="cs-text-input cs-logs-custom-label" placeholder="<?php esc_attr_e( 'Label', 'cloudscale-devtools' ); ?>" value="<?php echo esc_attr( $cp['label'] ?? '' ); ?>" style="width:140px;flex-shrink:0;">
+                            <input type="text" class="cs-text-input cs-logs-custom-path" placeholder="<?php esc_attr_e( '/path/to/file.log', 'cloudscale-devtools' ); ?>" value="<?php echo esc_attr( $cp['path'] ?? '' ); ?>" style="flex:1;min-width:0;">
+                            <button type="button" class="cs-btn-secondary cs-btn-sm cs-logs-custom-remove" style="color:#dc2626;border-color:#fca5a5;flex-shrink:0;">✕</button>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <button type="button" class="cs-btn-secondary cs-btn-sm" id="cs-logs-custom-add">+ <?php esc_html_e( 'Add path', 'cloudscale-devtools' ); ?></button>
+                        <button type="button" class="cs-btn-primary cs-btn-sm" id="cs-logs-custom-save">💾 <?php esc_html_e( 'Save', 'cloudscale-devtools' ); ?></button>
+                        <span id="cs-logs-custom-saved" class="cs-settings-saved">✓ <?php esc_html_e( 'Saved', 'cloudscale-devtools' ); ?></span>
                     </div>
                 </div>
 

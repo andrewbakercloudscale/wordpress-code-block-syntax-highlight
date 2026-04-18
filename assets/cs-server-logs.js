@@ -246,6 +246,117 @@
         } );
     }
 
+    // ── PHP error log setup ───────────────────────────────────────────────────
+    var phpSetupBtn = document.getElementById( 'cs-logs-php-setup-btn' );
+    if ( phpSetupBtn ) {
+        phpSetupBtn.addEventListener( 'click', function () {
+            phpSetupBtn.disabled = true;
+            phpSetupBtn.textContent = '…';
+
+            var fd = new FormData();
+            fd.append( 'action', 'csdt_devtools_logs_setup_php' );
+            fd.append( 'nonce',  csdtServerLogs.nonce );
+
+            fetch( csdtServerLogs.ajaxUrl, { method: 'POST', body: fd } )
+                .then( function ( r ) { return r.json(); } )
+                .then( function ( resp ) {
+                    if ( resp.success ) {
+                        var setupBanner = document.getElementById( 'cs-logs-php-setup' );
+                        if ( setupBanner ) { setupBanner.style.display = 'none'; }
+                        rebuildSourceButtons( resp.data.sources );
+                        loadStatuses();
+                    } else {
+                        alert( 'Setup failed: ' + ( resp.data || 'unknown error' ) );
+                        phpSetupBtn.disabled = false;
+                        phpSetupBtn.textContent = '⚡ Enable';
+                    }
+                } )
+                .catch( function () {
+                    phpSetupBtn.disabled = false;
+                    phpSetupBtn.textContent = '⚡ Enable';
+                } );
+        } );
+    }
+
+    // ── Rebuild source buttons from a sources map ─────────────────────────────
+    function rebuildSourceButtons( sources ) {
+        if ( ! sourcesWrap || ! sources ) { return; }
+        sourcesWrap.innerHTML = '';
+        Object.keys( sources ).forEach( function ( key ) {
+            var btn = document.createElement( 'button' );
+            btn.className = 'cs-btn-secondary cs-log-src-btn';
+            btn.dataset.source = key;
+            btn.textContent = sources[ key ].label;
+            sourcesWrap.appendChild( btn );
+        } );
+        if ( ! sourcesWrap.children.length ) {
+            sourcesWrap.innerHTML = '<span style="color:#888;font-size:13px;">No log paths detected on this server.</span>';
+        }
+    }
+
+    // ── Custom log paths ──────────────────────────────────────────────────────
+    var customList  = document.getElementById( 'cs-logs-custom-list' );
+    var addBtn      = document.getElementById( 'cs-logs-custom-add' );
+    var saveBtn     = document.getElementById( 'cs-logs-custom-save' );
+    var savedMsg    = document.getElementById( 'cs-logs-custom-saved' );
+
+    function addCustomRow( label, path ) {
+        var row = document.createElement( 'div' );
+        row.className = 'cs-logs-custom-row';
+        row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px;';
+        row.innerHTML =
+            '<input type="text" class="cs-text-input cs-logs-custom-label" placeholder="Label" value="' + esc( label || '' ) + '" style="width:140px;flex-shrink:0;">' +
+            '<input type="text" class="cs-text-input cs-logs-custom-path" placeholder="/path/to/file.log" value="' + esc( path || '' ) + '" style="flex:1;min-width:0;">' +
+            '<button type="button" class="cs-btn-secondary cs-btn-sm cs-logs-custom-remove" style="color:#dc2626;border-color:#fca5a5;flex-shrink:0;">✕</button>';
+        customList.appendChild( row );
+    }
+
+    if ( addBtn ) {
+        addBtn.addEventListener( 'click', function () { addCustomRow( '', '' ); } );
+    }
+
+    if ( customList ) {
+        customList.addEventListener( 'click', function ( e ) {
+            var btn = e.target.closest( '.cs-logs-custom-remove' );
+            if ( btn ) { btn.closest( '.cs-logs-custom-row' ).remove(); }
+        } );
+    }
+
+    if ( saveBtn ) {
+        saveBtn.addEventListener( 'click', function () {
+            saveBtn.disabled = true;
+            var paths = [];
+            var rows = customList ? customList.querySelectorAll( '.cs-logs-custom-row' ) : [];
+            rows.forEach( function ( row ) {
+                var l = row.querySelector( '.cs-logs-custom-label' );
+                var p = row.querySelector( '.cs-logs-custom-path' );
+                if ( l && p && l.value.trim() && p.value.trim() ) {
+                    paths.push( { label: l.value.trim(), path: p.value.trim() } );
+                }
+            } );
+
+            var fd = new FormData();
+            fd.append( 'action', 'csdt_devtools_logs_custom_save' );
+            fd.append( 'nonce',  csdtServerLogs.nonce );
+            fd.append( 'paths',  JSON.stringify( paths ) );
+
+            fetch( csdtServerLogs.ajaxUrl, { method: 'POST', body: fd } )
+                .then( function ( r ) { return r.json(); } )
+                .then( function ( resp ) {
+                    saveBtn.disabled = false;
+                    if ( resp.success ) {
+                        rebuildSourceButtons( resp.data.sources );
+                        loadStatuses();
+                        if ( savedMsg ) {
+                            savedMsg.style.display = 'inline';
+                            setTimeout( function () { savedMsg.style.display = 'none'; }, 2000 );
+                        }
+                    }
+                } )
+                .catch( function () { saveBtn.disabled = false; } );
+        } );
+    }
+
     // ── Init: load source statuses on page open ───────────────────────────────
     loadStatuses();
 
