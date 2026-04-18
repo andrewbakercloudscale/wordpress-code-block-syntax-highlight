@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.98
+ * Version: 1.9.100
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.98';
+    const VERSION      = '1.9.100';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -9275,7 +9275,10 @@ class CloudScale_DevTools {
             </span>
         </div>
 
-        <div class="cs-dw-section" style="margin-top:10px;">🛡️ <?php esc_html_e( 'Last Security Scan', 'cloudscale-devtools' ); ?></div>
+        <div class="cs-dw-section" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;">
+            <span>🛡️ <?php esc_html_e( 'Last Security Scan', 'cloudscale-devtools' ); ?></span>
+            <?php if ( $last_scan ) : ?><a href="<?php echo esc_url( $base_url . '&tab=security' ); ?>" style="font-size:11px;font-weight:600;color:#0e6b8f;text-decoration:none;"><?php esc_html_e( 'View Report →', 'cloudscale-devtools' ); ?></a><?php endif; ?>
+        </div>
         <?php if ( $last_scan ) : ?>
         <div class="cs-dw-row">
             <span class="cs-dw-lbl"><?php esc_html_e( 'SCORE', 'cloudscale-devtools' ); ?></span>
@@ -9316,7 +9319,7 @@ class CloudScale_DevTools {
         </div>
 
         <div class="cs-dw-actions">
-            <a href="<?php echo esc_url( $base_url ); ?>" class="cs-dw-btn-pri"><?php esc_html_e( 'View Cyber and Devtools', 'cloudscale-devtools' ); ?></a>
+            <a href="<?php echo esc_url( $base_url ); ?>" class="cs-dw-btn-pri"><?php esc_html_e( 'View Cyber Devtools', 'cloudscale-devtools' ); ?></a>
             <a href="<?php echo esc_url( $base_url . '&tab=security' ); ?>" class="cs-dw-btn-sec"><?php esc_html_e( 'Run Security Scan', 'cloudscale-devtools' ); ?></a>
         </div>
         <?php

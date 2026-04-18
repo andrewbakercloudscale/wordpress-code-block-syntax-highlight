@@ -43,145 +43,60 @@
         return 'cs-audit-score-critical';
     }
 
-    // ── PDF export (jsPDF — direct download, no print dialog) ────────
-
-    var JSPDF_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    // ── PDF export (print-to-PDF — no external dependencies) ────────
 
     function exportSecurityPDF(data, scanType) {
-        function build() {
-            var r     = data.report;
-            var now   = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
-            var site  = window.location.hostname;
-            var title = scanType === 'deep' ? 'AI Deep Dive Cyber Audit Report' : 'AI Cyber Audit Report';
-            var doc   = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            var pageW = doc.internal.pageSize.getWidth();
-            var pageH = doc.internal.pageSize.getHeight();
-            var margin = 18;
-            var cW     = pageW - margin * 2;
-            var y      = 20;
+        var r     = data.report;
+        var now   = new Date().toLocaleString();
+        var site  = window.location.hostname;
+        var title = scanType === 'deep' ? 'AI Deep Dive Cyber Audit Report' : 'AI Cyber Audit Report';
+        var sc    = r.score || 0;
+        var scoreColor = sc >= 90 ? '#16a34a' : sc >= 75 ? '#4ade80' : sc >= 55 ? '#d97706' : sc >= 35 ? '#f97316' : '#dc2626';
 
-            function checkPage(need) {
-                if (y + (need || 10) > pageH - 14) { doc.addPage(); y = 20; }
-            }
+        function secBg(key) {
+            return key === 'critical' ? '#dc2626' : key === 'high' ? '#d97706' : key === 'medium' ? '#ca8a04' : key === 'low' ? '#2563eb' : '#16a34a';
+        }
 
-            function addWrapped(str, x, size, r, g, b, style, maxW) {
-                doc.setFont('helvetica', style || 'normal');
-                doc.setFontSize(size);
-                doc.setTextColor(r, g, b);
-                var lines = doc.splitTextToSize(String(str || ''), maxW || (cW - (x - margin)));
-                checkPage(lines.length * (size * 0.38) + 2);
-                doc.text(lines, x, y);
-                y += lines.length * (size * 0.38) + 1.5;
-            }
+        function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-            // Header
-            addWrapped(title, margin, 18, 15, 23, 42, 'bold');
-            y += 1;
-            addWrapped(site + '  ·  ' + now + '  ·  Model: ' + (data.model_used || '?'), margin, 9, 100, 116, 139);
-            y += 5;
-
-            // Score circle + summary
-            var sc = r.score || 0;
-            var sRgb = sc >= 90 ? [39,103,73] : sc >= 75 ? [43,108,176] : sc >= 55 ? [183,121,31] : sc >= 35 ? [192,86,33] : [197,48,48];
-            doc.setDrawColor(sRgb[0], sRgb[1], sRgb[2]);
-            doc.setLineWidth(0.8);
-            doc.circle(margin + 8, y + 5, 7, 'S');
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(11);
-            doc.setTextColor(sRgb[0], sRgb[1], sRgb[2]);
-            doc.text(String(sc), margin + 8, y + 4.5, { align: 'center' });
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(7);
-            doc.text((r.score_label || '').toUpperCase(), margin + 8, y + 8.5, { align: 'center' });
-            var sumLines = doc.splitTextToSize(r.summary || '', cW - 20);
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
-            doc.setTextColor(45, 55, 72);
-            doc.text(sumLines, margin + 19, y + 2);
-            y += Math.max(17, sumLines.length * 3.8 + 3) + 6;
-
-            // Sections
-            var secDefs = [
-                { key: 'critical', label: 'Critical',       rgb: [197,48,48]  },
-                { key: 'high',     label: 'High',           rgb: [192,86,33]  },
-                { key: 'medium',   label: 'Medium',         rgb: [183,121,31] },
-                { key: 'low',      label: 'Low',            rgb: [43,108,176] },
-                { key: 'good',     label: 'Good Practices', rgb: [39,103,73]  },
-            ];
-
-            secDefs.forEach(function (sec) {
-                var items = r[sec.key];
-                if (!items || !items.length) return;
-
-                checkPage(14);
-                doc.setFillColor(sec.rgb[0], sec.rgb[1], sec.rgb[2]);
-                doc.rect(margin, y - 4, cW, 7, 'F');
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(9);
-                doc.setTextColor(255, 255, 255);
-                doc.text(sec.label.toUpperCase() + ' (' + items.length + ')', margin + 3, y + 0.5);
-                y += 9;
-
-                items.forEach(function (item) {
-                    checkPage(16);
-                    if (sec.key === 'good') {
-                        doc.setFont('helvetica', 'bold');
-                        doc.setFontSize(9);
-                        doc.setTextColor(39, 103, 73);
-                        doc.text('[OK]', margin, y);
-                        var tl = doc.splitTextToSize(item.title, cW - 12);
-                        doc.setTextColor(30, 41, 59);
-                        doc.text(tl, margin + 10, y);
-                        y += tl.length * 3.5 + 1;
-                        if (item.detail) {
-                            doc.setFont('helvetica', 'normal');
-                            doc.setFontSize(8);
-                            doc.setTextColor(100, 116, 139);
-                            var dl = doc.splitTextToSize(item.detail, cW - 12);
-                            doc.text(dl, margin + 10, y);
-                            y += dl.length * 3 + 1;
-                        }
-                    } else {
-                        var tl2 = doc.splitTextToSize(item.title, cW);
-                        doc.setFont('helvetica', 'bold');
-                        doc.setFontSize(10);
-                        doc.setTextColor(30, 41, 59);
-                        doc.text(tl2, margin, y);
-                        y += tl2.length * 3.8 + 1;
-                        if (item.detail) {
-                            var dl2 = doc.splitTextToSize(item.detail, cW);
-                            doc.setFont('helvetica', 'normal');
-                            doc.setFontSize(9);
-                            doc.setTextColor(71, 85, 105);
-                            doc.text(dl2, margin, y);
-                            y += dl2.length * 3.5 + 1;
-                        }
-                        if (item.fix) {
-                            var fl = doc.splitTextToSize('Fix: ' + item.fix, cW - 4);
-                            doc.setFont('helvetica', 'italic');
-                            doc.setFontSize(8.5);
-                            doc.setTextColor(100, 116, 139);
-                            doc.text(fl, margin + 4, y);
-                            y += fl.length * 3.2 + 2;
-                        }
-                    }
-                    y += 3;
-                });
-                y += 4;
+        var sectionsHtml = '';
+        [['critical','Critical'],['high','High'],['medium','Medium'],['low','Low'],['good','Good Practices']].forEach(function(pair) {
+            var items = r[pair[0]];
+            if (!items || !items.length) return;
+            sectionsHtml += '<div style="margin:0 0 18px"><div style="background:' + secBg(pair[0]) + ';color:#fff;font-weight:700;font-size:11px;padding:5px 10px;border-radius:4px 4px 0 0;letter-spacing:.05em;">' + pair[1].toUpperCase() + ' (' + items.length + ')</div>';
+            items.forEach(function(item) {
+                sectionsHtml += '<div style="border:1px solid #e5e7eb;border-top:none;padding:10px 12px;">';
+                sectionsHtml += '<div style="font-weight:600;font-size:13px;color:#111;margin-bottom:4px;">' + esc(item.title) + '</div>';
+                if (item.detail) sectionsHtml += '<div style="font-size:12px;color:#374151;margin-bottom:4px;">' + esc(item.detail) + '</div>';
+                if (item.fix)    sectionsHtml += '<div style="font-size:11px;color:#6b7280;font-style:italic;">Fix: ' + esc(item.fix) + '</div>';
+                sectionsHtml += '</div>';
             });
+            sectionsHtml += '</div>';
+        });
 
-            var fname = (scanType === 'deep' ? 'cyber-deep-dive' : 'security-audit') + '-' + site + '.pdf';
-            doc.save(fname);
-        }
+        var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + esc(title) + '</title>' +
+            '<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111;margin:0;padding:32px 40px;max-width:900px;}' +
+            'h1{font-size:22px;font-weight:800;color:#0f172a;margin:0 0 4px;}' +
+            '.meta{font-size:12px;color:#6b7280;margin-bottom:24px;}' +
+            '.score-row{display:flex;align-items:center;gap:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin-bottom:24px;}' +
+            '.score-circle{width:60px;height:60px;border-radius:50%;border:3px solid ' + scoreColor + ';display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}' +
+            '.score-num{font-size:20px;font-weight:800;color:' + scoreColor + ';line-height:1;}' +
+            '.score-lbl{font-size:9px;color:' + scoreColor + ';font-weight:600;text-transform:uppercase;}' +
+            '.summary{font-size:13px;color:#374151;line-height:1.65;}' +
+            '@media print{body{padding:0;} @page{margin:20mm 18mm;}}</style></head><body>' +
+            '<h1>' + esc(title) + '</h1>' +
+            '<div class="meta">' + esc(site) + ' &nbsp;·&nbsp; ' + esc(now) + ' &nbsp;·&nbsp; Model: ' + esc(data.model_used || '?') + '</div>' +
+            '<div class="score-row"><div class="score-circle"><div class="score-num">' + sc + '</div><div class="score-lbl">' + esc(r.score_label || '') + '</div></div>' +
+            '<div class="summary">' + esc(r.summary || '') + '</div></div>' +
+            sectionsHtml +
+            '</body></html>';
 
-        if (window.jspdf) {
-            build();
-        } else {
-            var s = document.createElement('script');
-            s.src = JSPDF_CDN;
-            s.onload = build;
-            document.head.appendChild(s);
-        }
+        var win = window.open('', '_blank');
+        if (!win) { alert('Please allow pop-ups for this page, then try again.'); return; }
+        win.document.write(html);
+        win.document.close();
+        win.focus();
+        setTimeout(function() { win.print(); }, 400);
     }
 
     // ── Render audit report ───────────────────────────────────────────
