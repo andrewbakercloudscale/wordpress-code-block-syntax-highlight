@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.82
+ * Version: 1.9.83
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.82';
+    const VERSION      = '1.9.83';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -10925,7 +10925,7 @@ Cross-correlate ALL categories for compound risks:
 - wp-login.php accessible + brute force disabled = critical combined risk
 - Abandoned plugin (>2 years) + known CVE = critical
 - No WAF/CDN detected + multiple exposed endpoints = significantly elevated risk
-- email_dns.mx_present=false = domain has no email — do NOT flag missing SPF/DMARC/DKIM, they are irrelevant
+- email_dns.mx_present=false = domain has no email — do NOT flag missing SPF/DMARC/DKIM, they are irrelevant; ADD a good[] entry: title "No email configured", detail "No MX records found for this domain — SPF, DMARC, and DKIM checks were skipped as they are not applicable."
 - email_dns.mx_present=true + missing SPF + DMARC = email spoofing trivially possible
 - email_dns.mx_present=true + spf_strictness=soft_fail (~all) = SPF won't block spoofed emails — flag medium; -all required
 - email_dns.mx_present=true + dmarc_policy=none = DMARC record exists but does nothing (monitoring only) — flag medium; quarantine/reject required to block
