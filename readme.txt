@@ -1,83 +1,92 @@
-=== CloudScale Devtools ===
+=== CloudScale Cyber and Devtools ===
 Contributors: andrewbaker
-Tags: code block, syntax highlighting, gutenberg block, dark mode, highlight.js
+Tags: security, code block, syntax highlighting, AI security scan, WordPress hardening
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.9.79
+Stable tag: 1.9.80
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Syntax highlighted code block with 14 color themes, auto language detection, clipboard copy, dark/light toggle, migrator, and SQL query tool.
+AI-powered WordPress security audit, one-click hardening fixes, server log viewer, syntax-highlighted code blocks, SQL tool, and login security.
 
 == Description ==
 
-CloudScale Devtools is a lightweight, zero dependency Gutenberg block plugin that renders beautifully syntax highlighted code on your WordPress site using highlight.js. It includes a built in code block migrator to convert legacy WordPress code blocks in bulk, and a read only SQL query tool for database diagnostics.
+CloudScale Cyber and Devtools is a free, zero-dependency WordPress developer and security toolkit. The centrepiece is an **AI Cyber Audit** that uses frontier AI models (Anthropic Claude or Google Gemini) to perform deep security analysis of your WordPress installation and deliver prioritised, actionable findings — the kind of analysis that would normally cost hundreds of dollars from a security consultant, in under 60 seconds.
 
-= Features =
+= Security Features =
 
-* Gutenberg block and [cs_code] shortcode for syntax highlighted code
-* 14 popular color themes loaded from the highlight.js CDN: Atom One, GitHub, Monokai, Nord, Dracula, Tokyo Night, VS 2015 / VS Code, Stack Overflow, Night Owl, Gruvbox, Solarized, Panda, Tomorrow Night, Shades of Purple
-* Dark and light mode toggle per block with site wide default
-* Auto language detection for 30+ languages including Bash, Python, Java, JavaScript, TypeScript, Go, Rust, PHP, SQL, and more
-* One click clipboard copy button
-* Optional line numbers toggle
-* Language badge auto detection
-* Custom title / filename label per block
-* Code Block Migrator: scan posts for legacy core/code blocks and batch convert them
-* SQL Command: read only query tool with quick queries for database health checks, content summaries, bloat diagnostics, table sizes, orphaned postmeta, expired transients, and URL migration helpers
-* Admin UI styled to match the CloudScale plugin family
+* **AI Cyber Audit** — fast scan of WordPress config, plugins, users, file permissions, and wp-config.php hardening constants
+* **AI Deep Dive Cyber Audit** — extends the fast scan with live HTTP probes, DNS checks (SPF, DMARC, DKIM), weak TLS detection, PHP end-of-life status, directory listing checks, plugin code static analysis, and AI-powered code triage
+* **Quick Fixes** — one-click automated remediations: move debug.log outside the web root, disable XML-RPC, hide WP version, disable application passwords, disable directory browsing
+* **Scan History** — last 10 results saved automatically; click any entry to reload the full report
+* **Scheduled Scans** — daily or weekly background scans with email and ntfy.sh push notifications
+* **AI Code Triage** — static findings classified as Confirmed / False Positive / Needs Context before main AI analysis
+* **Server Logs** — read-only browser viewer for PHP error log, WordPress debug log, and web server logs with live search, level filter, and auto-refresh tail mode
+* **Brute-Force Protection** — per-username account lockout after N failed logins
+* **Hide Login URL** — moves /wp-login.php to a custom slug
+* **Two-Factor Authentication** — email code, TOTP (authenticator app), and passkeys
+* **Passkeys (WebAuthn)** — FIDO2 biometric and hardware key login
+* **Test Account Manager** — temporary subscriber accounts with app passwords for Playwright/CI pipelines
+
+= Developer Tools =
+
+* **Syntax-highlighted code block** — Gutenberg block and shortcode powered by highlight.js 11.11.1 (bundled locally), 190+ languages, 14 colour themes, auto-detection, line numbers, copy button, dark/light toggle
+* **Code Block Migrator** — batch-converts legacy wp:code blocks and shortcodes from other plugins
+* **SQL Query Tool** — read-only SELECT queries against the live database with 14 built-in quick queries
+* **Social Preview Diagnostics** — URL checker, post scan, og:image generation, Cloudflare integration
+* **SMTP Mail** — replaces PHP mail() with authenticated SMTP delivery, test button, email log
+* **Performance Monitor** — overlay panel tracking queries, HTTP requests, PHP errors, hooks, assets, transients
+* **Custom 404 Page** — branded 404 with seven browser mini-games and a site-wide leaderboard
 
 = Requirements =
 
-* WordPress 5.8 or later
+* WordPress 6.0 or later
 * PHP 7.4 or later
-* MySQL 5.7 or MariaDB 10.3 or later (for SQL Command features)
-* highlight.js 11.11.1 loaded from cdnjs CDN (no local files required)
 
 == Installation ==
 
-1. Upload the cs-code-block folder to /wp-content/plugins/
+1. Upload the plugin folder to /wp-content/plugins/
 2. Activate the plugin through the Plugins menu in WordPress
-3. Add a CloudScale Devtools block from the Gutenberg block inserter, or use the [cs_code] shortcode
-4. Configure your preferred color theme and dark/light default under Tools > CloudScale Devtools
-
-If you were previously using the standalone CloudScale SQL Command plugin, you can deactivate and delete it after activating this version. All SQL functionality is now built in.
+3. Go to Tools > CloudScale Cyber and Devtools to configure
 
 == Frequently Asked Questions ==
 
+= What AI providers are supported? =
+
+Anthropic Claude (claude-sonnet-4-6 and claude-opus-4-7) and Google Gemini (gemini-2.0-flash and gemini-2.5-pro). You supply your own API key — no keys are stored anywhere other than your WordPress database (wp_options). A free Gemini tier is available.
+
+= How does the deep dive scan avoid HTTP gateway timeouts? =
+
+The plugin uses fastcgi_finish_request() to close the browser connection immediately, then continues the scan in the same PHP-FPM worker. A progress bar polls every 3 seconds. This does not depend on WP-Cron.
+
 = How do I change the syntax color theme? =
 
-Go to Tools > CloudScale Code Block. On the Code Migrator tab you will see the Code Block Settings panel at the top. Select your preferred color theme from the dropdown and click Save Settings. The change applies to all code blocks site wide.
+Go to Tools > CloudScale Cyber and Devtools > Code Block tab > Code Block Settings panel. Select your preferred theme from the dropdown and click Save.
 
-= Can visitors toggle between dark and light mode? =
+= Is the SQL Query Tool safe? =
 
-Yes. Every code block has a sun/moon toggle button in its toolbar. The toggle switches between the dark and light variant of your chosen color theme. You set the site wide default (dark or light) in the settings, but visitors can override it per block.
+Yes. Only SELECT, SHOW, DESCRIBE, DESC, and EXPLAIN are permitted. Block and line comments are stripped, semicolons are rejected, and INTO OUTFILE / LOAD_FILE are blocked. Requires manage_options capability.
 
-= What languages are supported? =
+= What languages are supported for code highlighting? =
 
-The plugin uses highlight.js with auto detection. It supports over 30 languages out of the box including Bash, Python, Java, JavaScript, TypeScript, C, C++, C#, Go, Rust, Ruby, PHP, Swift, Kotlin, SQL, JSON, YAML, XML, HTML, CSS, SCSS, Markdown, Makefile, Dockerfile, Lua, Perl, R, INI, TOML, Diff, GraphQL, HCL/Terraform, Objective C, and VB.NET. You can also set the language explicitly per block in the Gutenberg sidebar.
-
-= Is the SQL Command tool safe? =
-
-Yes. The SQL Command tool only allows SELECT, SHOW, DESCRIBE, and EXPLAIN queries. All write operations (INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, etc.) are blocked. It requires the manage_options capability so only administrators can access it.
-
-= What are the quick queries in the SQL tool? =
-
-The SQL tab includes 14 preset quick queries organized into four groups: Health and Diagnostics (database health check, site identity options, table sizes and rows), Content Summary (posts by type and status, site stats summary, latest published posts), Bloat and Cleanup Checks (orphaned postmeta, expired transients, revisions/drafts/trash, largest autoloaded options), and URL and Migration Helpers (HTTP references, posts with HTTP GUIDs, old IP references, posts missing meta descriptions).
-
-= Can I run the query by pressing Enter? =
-
-Yes. Press Enter to run the query. Use Shift+Enter to insert a newline. Ctrl+Enter also runs the query.
+highlight.js with auto-detection — 190+ languages including Bash, Python, JavaScript, TypeScript, PHP, SQL, Go, Rust, Java, C/C++, C#, Ruby, Swift, Kotlin, JSON, YAML, XML, HTML, CSS, Terraform, and more.
 
 == Screenshots ==
 
-1. Code block on the frontend with Atom One Dark theme, language badge, copy button, and dark/light toggle
-2. Admin Tools page with the Code Block Settings panel and Code Block Migrator
-3. SQL Command tab with query editor, results table, and quick query buttons
-4. Gutenberg editor sidebar with language, title, and theme override options
+1. AI Cyber Audit panel with Quick Fixes and scan controls
+2. Deep dive scan results with scored findings and remediation steps
+3. Server Logs tab with source picker, filters, and log viewer
+4. Code block on the frontend with Atom One Dark theme and copy button
+5. SQL Query Tool with quick queries and paginated results
 
 == Changelog ==
+
+= 1.9.80 =
+* feat: Explain button added to AI Cyber Audit panel (covers Quick Fixes, Standard scan, Deep Dive, Code Triage, Scan History, Scheduled Scans, AI Providers)
+* feat: Explain button added to Server Logs panel (covers log sources, PHP setup, filters, tail mode, custom paths, permissions)
+* docs: Help page rewritten with 18 sections covering all features including Quick Fixes, Scan History, Scheduled Scans, AI Code Triage, Server Logs, Test Account Manager
+* fix: Plugin menu item renamed to "Cyber and Devtools" (consistent with full plugin name)
 
 = 1.9.79 =
 * feat: Test Account Manager — temporary single-use accounts with app passwords for Playwright/CI pipelines; subscriber-level accounts auto-delete on expiry or first use; app passwords blocked for all non-test accounts
@@ -92,190 +101,62 @@ Yes. Press Enter to run the query. Use Shift+Enter to insert a newline. Ctrl+Ent
 * Fixed: Explain modals now render formatted HTML — inline code tokens styled with dark background, bold/italic emphasis, and bullet lists; all describe items converted from plain text to rich HTML markup
 
 = 1.8.113 =
-* Added: "Fix All Posts on Site" button — batch-processes every published post on the site in groups of 10, generating platform-specific social format images with live progress counter (e.g. "Fixing 45 / 320")
-* Added: Crawler UA detection — `wp_head` at priority 1 outputs platform-specific `og:image` meta tag before SEO plugins, so Facebook, X/Twitter, WhatsApp, LinkedIn, and Instagram each receive the correctly-sized image for their platform
-* Fixed: PNG and WebP featured images now converted to JPEG during social format generation so lossy quality compression can reduce file sizes to platform targets (Fix button was producing oversized files for PNG sources)
-* Fixed: WebP featured images were excluded from Fix / Fix all — added `webp` to the supported source formats list
-* Fixed: Performance monitor data was injected after footer scripts ran, so the panel always showed empty data — data now injected at wp_footer/admin_footer priority 15, before scripts print at priority 20
-* Fixed: Inline email-verified modal countdown script moved from PHP template to wp_add_inline_script() — eliminates echoed <script> tag
-* Fixed: Thumbnails tab inline <style> block moved to wp_add_inline_style() — eliminates echoed <style> tag
-* Fixed: wp_delete_file() now used in place of unlink() when cleaning up image backup temp files
-* Fixed: REST hi-score endpoints changed from __return_true to explicit anonymous permission callbacks
-* Fixed: Missing wp_unslash() before sanitize_text_field() on WP query vars in performance monitor
-* Security: Added SSRF protection on admin URL-check endpoints — URLs that resolve to private/reserved IP ranges (localhost, RFC-1918, link-local) are now rejected before outbound HTTP requests are made
-* Security: Cloudflare cache-purge endpoint now validates that the supplied URL belongs to the current site before calling the Cloudflare API
-* Security: Fixed DOM XSS in email 2FA enable flow — AJAX response message was concatenated into innerHTML; replaced with safe DOM element creation + textContent
-* Security: TOTP secret is now cleared from the DOM immediately after successful activation
-
-= 1.8.107 =
-* Fixed: session cookie hook was wrong — login_form_login is a display hook that never fires on a successful login POST; moved to login_init so the persistent-cookie flag is set before WordPress processes credentials
+* Added: "Fix All Posts on Site" button — batch-processes every published post on the site in groups of 10, generating platform-specific social format images with live progress counter
+* Added: Crawler UA detection — wp_head at priority 1 outputs platform-specific og:image meta tag before SEO plugins
+* Fixed: PNG and WebP featured images now converted to JPEG during social format generation
+* Security: Added SSRF protection on admin URL-check endpoints
+* Security: Fixed DOM XSS in email 2FA enable flow
 
 = 1.8.89 =
-* Added: Brute-force protection — configurable per-account lockout after N failed login attempts (default 5 attempts, 5-minute lock), with admin UI to adjust both thresholds
-* Fixed: Session persistence — login sessions now survive browser close when a custom session duration is set (auth cookie was a session cookie; now writes a persistent cookie)
-* Added: Thumbnails tab — Social Preview Diagnostics with URL checker (9-point OG/image diagnostic), recent posts auto-scan, Cloudflare WAF setup guide + crawler UA tester + cache purge, and Media Library auditor with one-click recompress for oversized images
-
-= 1.8.87 =
-* Fixed: PDF button moved from cramped header toolbar into the Summary pane itself — blue "↓ Download PDF" button at top of Summary tab, always visible
-* Fixed: ms precision — all timings now show 1 decimal place consistently (was 0–4dp depending on magnitude)
-
-= 1.8.84 =
-* Fixed: ms formatting reduced to 1 decimal place throughout (was showing 4dp e.g. "0.000ms")
-* Added: CS Monitor Summary tab — Download PDF button generates a print-ready report with all Issues (including full Explain steps) + request timeline + site health
-* Added: CS Monitor Issues — WordPress core update check (flags outdated WP with remediation steps)
-* Added: CS Monitor Issues — MySQL/MariaDB EOL version detection with version-specific upgrade steps
-* Added: CS Monitor Summary — "PHP Errors & Warnings" section shows up to 8 recent log entries inline (errors, warnings, deprecated notices)
-* Added: CS Monitor Site Health — WordPress core, MySQL/MariaDB version badges
-
-= 1.8.83 =
-* Added: CS Monitor — disk space check (warning ≥85%, critical ≥95%) with SSH diagnostics in Explain
-* Added: CS Monitor — PHP OPcache check: disabled warning, OOM restarts critical, low hit rate and memory pressure warnings
-* Added: CS Monitor — uploads directory writable check
-* Added: CS Monitor — PHP upload_max_filesize, post_max_size, max_execution_time checks
-* Added: CS Monitor — stale .maintenance file detection (maintenance mode loop)
-* Added: CS Monitor — siteurl/home URL mismatch detection (login redirect loop cause)
-* Added: CS Monitor — missing rewrite rules detection (404 on pretty permalinks)
-* Added: CS Monitor — wp-config.php world-readable permission check
-* Added: CS Monitor — debug.log size check (warning ≥10MB, critical ≥100MB)
-* Added: CS Monitor Issues tab — Copy All button copies every issue with full Explain remediation steps as plain text
-* Added: CS Monitor Issues tab — summary badge count in toolbar
-* Improved: CS Monitor Summary Site Health section now shows disk, OPcache, uploads, PHP limits, URL config, maintenance, rewrite rules, wp-config perms, debug.log, and load average rows
-
-= 1.8.82 =
-* Added: CS Monitor Issues tab now flags high memory usage (≥75% of memory_limit → warning, ≥90% → critical) with remediation steps
-* Added: CS Monitor reads system load average (via sys_getloadavg) and CPU count (via /proc/cpuinfo) — flags high CPU load as warning/critical
-* Added: CS Monitor raises a critical issue when XML-RPC is enabled and ≥5 failed logins/hour are detected (active XML-RPC brute force correlation)
-
-= 1.8.56 =
-* Changed: Admin page slug renamed from cloudscale-code-sql to cloudscale-devtools (URL is now tools.php?page=cloudscale-devtools); legacy URL redirects automatically
-* Fixed: Help page slug and title updated to cloudscale-devtools-help / CloudScale Devtools: Online Help
-
-= 1.7.57 =
-* Added: Code Block Settings now includes a checkbox to show/hide the CS Monitor performance panel
-
-= 1.7.47 =
-* Added: CS Monitor — Assets tab showing all enqueued JS and CSS files with plugin attribution, type filter, and search
-* Added: CS Monitor — Hooks tab showing top 50 hooks by cumulative time, with sortable columns and search
-* Added: CS Monitor — Object cache stats card in Summary (hit rate, hits/misses, persistent cache detection)
-* Added: CS Monitor — Slowest Hooks section in Summary showing top 8 hooks by total time
-* Added: CS Monitor — Assets summary card showing JS/CSS counts
-
-= 1.7.35 =
-* Fixed: decodeClipboardText() in editor.js now correctly handles \n, \t, \r, \\, and \uXXXX escape sequences — previously JSON.parse failed silently when \u0022 decoded to " inside the string, storing literal n and u0022 in the database instead of newlines and double-quotes
-* Fixed: null guard added to attributes.content.split() in editor.js to prevent a TypeError if content is null
-* Fixed: migrateAllBtn inline opacity/pointer-events styles removed from PHP HTML — they were never cleared when the button was re-enabled; disabled state now handled via CSS :disabled selector
-* Fixed: printf format string in render_migrate_panel() no longer uses esc_html__() on the outer string when HTML is injected via %s placeholder
+* Added: Brute-force protection — configurable per-account lockout after N failed login attempts (default 5 attempts, 5-minute lock)
+* Fixed: Session persistence — login sessions now survive browser close when a custom session duration is set
+* Added: Thumbnails tab — Social Preview Diagnostics with URL checker, post scan, Cloudflare integration, and Media Library auditor
 
 = 1.7.20 =
 * Security: is_safe_query() now rejects queries containing semicolons, preventing statement stacking
-* Security: Removed $_REQUEST fallback in SQL AJAX handler
-* Fixed: Echoed <style> block removed from admin page; inline <script> blocks extracted to enqueued JS files (PCP compliance)
-* Fixed: Dynamic style injection in block editor replaced with wp_add_inline_style()
-* Fixed: console.warn() and console.log() removed from cs-convert.js
-* Added: uninstall.php removes plugin options on deletion
-* Added: load_plugin_textdomain() on init; 48 strings wrapped with i18n functions
-* Added: Full DocBlocks on all methods
-* Changed: date() replaced with wp_date() in migration scan
-
-= 1.7.17 =
-* Added: Copy button now shows a "Copy" label alongside the clipboard icon
-* Changed: CSS refactored for copy button styling
-
-= 1.7.16 =
-* Fixed: build_migrate_block() JSON encoding corrected; removed JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES flags that corrupted block attributes containing <, >, and quote characters
-* Added: filemtime() cache busting for all enqueued assets
-* Improved: block editor toolbar enhancements
-
-= 1.7.15 =
-* Fix: split decode_migrated_content() into two independent passes so the bare-n newline fix always runs regardless of whether unicode escapes were already decoded in the database.
-
-= 1.7.14 =
-* Fix: decode_migrated_content() in render_block() decodes unicode escapes and bare newline separators left by the v1 migration bug, fixing display of affected code blocks without requiring database changes.
-
-= 1.7.13 =
-* Fixed: Code Block Migrator now uses safe JSON encoding so special characters like <, >, and quotes are stored as proper unicode escapes in block comment attributes, preventing content corruption on subsequent Gutenberg saves
-
-
-= 1.7.3 =
-* Embedded admin CSS inline for reliable rendering across all WordPress configurations
-* Admin UI now matches the CloudScale Page Views plugin design language
-* Navy gradient banner, dark tab bar with orange active indicator, white card panels with colored gradient section headers
-
-= 1.7.0 =
-* Added 14 popular syntax color themes: Atom One, GitHub, Monokai, Nord, Dracula, Tokyo Night, VS 2015/VS Code, Stack Overflow, Night Owl, Gruvbox, Solarized, Panda, Tomorrow Night, Shades of Purple
-* New Color Theme selector in the settings panel
-* Each theme loads its dark and light variant from the highlight.js CDN
-* Toggle button switches between the dark and light variant of the chosen theme
-* Refactored frontend CSS to use CSS custom properties for theme agnostic styling
-* Theme backgrounds and toolbar colours adapt automatically to the selected theme
-* Added HCL/Terraform and TOML to the language selector
-* Added 14 new SQL quick queries organized into four groups: Health and Diagnostics, Content Summary, Bloat and Cleanup Checks, URL and Migration Helpers
-* Enter key now runs the SQL query (Shift+Enter for newline)
+* Fixed: Echoed style/script blocks replaced with wp_add_inline_style() and wp_add_inline_script()
+* Added: load_plugin_textdomain(); 48 strings wrapped with i18n functions
 
 = 1.6.0 =
 * Merged CloudScale SQL Command plugin into CloudScale Code Block
-* Combined Tools page at Tools > CloudScale Code Block with tabbed interface
-* Code Block Migrator and SQL Command are now tabs on the same page
-* Moved Settings (default theme) as inline options on the Code Block Migrator tab
-* Removed separate Settings > CloudScale Code Block page
-* Removed separate Tools > CloudScale SQL page
-* Added AJAX save for theme settings (no page reload required)
 
 = 1.5.0 =
-* Added Code Block Migrator tool
-* Auto convert toast in editor for core code blocks
-* Transform support from core/code and core/preformatted
-
-= 1.1.0 =
-* Fixed: Block now spans full content width in both editor and frontend
-* Fixed: Dark mode is now the proper default with Atom One Dark syntax colors
-* Fixed: Code no longer wraps; horizontal scroll on overflow
-* Fixed: Editor style properly registered via block.json editorStyle
-* Added: Alignment support (wide, full) in block toolbar
+* Added: Code Block Migrator tool
 
 = 1.0.0 =
 * Initial release
 
 == External services ==
 
-= cdnjs CDN (Cloudflare) =
+= highlight.js (bundled locally) =
 
-This plugin loads syntax highlighting scripts and stylesheets from the cdnjs CDN operated by Cloudflare, Inc.
+highlight.js 11.11.1 is bundled inside the plugin — no external CDN requests are made for syntax highlighting.
 
-* Service: cdnjs (https://cdnjs.cloudflare.com/)
-* When: On every page that contains a code block (frontend and block editor).
-* What is sent: Standard HTTP request headers including visitor IP address and user agent, as required by any CDN request. No site content or user data is transmitted by the plugin itself.
-* Why: To serve the highlight.js library and theme stylesheets without bundling them locally.
-* Cloudflare Privacy Policy: https://www.cloudflare.com/privacypolicy/
-* Cloudflare Terms of Service: https://www.cloudflare.com/terms/
-
-= Anthropic Claude API (optional — AI Security Audit only) =
+= Anthropic Claude API (optional — AI Cyber Audit only) =
 
 **Service:** Anthropic PBC
 **Website:** https://anthropic.com
 **Endpoint:** https://api.anthropic.com/v1/messages
-**Data sent:** WordPress configuration data (plugin list, PHP version, WordPress version, file permission flags, exposed debug settings, user role counts, key wp-config.php flags) and, for the Cyber Deep Dive, HTTP security header responses from your own site's public URLs. No post content or visitor data is transmitted.
-**When data is sent:** Only when you click "Run AI Security Scan" or "Run Cyber Deep Dive" on the Security tab in Tools > CloudScale Devtools and Anthropic is selected as your AI provider.
+**Data sent:** WordPress configuration data (plugin list, PHP version, WordPress version, file permission flags, exposed debug settings, user role counts, key wp-config.php flags) and, for the deep dive, HTTP security header responses from your own site's public URLs. No post content or visitor data is transmitted.
+**When data is sent:** Only when you click "Run AI Cyber Audit" or "Run AI Deep Dive Cyber Audit" on the Security tab and Anthropic is selected as your AI provider.
 **API key:** You must supply your own Anthropic API key. The key is stored in your WordPress database (wp_options) and is never transmitted anywhere except directly to api.anthropic.com.
 
 Anthropic Privacy Policy: https://www.anthropic.com/privacy
 Anthropic Terms of Service: https://www.anthropic.com/terms
-Anthropic API documentation: https://docs.anthropic.com
 
-= Google Gemini API (optional — AI Security Audit only) =
+= Google Gemini API (optional — AI Cyber Audit only) =
 
 **Service:** Google LLC
 **Website:** https://ai.google.dev
 **Endpoint:** https://generativelanguage.googleapis.com/v1beta/models/
-**Data sent:** WordPress configuration data (plugin list, PHP version, WordPress version, file permission flags, exposed debug settings, user role counts, key wp-config.php flags) and, for the Cyber Deep Dive, HTTP security header responses from your own site's public URLs. No post content or visitor data is transmitted.
-**When data is sent:** Only when you click "Run AI Security Scan" or "Run Cyber Deep Dive" on the Security tab in Tools > CloudScale Devtools and Google Gemini is selected as your AI provider.
+**Data sent:** Same as Anthropic above. No post content or visitor data is transmitted.
+**When data is sent:** Only when you click "Run AI Cyber Audit" or "Run AI Deep Dive Cyber Audit" on the Security tab and Google Gemini is selected as your AI provider.
 **API key:** You must supply your own Google AI API key. The key is stored in your WordPress database (wp_options) and is never transmitted anywhere except directly to Google.
 
 Google Privacy Policy: https://policies.google.com/privacy
 Google Terms of Service: https://policies.google.com/terms
-Gemini API documentation: https://ai.google.dev/docs
 
 == Upgrade Notice ==
 
-= 1.7.3 =
-Admin UI restyled to match the CloudScale plugin family. If upgrading from a version before 1.6.0, you can deactivate the standalone CloudScale SQL Command plugin as its functionality is now built in.
+= 1.9.80 =
+Explain buttons added to Security and Server Logs panels. Help docs expanded to 18 sections. Plugin renamed to CloudScale Cyber and Devtools throughout.
