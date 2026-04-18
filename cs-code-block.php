@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Devtools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.40
+ * Version: 1.9.42
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.40';
+    const VERSION      = '1.9.42';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -296,6 +296,9 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_devtools_server_logs_status', [ __CLASS__, 'ajax_server_logs_status' ] );
         add_action( 'wp_ajax_csdt_devtools_server_logs_fetch',  [ __CLASS__, 'ajax_server_logs_fetch' ] );
         add_action( 'wp_ajax_csdt_devtools_scan_history',       [ __CLASS__, 'ajax_scan_history' ] );
+        add_action( 'wp_ajax_csdt_devtools_save_schedule',      [ __CLASS__, 'ajax_save_schedule' ] );
+        add_action( 'csdt_scheduled_scan',                      [ __CLASS__, 'run_scheduled_scan' ] );
+        add_filter( 'cron_schedules',                           [ __CLASS__, 'add_cron_schedules' ] );
 
         add_action( 'csdt_devtools_run_vuln_scan', [ __CLASS__, 'cron_vuln_scan' ] );
         add_action( 'csdt_devtools_run_deep_scan', [ __CLASS__, 'cron_deep_scan' ] );
@@ -8589,6 +8592,90 @@ class CloudScale_DevTools {
 
                 <hr class="cs-sec-divider">
 
+                <!-- Scheduled scan settings -->
+                <?php
+                $sched_enabled  = get_option( 'csdt_scan_schedule_enabled', '0' ) === '1';
+                $sched_freq     = get_option( 'csdt_scan_schedule_freq',    'weekly' );
+                $sched_type     = get_option( 'csdt_scan_schedule_type',    'deep' );
+                $sched_email    = get_option( 'csdt_scan_schedule_email',   '1' ) === '1';
+                $sched_ntfy_url = get_option( 'csdt_scan_schedule_ntfy_url', '' );
+                $sched_ntfy_tok = get_option( 'csdt_scan_schedule_ntfy_token', '' );
+                $next_run       = wp_next_scheduled( 'csdt_scheduled_scan' );
+                ?>
+                <div class="cs-sec-settings" style="margin-top:0;padding-top:0;">
+                    <div class="cs-sec-row">
+                        <span class="cs-sec-label"><?php esc_html_e( 'Scheduled Scan:', 'cloudscale-devtools' ); ?></span>
+                        <div class="cs-sec-control">
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="checkbox" id="cs-sched-enabled" <?php checked( $sched_enabled ); ?>>
+                                <span><?php esc_html_e( 'Run automatically on a schedule', 'cloudscale-devtools' ); ?></span>
+                            </label>
+                            <?php if ( $next_run ) : ?>
+                            <span class="cs-hint"><?php printf( esc_html__( 'Next run: %s', 'cloudscale-devtools' ), esc_html( wp_date( 'D j M Y, g:ia', $next_run ) ) ); ?></span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <div id="cs-sched-options" <?php echo $sched_enabled ? '' : 'style="display:none"'; ?>>
+                        <div class="cs-sec-row">
+                            <span class="cs-sec-label"><?php esc_html_e( 'Frequency:', 'cloudscale-devtools' ); ?></span>
+                            <div class="cs-sec-control">
+                                <select id="cs-sched-freq" class="cs-sec-select" style="width:auto;">
+                                    <option value="weekly"  <?php selected( $sched_freq, 'weekly' ); ?>><?php esc_html_e( 'Weekly', 'cloudscale-devtools' ); ?></option>
+                                    <option value="monthly" <?php selected( $sched_freq, 'monthly' ); ?>><?php esc_html_e( 'Monthly', 'cloudscale-devtools' ); ?></option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="cs-sec-row">
+                            <span class="cs-sec-label"><?php esc_html_e( 'Scan type:', 'cloudscale-devtools' ); ?></span>
+                            <div class="cs-sec-control">
+                                <select id="cs-sched-type" class="cs-sec-select" style="width:auto;">
+                                    <option value="standard" <?php selected( $sched_type, 'standard' ); ?>><?php esc_html_e( 'AI Cyber Audit (fast)', 'cloudscale-devtools' ); ?></option>
+                                    <option value="deep"     <?php selected( $sched_type, 'deep' ); ?>><?php esc_html_e( 'AI Deep Dive Cyber Audit (comprehensive)', 'cloudscale-devtools' ); ?></option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="cs-sec-row">
+                            <span class="cs-sec-label"><?php esc_html_e( 'Notify via email:', 'cloudscale-devtools' ); ?></span>
+                            <div class="cs-sec-control">
+                                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                    <input type="checkbox" id="cs-sched-email" <?php checked( $sched_email ); ?>>
+                                    <span><?php printf( esc_html__( 'Send results to %s', 'cloudscale-devtools' ), '<strong>' . esc_html( get_option( 'admin_email' ) ) . '</strong>' ); ?></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="cs-sec-row">
+                            <span class="cs-sec-label"><?php esc_html_e( 'ntfy.sh topic:', 'cloudscale-devtools' ); ?></span>
+                            <div class="cs-sec-control">
+                                <input type="text" id="cs-sched-ntfy-url" class="cs-text-input"
+                                       placeholder="https://ntfy.sh/your-topic"
+                                       value="<?php echo esc_attr( $sched_ntfy_url ); ?>"
+                                       style="max-width:320px;">
+                                <span class="cs-hint"><?php echo wp_kses( __( 'Optional push notification via <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy.sh</a>. Use a private topic or self-hosted server.', 'cloudscale-devtools' ), [ 'a' => [ 'href' => [], 'target' => [], 'rel' => [] ] ] ); ?></span>
+                            </div>
+                        </div>
+                        <div class="cs-sec-row">
+                            <span class="cs-sec-label"><?php esc_html_e( 'ntfy auth token:', 'cloudscale-devtools' ); ?></span>
+                            <div class="cs-sec-control">
+                                <input type="password" id="cs-sched-ntfy-token" class="cs-text-input"
+                                       autocomplete="off" placeholder="<?php echo $sched_ntfy_tok ? '••••••••' : esc_attr__( 'Optional — for protected topics', 'cloudscale-devtools' ); ?>"
+                                       style="max-width:320px;">
+                                <span class="cs-hint"><?php esc_html_e( 'Bearer token if your topic requires authentication.', 'cloudscale-devtools' ); ?></span>
+                            </div>
+                        </div>
+                        <div class="cs-sec-row">
+                            <span class="cs-sec-label"></span>
+                            <div class="cs-sec-control">
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <button type="button" class="cs-btn-primary" id="cs-sched-save">💾 <?php esc_html_e( 'Save Schedule', 'cloudscale-devtools' ); ?></button>
+                                    <span class="cs-settings-saved" id="cs-sched-saved">✓ <?php esc_html_e( 'Saved', 'cloudscale-devtools' ); ?></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="cs-sec-divider">
+
                 <div class="cs-scan-row">
                     <div class="cs-scan-col">
                         <div class="cs-scan-col-header">
@@ -8684,6 +8771,113 @@ class CloudScale_DevTools {
     /* ==================================================================
        Vulnerability Scan AJAX handlers
        ================================================================== */
+
+    public static function add_cron_schedules( array $schedules ): array {
+        $schedules['csdt_monthly'] = [
+            'interval' => 30 * DAY_IN_SECONDS,
+            'display'  => __( 'Once Monthly', 'cloudscale-devtools' ),
+        ];
+        return $schedules;
+    }
+
+    public static function ajax_save_schedule(): void {
+        check_ajax_referer( 'csdt_devtools_security_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        $enabled   = ! empty( $_POST['enabled'] ) && $_POST['enabled'] === '1';
+        $freq      = in_array( $_POST['freq']  ?? '', [ 'weekly', 'monthly' ], true ) ? sanitize_key( $_POST['freq'] ) : 'weekly';
+        $type      = in_array( $_POST['type']  ?? '', [ 'standard', 'deep' ], true )  ? sanitize_key( $_POST['type'] ) : 'deep';
+        $email     = ! empty( $_POST['email_notify'] ) && $_POST['email_notify'] === '1';
+        $ntfy_url  = esc_url_raw( wp_unslash( $_POST['ntfy_url']   ?? '' ) );
+        $ntfy_tok  = sanitize_text_field( wp_unslash( $_POST['ntfy_token'] ?? '' ) );
+        $ntfy_tok  = trim( str_replace( '•', '', $ntfy_tok ) );
+
+        update_option( 'csdt_scan_schedule_enabled',    $enabled ? '1' : '0', false );
+        update_option( 'csdt_scan_schedule_freq',       $freq,                false );
+        update_option( 'csdt_scan_schedule_type',       $type,                false );
+        update_option( 'csdt_scan_schedule_email',      $email ? '1' : '0',   false );
+        update_option( 'csdt_scan_schedule_ntfy_url',   $ntfy_url,            false );
+        if ( $ntfy_tok !== '' ) {
+            update_option( 'csdt_scan_schedule_ntfy_token', $ntfy_tok, false );
+        }
+
+        // Re-register cron event
+        wp_clear_scheduled_hook( 'csdt_scheduled_scan' );
+        $next_run = null;
+        if ( $enabled ) {
+            $recurrence = $freq === 'monthly' ? 'csdt_monthly' : 'weekly';
+            wp_schedule_event( time() + HOUR_IN_SECONDS, $recurrence, 'csdt_scheduled_scan' );
+            $next_run = wp_next_scheduled( 'csdt_scheduled_scan' );
+        }
+
+        wp_send_json_success( [
+            'saved'    => true,
+            'next_run' => $next_run ? wp_date( 'D j M Y, g:ia', $next_run ) : null,
+        ] );
+    }
+
+    public static function run_scheduled_scan(): void {
+        $type = get_option( 'csdt_scan_schedule_type', 'deep' );
+        if ( $type === 'deep' ) {
+            self::cron_deep_scan();
+        } else {
+            self::cron_vuln_scan();
+        }
+
+        // Fetch the freshly stored result to notify
+        $result = $type === 'deep'
+            ? get_transient( 'csdt_deep_scan_v1' )
+            : get_transient( 'csdt_security_scan_v2' );
+
+        if ( $result && isset( $result['report'] ) ) {
+            self::send_scan_notifications( $result['report'], $type );
+        }
+    }
+
+    private static function send_scan_notifications( array $report, string $type ): void {
+        $score       = $report['score']       ?? '?';
+        $label       = $report['score_label'] ?? '';
+        $summary     = $report['summary']     ?? '';
+        $critical    = count( $report['critical'] ?? [] );
+        $high        = count( $report['high']     ?? [] );
+        $type_label  = $type === 'deep' ? 'AI Deep Dive Cyber Audit' : 'AI Cyber Audit';
+        $site        = get_bloginfo( 'name' ) ?: home_url();
+        $admin_url   = admin_url( 'tools.php?page=' . self::TOOLS_SLUG . '&tab=security' );
+
+        $subject = sprintf( '[%s] Security Scan Complete — Score: %s/100 (%s)', $site, $score, $label );
+        $body    = sprintf(
+            "%s completed for %s\n\nScore: %s/100 (%s)\nCritical: %d | High: %d\n\n%s\n\nView full report: %s",
+            $type_label, $site, $score, $label, $critical, $high, $summary, $admin_url
+        );
+
+        // Email notification
+        if ( get_option( 'csdt_scan_schedule_email', '1' ) === '1' ) {
+            wp_mail( get_option( 'admin_email' ), $subject, $body );
+        }
+
+        // ntfy.sh push notification
+        $ntfy_url = get_option( 'csdt_scan_schedule_ntfy_url', '' );
+        if ( $ntfy_url ) {
+            $priority = $critical > 0 ? 'urgent' : ( $high > 0 ? 'high' : 'default' );
+            $headers  = [
+                'Title'    => $subject,
+                'Priority' => $priority,
+                'Tags'     => $score >= 75 ? 'white_check_mark' : ( $score >= 55 ? 'warning' : 'rotating_light' ),
+                'Click'    => $admin_url,
+            ];
+            $ntfy_tok = get_option( 'csdt_scan_schedule_ntfy_token', '' );
+            if ( $ntfy_tok ) {
+                $headers['Authorization'] = 'Bearer ' . $ntfy_tok;
+            }
+            wp_remote_post( $ntfy_url, [
+                'timeout' => 10,
+                'headers' => $headers,
+                'body'    => $body,
+            ] );
+        }
+    }
 
     public static function ajax_vuln_save_key(): void {
         check_ajax_referer( 'csdt_devtools_security_nonce', 'nonce' );
