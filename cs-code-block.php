@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Devtools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.31
+ * Version: 1.9.32
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.31';
+    const VERSION      = '1.9.32';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -1009,7 +1009,7 @@ class CloudScale_DevTools {
         ] );
 
         // Login security JS (only loaded on the login tab)
-        $active_tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'migrate'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $active_tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'login'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         if ( $active_tab === 'login' ) {
             wp_enqueue_script(
                 'csdt-qrcode',
@@ -1151,7 +1151,7 @@ class CloudScale_DevTools {
      * @return void
      */
     public static function render_tools_page() {
-        $active_tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'migrate';
+        $active_tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'login';
         $base_url   = admin_url( 'tools.php?page=' . self::TOOLS_SLUG );
         ?>
         <div class="wrap">
@@ -1172,10 +1172,6 @@ class CloudScale_DevTools {
 
             <!-- Tab bar -->
             <div id="cs-tab-bar">
-                <a href="<?php echo esc_url( $base_url . '&tab=migrate' ); ?>"
-                   class="cs-tab <?php echo $active_tab === 'migrate' ? 'active' : ''; ?>">
-                    🔄 <?php esc_html_e( 'Code Migrator', 'cloudscale-devtools' ); ?>
-                </a>
                 <a href="<?php echo esc_url( $base_url . '&tab=login' ); ?>"
                    class="cs-tab <?php echo $active_tab === 'login' ? 'active' : ''; ?>">
                     🔐 <?php esc_html_e( 'Login Security', 'cloudscale-devtools' ); ?>
@@ -1183,6 +1179,10 @@ class CloudScale_DevTools {
                 <a href="<?php echo esc_url( $base_url . '&tab=security' ); ?>"
                    class="cs-tab <?php echo $active_tab === 'security' ? 'active' : ''; ?>">
                     🛡️ <?php esc_html_e( 'Security Scan', 'cloudscale-devtools' ); ?>
+                </a>
+                <a href="<?php echo esc_url( $base_url . '&tab=migrate' ); ?>"
+                   class="cs-tab <?php echo $active_tab === 'migrate' ? 'active' : ''; ?>">
+                    🔄 <?php esc_html_e( 'Code Migrator', 'cloudscale-devtools' ); ?>
                 </a>
                 <a href="<?php echo esc_url( $base_url . '&tab=mail' ); ?>"
                    class="cs-tab <?php echo $active_tab === 'mail' ? 'active' : ''; ?>">
