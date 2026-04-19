@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.118
+ * Version: 1.9.119
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.118';
+    const VERSION      = '1.9.119';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -218,6 +218,8 @@ class CloudScale_DevTools {
     private static $perf_milestones = [];
     /** @var array|null Pending email log entry for the in-flight wp_mail() call. */
     private static $smtp_log_pending = null;
+    /** @var string|null Per-request CSP nonce (generated once, reused). */
+    private static ?string $csp_nonce = null;
 
     /**
      * Registers all plugin hooks.
@@ -341,6 +343,14 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_plugin_stack_scan',           [ __CLASS__, 'ajax_plugin_stack_scan' ] );
         add_action( 'wp_ajax_csdt_ai_debug_log',                [ __CLASS__, 'ajax_ai_debug_log' ] );
         add_action( 'wp_ajax_csdt_site_audit',                  [ __CLASS__, 'ajax_site_audit' ] );
+
+        // CSP nonce injection — only active when nonce mode is enabled
+        if ( ! is_admin() && get_option( 'csdt_csp_nonces_enabled', '0' ) === '1' ) {
+            add_filter( 'script_loader_tag',          [ __CLASS__, 'csp_nonce_script_tag' ], 10, 1 );
+            add_filter( 'style_loader_tag',           [ __CLASS__, 'csp_nonce_style_tag' ],  10, 1 );
+            // WP 6.3+ inline script attributes filter
+            add_filter( 'wp_inline_script_attributes', [ __CLASS__, 'csp_nonce_inline_attrs' ], 10, 1 );
+        }
 
         // Schedule SSH monitor (default on) — ensure cron is running if enabled
         if ( get_option( 'csdt_ssh_monitor_enabled', '1' ) === '1' ) {
@@ -9053,6 +9063,37 @@ class CloudScale_DevTools {
                 'fix_label' => 'Fix Prefix…',
                 'fix_modal'  => 'csdt-db-prefix-modal',
             ],
+            [
+                'id'           => 'csp_unsafe_inline',
+                'title'        => "CSP allows 'unsafe-inline' for scripts — weakens XSS protection",
+                'detail'       => get_option( 'csdt_csp_inline_ack', '0' ) === '1'
+                    ? "Acknowledged — 'unsafe-inline' in script-src is managed externally (nginx, Cloudflare, or CDN)."
+                    : ( get_option( 'csdt_csp_nonces_enabled', '0' ) === '1'
+                        ? "Nonce-based CSP is active. Scripts are protected with per-request nonces; 'unsafe-inline' has been removed from script-src."
+                        : "The Content-Security-Policy allows 'unsafe-inline' in script-src, significantly weakening XSS protection. Nonce-based CSP replaces it with cryptographic per-request nonces while keeping WordPress scripts working." ),
+                'fixed'        => ( function () {
+                    if ( get_option( 'csdt_csp_inline_ack', '0' ) === '1' ) { return true; }
+                    if ( get_option( 'csdt_csp_nonces_enabled', '0' ) === '1' &&
+                         get_option( 'csdt_devtools_csp_enabled', '0' ) === '1' ) { return true; }
+                    // Check live CSP header for unsafe-inline in script-src
+                    $cached = get_transient( 'csdt_csp_unsafe_check' );
+                    if ( $cached !== false ) { return $cached === '0'; }
+                    $resp = wp_remote_get( home_url( '/' ), [ 'timeout' => 4, 'sslverify' => false ] );
+                    if ( is_wp_error( $resp ) ) { return false; }
+                    $csp = (string) wp_remote_retrieve_header( $resp, 'content-security-policy' );
+                    // Extract just script-src (or fall back to default-src) and check for unsafe-inline
+                    if ( preg_match( "/script-src[^;]*/i", $csp, $m ) ) {
+                        $has_unsafe = str_contains( $m[0], "'unsafe-inline'" );
+                    } else {
+                        $has_unsafe = str_contains( $csp, "'unsafe-inline'" );
+                    }
+                    set_transient( 'csdt_csp_unsafe_check', $has_unsafe ? '1' : '0', 300 );
+                    return ! $has_unsafe;
+                } )(),
+                'fix_label'    => 'Enable Nonce CSP',
+                'dismiss_label'=> 'Managed Externally',
+                'dismiss_id'   => 'csp_inline_ack',
+            ],
             ( function () {
                 $installed = false;
                 foreach ( [ '/usr/bin/fail2ban-client', '/usr/sbin/fail2ban-client', '/usr/local/bin/fail2ban-client' ] as $p ) {
@@ -9107,9 +9148,14 @@ class CloudScale_DevTools {
         if ( ! is_array( $services ) ) { $services = []; }
         $custom = trim( get_option( 'csdt_devtools_csp_custom', '' ) );
 
+        $use_nonces  = get_option( 'csdt_csp_nonces_enabled', '0' ) === '1';
+        $script_src  = $use_nonces
+            ? [ "'self'", "'nonce-" . self::get_csp_nonce() . "'", "'strict-dynamic'" ]
+            : [ "'self'", "'unsafe-inline'" ];
+
         $d = [
             'default-src' => [ "'self'" ],
-            'script-src'  => [ "'self'", "'unsafe-inline'" ],
+            'script-src'  => $script_src,
             'style-src'   => [ "'self'", "'unsafe-inline'" ],
             'img-src'     => [ "'self'", 'data:', 'https:' ],
             'font-src'    => [ "'self'", 'data:' ],
@@ -9170,6 +9216,32 @@ class CloudScale_DevTools {
         foreach ( $d as $dir => $vals ) { $parts[] = $dir . ' ' . implode( ' ', $vals ); }
         if ( $custom ) { $parts[] = $custom; }
         return implode( '; ', $parts );
+    }
+
+    // ── CSP nonce helpers ─────────────────────────────────────────────────────
+
+    public static function get_csp_nonce(): string {
+        if ( self::$csp_nonce === null ) {
+            self::$csp_nonce = bin2hex( random_bytes( 16 ) );
+        }
+        return self::$csp_nonce;
+    }
+
+    public static function csp_nonce_script_tag( string $tag ): string {
+        $nonce = self::get_csp_nonce();
+        // Inject nonce into every <script ...> opening tag that doesn't already have one
+        return preg_replace( '/<script(?![^>]*\bnonce\b)/i', '<script nonce="' . esc_attr( $nonce ) . '"', $tag );
+    }
+
+    public static function csp_nonce_style_tag( string $tag ): string {
+        $nonce = self::get_csp_nonce();
+        return preg_replace( '/<link(?![^>]*\bnonce\b)/i', '<link nonce="' . esc_attr( $nonce ) . '"', $tag );
+    }
+
+    /** @param array<string,string> $attrs */
+    public static function csp_nonce_inline_attrs( array $attrs ): array {
+        $attrs['nonce'] = self::get_csp_nonce();
+        return $attrs;
     }
 
     private static function render_csp_panel(): void {
@@ -10706,6 +10778,19 @@ bantime  = 86400</pre>
                     ] );
                     return;
                 }
+                break;
+            case 'csp_unsafe_inline':
+                update_option( 'csdt_csp_nonces_enabled', '1' );
+                // Auto-enable the plugin's own CSP if not already on
+                if ( get_option( 'csdt_devtools_csp_enabled', '0' ) !== '1' ) {
+                    update_option( 'csdt_devtools_csp_enabled', '1' );
+                    update_option( 'csdt_devtools_csp_mode', 'enforce' );
+                }
+                delete_transient( 'csdt_csp_unsafe_check' );
+                break;
+            case 'csp_inline_ack':
+                update_option( 'csdt_csp_inline_ack', '1' );
+                delete_transient( 'csdt_csp_unsafe_check' );
                 break;
             default:
                 wp_send_json_error( 'Unknown fix ID' );
