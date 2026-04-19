@@ -23,7 +23,7 @@ helpLib.run({
         'description': 'Free WordPress security plugin powered by Anthropic Claude and Google Gemini AI. Features: AI cyber audit, two-factor authentication, passkeys (WebAuthn), hide login URL, brute-force protection, CSP builder, server logs, SQL tool, and syntax-highlighted code blocks.',
         'url': 'https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-cyber-devtools-help/',
         'downloadUrl': 'https://andrewninjawordpress.s3.af-south-1.amazonaws.com/cloudscale-devtools.zip',
-        'softwareVersion': '1.9.118',
+        'softwareVersion': '1.9.121',
         'author': { '@type': 'Person', 'name': 'Andrew Baker', 'url': 'https://andrewbaker.ninja' },
         'isAccessibleForFree': true,
         'license': 'https://www.gnu.org/licenses/gpl-2.0.html',
@@ -447,7 +447,7 @@ helpLib.run({
           altText: 'WordPress server log viewer for PHP error logs, debug logs, and web server logs without SSH access' },
         { id: 'optimizer',  label: 'Plugin Optimizer',      file: 'panel-optimizer.png',   tabSelector: 'a[href*="tab=optimizer"]',
           altText: 'WordPress plugin stack scanner showing which plugins CloudScale replaces with AI debugging assistant' },
-        { id: 'site-audit', label: 'AI Site Auditor',        file: 'panel-site-audit.png',  tabSelector: 'a[href*="tab=site-audit"]',
+        { id: 'site-audit', label: 'AI Site Auditor',        file: 'panel-site-audit.png',  tabSelector: 'a[href*="tab=site-audit"]', elementSelector: '#cs-panel-site-audit',
           altText: 'WordPress AI site auditor scanning SEO, content, performance, and database health with prioritised findings' },
     ],
 

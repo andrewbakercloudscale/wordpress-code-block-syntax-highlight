@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.121
+ * Version: 1.9.122
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -1309,6 +1309,10 @@ class CloudScale_DevTools {
                    class="cs-tab <?php echo $active_tab === 'security' ? 'active' : ''; ?>">
                     🛡️ <?php esc_html_e( 'Security Scan', 'cloudscale-devtools' ); ?>
                 </a>
+                <a href="<?php echo esc_url( $base_url . '&tab=site-audit' ); ?>"
+                   class="cs-tab <?php echo $active_tab === 'site-audit' ? 'active' : ''; ?>">
+                    🔍 <?php esc_html_e( 'Site Audit', 'cloudscale-devtools' ); ?>
+                </a>
                 <a href="<?php echo esc_url( $base_url . '&tab=migrate' ); ?>"
                    class="cs-tab <?php echo $active_tab === 'migrate' ? 'active' : ''; ?>">
                     🔄 <?php esc_html_e( 'Code Migrator', 'cloudscale-devtools' ); ?>
@@ -1332,10 +1336,6 @@ class CloudScale_DevTools {
                 <a href="<?php echo esc_url( $base_url . '&tab=optimizer' ); ?>"
                    class="cs-tab <?php echo $active_tab === 'optimizer' ? 'active' : ''; ?>">
                     🔧 <?php esc_html_e( 'Optimizer', 'cloudscale-devtools' ); ?>
-                </a>
-                <a href="<?php echo esc_url( $base_url . '&tab=site-audit' ); ?>"
-                   class="cs-tab <?php echo $active_tab === 'site-audit' ? 'active' : ''; ?>">
-                    🔍 <?php esc_html_e( 'Site Audit', 'cloudscale-devtools' ); ?>
                 </a>
                 <a href="<?php echo esc_url( $base_url . '&tab=logs' ); ?>"
                    class="cs-tab <?php echo $active_tab === 'logs' ? 'active' : ''; ?>">
@@ -10310,35 +10310,38 @@ class CloudScale_DevTools {
                 <?php foreach ( self::get_quick_fixes() as $fix ) :
                     $is_fixed = (bool) $fix['fixed'];
                 ?>
-                    <div class="cs-quick-fix-row" data-fix-id="<?php echo esc_attr( $fix['id'] ); ?>" style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 12px;padding:10px 14px;margin-bottom:6px;background:<?php echo $is_fixed ? 'rgba(0,0,0,0.02)' : '#fff'; ?>;border-radius:6px;border:1px solid <?php echo $is_fixed ? 'rgba(0,0,0,0.07)' : 'rgba(0,0,0,0.12)'; ?>;">
-                        <div style="flex-shrink:0;font-size:16px;line-height:1.6;"><?php echo $is_fixed ? '<span style="color:#16a34a;">✓</span>' : '<span style="color:#d97706;">⚠</span>'; ?></div>
-                        <div style="flex:1;min-width:120px;">
-                            <div style="font-size:13px;font-weight:600;color:<?php echo $is_fixed ? '#6b7280' : '#1d2327'; ?>;"><?php echo esc_html( $fix['title'] ); ?></div>
+                    <div class="cs-quick-fix-row" data-fix-id="<?php echo esc_attr( $fix['id'] ); ?>" style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;margin-bottom:6px;background:<?php echo $is_fixed ? 'rgba(0,0,0,0.02)' : '#fff'; ?>;border-radius:6px;border:1px solid <?php echo $is_fixed ? 'rgba(0,0,0,0.07)' : 'rgba(0,0,0,0.12)'; ?>;">
+                        <div style="flex-shrink:0;font-size:16px;line-height:1.5;padding-top:1px;"><?php echo $is_fixed ? '<span style="color:#16a34a;">✓</span>' : '<span style="color:#d97706;">⚠</span>'; ?></div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                                <div style="font-size:13px;font-weight:600;color:<?php echo $is_fixed ? '#6b7280' : '#1d2327'; ?>;"><?php echo esc_html( $fix['title'] ); ?></div>
+                                <?php if ( $is_fixed ) : ?>
+                                <span style="flex-shrink:0;font-size:12px;color:#16a34a;font-weight:600;white-space:nowrap;">Fixed ✓</span>
+                                <?php endif; ?>
+                            </div>
                             <div style="font-size:12px;color:#50575e;margin-top:2px;"><?php echo esc_html( $fix['detail'] ); ?></div>
-                        </div>
-                        <div style="flex-shrink:0;display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-left:auto;">
-                        <?php if ( $is_fixed ) : ?>
-                            <span style="font-size:12px;color:#16a34a;font-weight:600;">Fixed ✓</span>
-                        <?php elseif ( ! empty( $fix['fix_modal'] ) ) : ?>
-                            <button type="button" class="cs-btn-primary cs-btn-sm"
-                                    onclick="document.getElementById('<?php echo esc_attr( $fix['fix_modal'] ); ?>').style.display='flex';"
-                                    style="white-space:nowrap;">
-                                <?php echo esc_html( $fix['fix_label'] ); ?>
-                            </button>
-                        <?php else : ?>
-                            <button type="button" class="cs-btn-primary cs-btn-sm cs-quick-fix-btn"
-                                    data-fix-id="<?php echo esc_attr( $fix['id'] ); ?>"
-                                    style="white-space:nowrap;">
-                                <?php echo esc_html( $fix['fix_label'] ); ?>
-                            </button>
-                            <?php if ( ! empty( $fix['dismiss_label'] ) && ! empty( $fix['dismiss_id'] ) ) : ?>
-                            <button type="button" class="cs-btn-secondary cs-btn-sm cs-quick-fix-btn"
-                                    data-fix-id="<?php echo esc_attr( $fix['dismiss_id'] ); ?>"
-                                    style="white-space:nowrap;font-size:11px;">
-                                <?php echo esc_html( $fix['dismiss_label'] ); ?>
-                            </button>
+                            <?php if ( ! $is_fixed ) : ?>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+                            <?php if ( ! empty( $fix['fix_modal'] ) ) : ?>
+                                <button type="button" class="cs-btn-primary cs-btn-sm"
+                                        onclick="document.getElementById('<?php echo esc_attr( $fix['fix_modal'] ); ?>').style.display='flex';">
+                                    <?php echo esc_html( $fix['fix_label'] ); ?>
+                                </button>
+                            <?php else : ?>
+                                <button type="button" class="cs-btn-primary cs-btn-sm cs-quick-fix-btn"
+                                        data-fix-id="<?php echo esc_attr( $fix['id'] ); ?>">
+                                    <?php echo esc_html( $fix['fix_label'] ); ?>
+                                </button>
+                                <?php if ( ! empty( $fix['dismiss_label'] ) && ! empty( $fix['dismiss_id'] ) ) : ?>
+                                <button type="button" class="cs-btn-secondary cs-btn-sm cs-quick-fix-btn"
+                                        data-fix-id="<?php echo esc_attr( $fix['dismiss_id'] ); ?>"
+                                        style="font-size:11px;">
+                                    <?php echo esc_html( $fix['dismiss_label'] ); ?>
+                                </button>
+                                <?php endif; ?>
                             <?php endif; ?>
-                        <?php endif; ?>
+                            </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endforeach; ?>

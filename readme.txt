@@ -4,7 +4,7 @@ Tags: security, code block, syntax highlighting, AI security scan, WordPress har
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.9.121
+Stable tag: 1.9.122
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,8 +85,9 @@ highlight.js with auto-detection — 190+ languages including Bash, Python, Java
 
 == Changelog ==
 
-= 1.9.121 =
-* fix: Quick Fix cards now wrap correctly on mobile — flex-wrap:wrap prevents text being squeezed to single-word columns by wide button groups
+= 1.9.122 =
+* fix: Quick Fix cards fully restructured for mobile — buttons moved below description text, eliminating word-by-word text wrapping on narrow screens
+* feat: Site Audit tab moved to immediately after Security Scan in tab navigation
 
 = 1.9.120 =
 * fix: CSP unsafe-inline quick fix now visible — removed live wp_remote_get check from fixed-state evaluation; status derived from options only
