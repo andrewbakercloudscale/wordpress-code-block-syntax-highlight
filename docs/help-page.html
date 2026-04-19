@@ -46,14 +46,14 @@
 
 <div class="cs-toc">
 <div class="cs-toc-title">Contents</div>
-<ol><li><a href="#security">AI Cyber Audit</a></li>
-<li><a href="#server-logs">Server Logs</a></li>
-<li><a href="#hide-login">Hide Login URL</a></li>
+<ol><li><a href="#hide-login">Hide Login URL</a></li>
 <li><a href="#2fa">Two-Factor Auth</a></li>
 <li><a href="#passkeys">Passkeys (WebAuthn)</a></li>
-<li><a href="#code-block">Code Block Overview</a></li>
+<li><a href="#security">AI Cyber Audit</a></li>
+<li><a href="#code-block">Code Block</a></li>
 <li><a href="#migrator">Code Block Migrator</a></li>
-<li><a href="#sql-tool">SQL Query Tool</a></li></ol>
+<li><a href="#sql-tool">SQL Query Tool</a></li>
+<li><a href="#server-logs">Server Logs</a></li></ol>
 </div>
 
 <hr class="cs-divider"/>
@@ -110,8 +110,77 @@
 </div></div><hr class="cs-divider"/>
 
 <div class="cs-panel-section">
+<h3 class="cs-panel-heading" id="hide-login">Hide Login URL</h3>
+<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-hide-login-13.jpg" alt="Hide Login URL" /></figure>
+<div class="cs-panel-body">
+<p>The <strong>Hide Login URL</strong> feature moves your WordPress login page away from the default <code>/wp-login.php</code> address to a secret URL of your choosing. Bots and automated scanners that probe <code>/wp-login.php</code> receive a 404 response — they never see the login form, which eliminates the vast majority of brute-force and credential-stuffing traffic.</p>
+<p><strong>How it works:</strong></p>
+<ul>
+<li>When enabled, a custom WordPress <code>init</code> hook (priority 1) intercepts requests to your chosen slug and serves <code>wp-login.php</code> transparently, so the login form loads correctly at the new URL without any redirect.</li>
+<li>Direct requests to <code>/wp-login.php</code> are blocked by a <code>login_init</code> hook and return a 404.</li>
+<li>The <code>wp_login_url()</code>, <code>logout_url()</code>, and <code>lostpassword_url()</code> filters are overridden to always produce your custom URL, so all internal WordPress links (password reset emails, "Back to login" links) continue to work correctly.</li>
+</ul>
+<p><strong>Setup:</strong></p>
+<ol>
+<li>Toggle <em>Enable Hide Login</em> on.</li>
+<li>Enter a slug in <em>Custom Login Path</em> — letters, numbers, and hyphens only (e.g. <code>my-secret-login</code>). Avoid obvious words like <code>login</code>, <code>admin</code>, or <code>dashboard</code>.</li>
+<li>Click <em>Save Hide Login Settings</em>.</li>
+<li><strong>Immediately note the new URL</strong> shown after saving. If you lose it, you can recover access via WP-CLI: <code>wp option get csdt_devtools_login_slug</code>.</li>
+</ol>
+<p><strong>Compatibility:</strong> WP-CLI, XMLRPC, REST API, and WP Cron are unaffected — they bypass the login URL check entirely.</p></div>
+</div>
+<hr class="cs-divider"/>
+
+<div class="cs-panel-section">
+<h3 class="cs-panel-heading" id="2fa">Two-Factor Auth</h3>
+<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-2fa-13.jpg" alt="Two-Factor Auth" /></figure>
+<div class="cs-panel-body">
+<p><strong>Two-Factor Authentication (2FA)</strong> requires users to prove their identity with a second factor — a one-time code — in addition to their password. Even if a password is compromised, an attacker cannot log in without also having access to the second factor.</p>
+<p><strong>Available methods:</strong></p>
+<ul>
+<li><strong>Email code</strong> — after a successful password login, a 6-digit code is emailed to the user's account address. The code expires after 10 minutes. No app required.</li>
+<li><strong>Authenticator app (TOTP)</strong> — uses the industry-standard Time-based One-Time Password algorithm (RFC 6238). Users scan a QR code with Google Authenticator, Authy, 1Password, or any compatible app. Works completely offline.</li>
+<li><strong>Passkey</strong> — replaces the code prompt with a biometric check (Face ID, Touch ID, Windows Hello) or hardware security key. The fastest and most phishing-resistant method.</li>
+</ul>
+<p><strong>Site-wide settings:</strong></p>
+<ul>
+<li><em>2FA Method</em> — sets which method is available to users. "Off" disables 2FA entirely.</li>
+<li><em>Force 2FA for all administrators</em> — any administrator who has not configured 2FA will be blocked from the dashboard after login until they complete setup.</li>
+<li><em>Grace logins</em> — configurable number of logins allowed before 2FA is enforced, giving admins time to set up their second factor.</li>
+</ul>
+<p><strong>Brute-Force Protection</strong> locks accounts after N failed login attempts (default: 5 attempts, 5-minute lock). Both thresholds are configurable.</p>
+<p><strong>Session Duration</strong> overrides the WordPress default session length. When set, persistent cookies are used so sessions survive browser close.</p>
+<p><strong>Test Account Manager</strong> creates temporary subscriber accounts with app passwords for Playwright / CI pipelines. Accounts auto-delete on expiry or first use. App passwords are blocked for all non-test accounts.</p></div>
+</div>
+<hr class="cs-divider"/>
+
+<div class="cs-panel-section">
+<h3 class="cs-panel-heading" id="passkeys">Passkeys (WebAuthn)</h3>
+<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-passkeys-13.jpg" alt="Passkeys (WebAuthn)" /></figure>
+<div class="cs-panel-body">
+<p><strong>Passkeys</strong> are FIDO2/WebAuthn credentials that replace password-based 2FA codes with a biometric or hardware-key verification. When you log in, instead of typing a 6-digit code, you authenticate with Face ID, Touch ID, Windows Hello, or a physical security key (YubiKey, etc.).</p>
+<p><strong>How passkeys work:</strong></p>
+<ul>
+<li>Registration generates a public/private key pair on your device. The private key never leaves your device — only the public key is stored on the server (in WordPress user meta).</li>
+<li>At login, the server sends a random challenge. Your device signs it with the private key. The server verifies the signature against the stored public key. No secret is transmitted over the network.</li>
+<li>Passkeys are bound to the site's domain (Relying Party ID), making them inherently phishing-resistant — a fake domain cannot trigger your real passkey.</li>
+</ul>
+<p><strong>Registering a passkey:</strong></p>
+<ol>
+<li>In the <em>Passkeys (WebAuthn)</em> panel, click <em>+ Add Passkey</em>.</li>
+<li>Give the passkey a recognisable label (e.g. "MacBook Pro", "iPhone 16", "YubiKey 5").</li>
+<li>Click <em>Register</em> — your browser will prompt you for biometric verification or to insert a hardware key.</li>
+<li>On success, the passkey appears in the list. Register one passkey per device you want to use for login.</li>
+</ol>
+<p><strong>Using passkeys for login:</strong> In the <em>Two-Factor Authentication</em> settings, set the 2FA method to <em>Passkey</em>. After a successful password login, you will be prompted to verify with your passkey instead of typing a code.</p>
+<p><strong>Browser support:</strong> Chrome 108+, Safari 16+, Edge 108+, Firefox 122+. Older browsers fall back to an email OTP code automatically.</p>
+<p><strong>Testing:</strong> Use the <em>Test</em> button next to each registered passkey to verify it is working correctly without logging out.</p></div>
+</div>
+<hr class="cs-divider"/>
+
+<div class="cs-panel-section">
 <h3 class="cs-panel-heading" id="security">AI Cyber Audit</h3>
-<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-security-3-scaled.jpg" alt="AI Cyber Audit" /></figure>
+<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-security-5.jpg" alt="AI Cyber Audit" /></figure>
 <div class="cs-panel-body">
 <div style="background:#fff5f5;border-left:4px solid #c0392b;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:28px;">
 <h2 style="margin:0 0 10px;font-size:1.3em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🛡️ AI Cyber Audit</h2>
@@ -141,96 +210,8 @@
 <hr class="cs-divider"/>
 
 <div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="server-logs">Server Logs</h3>
-<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-server-logs-3.jpg" alt="Server Logs" /></figure>
-<div class="cs-panel-body">
-<p>The <strong>Server Logs</strong> viewer lets you read PHP error logs, WordPress debug logs, and web server access/error logs directly in the browser — no SSH access required.</p>
-<p><strong>Features:</strong></p>
-<ul>
-<li><strong>Source picker</strong> — lists all available log sources with availability indicators: readable, not found, permission denied, or empty. Switch between sources with a single click.</li>
-<li><strong>Live search</strong> — filter log entries in real time as you type. Matches are highlighted.</li>
-<li><strong>Severity filter</strong> — filter by log level from Emergency down to Debug. Useful for cutting through noise on busy sites.</li>
-<li><strong>Configurable line count</strong> — choose how many lines to load (50 to 5,000).</li>
-<li><strong>Auto-refresh tail mode</strong> — refreshes the log every 30 seconds, showing new entries at the bottom. Useful for watching errors in real time while reproducing a bug.</li>
-<li><strong>Custom log paths</strong> — add any additional log file paths (e.g. Nginx error log, custom application log). Custom paths persist across sessions.</li>
-<li><strong>One-click PHP error log setup</strong> — if PHP error logging is not configured, a button appears to enable it automatically by writing the required <code>php.ini</code> directives.</li>
-</ul>
-<p><strong>Access:</strong> Restricted to users with the <code>manage_options</code> capability (Administrators only). Log content is read-only — no write operations are possible from this panel.</p></div>
-</div>
-<hr class="cs-divider"/>
-
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="hide-login">Hide Login URL</h3>
-<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-hide-login-11.jpg" alt="Hide Login URL" /></figure>
-<div class="cs-panel-body">
-<p>The <strong>Hide Login URL</strong> feature moves your WordPress login page away from the default <code>/wp-login.php</code> address to a secret URL of your choosing. Bots and automated scanners that probe <code>/wp-login.php</code> receive a 404 response — they never see the login form, which eliminates the vast majority of brute-force and credential-stuffing traffic.</p>
-<p><strong>How it works:</strong></p>
-<ul>
-<li>When enabled, a custom WordPress <code>init</code> hook (priority 1) intercepts requests to your chosen slug and serves <code>wp-login.php</code> transparently, so the login form loads correctly at the new URL without any redirect.</li>
-<li>Direct requests to <code>/wp-login.php</code> are blocked by a <code>login_init</code> hook and return a 404.</li>
-<li>The <code>wp_login_url()</code>, <code>logout_url()</code>, and <code>lostpassword_url()</code> filters are overridden to always produce your custom URL, so all internal WordPress links (password reset emails, "Back to login" links) continue to work correctly.</li>
-</ul>
-<p><strong>Setup:</strong></p>
-<ol>
-<li>Toggle <em>Enable Hide Login</em> on.</li>
-<li>Enter a slug in <em>Custom Login Path</em> — letters, numbers, and hyphens only (e.g. <code>my-secret-login</code>). Avoid obvious words like <code>login</code>, <code>admin</code>, or <code>dashboard</code>.</li>
-<li>Click <em>Save Hide Login Settings</em>.</li>
-<li><strong>Immediately note the new URL</strong> shown after saving. If you lose it, you can recover access via WP-CLI: <code>wp option get csdt_devtools_login_slug</code>.</li>
-</ol>
-<p><strong>Compatibility:</strong> WP-CLI, XMLRPC, REST API, and WP Cron are unaffected — they bypass the login URL check entirely.</p></div>
-</div>
-<hr class="cs-divider"/>
-
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="2fa">Two-Factor Auth</h3>
-<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-2fa-11.jpg" alt="Two-Factor Auth" /></figure>
-<div class="cs-panel-body">
-<p><strong>Two-Factor Authentication (2FA)</strong> requires users to prove their identity with a second factor — a one-time code — in addition to their password. Even if a password is compromised, an attacker cannot log in without also having access to the second factor.</p>
-<p><strong>Available methods:</strong></p>
-<ul>
-<li><strong>Email code</strong> — after a successful password login, a 6-digit code is emailed to the user's account address. The code expires after 10 minutes. No app required.</li>
-<li><strong>Authenticator app (TOTP)</strong> — uses the industry-standard Time-based One-Time Password algorithm (RFC 6238). Users scan a QR code with Google Authenticator, Authy, 1Password, or any compatible app. Works completely offline.</li>
-<li><strong>Passkey</strong> — replaces the code prompt with a biometric check (Face ID, Touch ID, Windows Hello) or hardware security key. The fastest and most phishing-resistant method.</li>
-</ul>
-<p><strong>Site-wide settings:</strong></p>
-<ul>
-<li><em>2FA Method</em> — sets which method is available to users. "Off" disables 2FA entirely.</li>
-<li><em>Force 2FA for all administrators</em> — any administrator who has not configured 2FA will be blocked from the dashboard after login until they complete setup.</li>
-<li><em>Grace logins</em> — configurable number of logins allowed before 2FA is enforced, giving admins time to set up their second factor.</li>
-</ul>
-<p><strong>Brute-Force Protection</strong> locks accounts after N failed login attempts (default: 5 attempts, 5-minute lock). Both thresholds are configurable.</p>
-<p><strong>Session Duration</strong> overrides the WordPress default session length. When set, persistent cookies are used so sessions survive browser close.</p>
-<p><strong>Test Account Manager</strong> creates temporary subscriber accounts with app passwords for Playwright / CI pipelines. Accounts auto-delete on expiry or first use. App passwords are blocked for all non-test accounts.</p></div>
-</div>
-<hr class="cs-divider"/>
-
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="passkeys">Passkeys (WebAuthn)</h3>
-<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-passkeys-11.jpg" alt="Passkeys (WebAuthn)" /></figure>
-<div class="cs-panel-body">
-<p><strong>Passkeys</strong> are FIDO2/WebAuthn credentials that replace password-based 2FA codes with a biometric or hardware-key verification. When you log in, instead of typing a 6-digit code, you authenticate with Face ID, Touch ID, Windows Hello, or a physical security key (YubiKey, etc.).</p>
-<p><strong>How passkeys work:</strong></p>
-<ul>
-<li>Registration generates a public/private key pair on your device. The private key never leaves your device — only the public key is stored on the server (in WordPress user meta).</li>
-<li>At login, the server sends a random challenge. Your device signs it with the private key. The server verifies the signature against the stored public key. No secret is transmitted over the network.</li>
-<li>Passkeys are bound to the site's domain (Relying Party ID), making them inherently phishing-resistant — a fake domain cannot trigger your real passkey.</li>
-</ul>
-<p><strong>Registering a passkey:</strong></p>
-<ol>
-<li>In the <em>Passkeys (WebAuthn)</em> panel, click <em>+ Add Passkey</em>.</li>
-<li>Give the passkey a recognisable label (e.g. "MacBook Pro", "iPhone 16", "YubiKey 5").</li>
-<li>Click <em>Register</em> — your browser will prompt you for biometric verification or to insert a hardware key.</li>
-<li>On success, the passkey appears in the list. Register one passkey per device you want to use for login.</li>
-</ol>
-<p><strong>Using passkeys for login:</strong> In the <em>Two-Factor Authentication</em> settings, set the 2FA method to <em>Passkey</em>. After a successful password login, you will be prompted to verify with your passkey instead of typing a code.</p>
-<p><strong>Browser support:</strong> Chrome 108+, Safari 16+, Edge 108+, Firefox 122+. Older browsers fall back to an email OTP code automatically.</p>
-<p><strong>Testing:</strong> Use the <em>Test</em> button next to each registered passkey to verify it is working correctly without logging out.</p></div>
-</div>
-<hr class="cs-divider"/>
-
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="code-block">Code Block Overview</h3>
-<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-code-block-11.jpg" alt="Code Block Overview" /></figure>
+<h3 class="cs-panel-heading" id="code-block">Code Block</h3>
+<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-code-block-13.jpg" alt="Code Block" /></figure>
 <div class="cs-panel-body">
 <div style="background:#f0f9ff;border-left:4px solid #0e6b8f;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:28px;">
 <h2 style="margin:0 0 10px;font-size:1.3em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">Why CloudScale Devtools?</h2>
@@ -257,7 +238,7 @@
 
 <div class="cs-panel-section">
 <h3 class="cs-panel-heading" id="migrator">Code Block Migrator</h3>
-<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-migrator-11.jpg" alt="Code Block Migrator" /></figure>
+<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-migrator-13.jpg" alt="Code Block Migrator" /></figure>
 <div class="cs-panel-body">
 <p>The <strong>Code Block Migrator</strong> converts legacy code block shortcodes and HTML from other WordPress syntax highlighting plugins to CloudScale Devtools blocks in a single batch operation.</p>
 <p><strong>Supported source formats:</strong></p>
@@ -280,7 +261,7 @@
 
 <div class="cs-panel-section">
 <h3 class="cs-panel-heading" id="sql-tool">SQL Query Tool</h3>
-<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-sql-tool-11.jpg" alt="SQL Query Tool" /></figure>
+<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-sql-tool-13.jpg" alt="SQL Query Tool" /></figure>
 <div class="cs-panel-body">
 <p>The <strong>SQL Query Tool</strong> lets WordPress administrators run read-only SELECT queries against the live database from within wp-admin — without needing phpMyAdmin, Adminer, or SSH access.</p>
 <p><strong>Security model:</strong></p>
@@ -296,6 +277,25 @@
 <li><em>URL &amp; Migration Helpers</em>: HTTP references, posts with HTTP GUIDs, old IP references, posts missing meta descriptions.</li>
 </ul>
 <p><strong>Keyboard shortcuts:</strong> <kbd>Enter</kbd> or <kbd>Ctrl+Enter</kbd> runs the query. <kbd>Shift+Enter</kbd> inserts a newline.</p></div>
+</div>
+<hr class="cs-divider"/>
+
+<div class="cs-panel-section">
+<h3 class="cs-panel-heading" id="server-logs">Server Logs</h3>
+<figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-server-logs-5.jpg" alt="Server Logs" /></figure>
+<div class="cs-panel-body">
+<p>The <strong>Server Logs</strong> viewer lets you read PHP error logs, WordPress debug logs, and web server access/error logs directly in the browser — no SSH access required.</p>
+<p><strong>Features:</strong></p>
+<ul>
+<li><strong>Source picker</strong> — lists all available log sources with availability indicators: readable, not found, permission denied, or empty. Switch between sources with a single click.</li>
+<li><strong>Live search</strong> — filter log entries in real time as you type. Matches are highlighted.</li>
+<li><strong>Severity filter</strong> — filter by log level from Emergency down to Debug. Useful for cutting through noise on busy sites.</li>
+<li><strong>Configurable line count</strong> — choose how many lines to load (50 to 5,000).</li>
+<li><strong>Auto-refresh tail mode</strong> — refreshes the log every 30 seconds, showing new entries at the bottom. Useful for watching errors in real time while reproducing a bug.</li>
+<li><strong>Custom log paths</strong> — add any additional log file paths (e.g. Nginx error log, custom application log). Custom paths persist across sessions.</li>
+<li><strong>One-click PHP error log setup</strong> — if PHP error logging is not configured, a button appears to enable it automatically by writing the required <code>php.ini</code> directives.</li>
+</ul>
+<p><strong>Access:</strong> Restricted to users with the <code>manage_options</code> capability (Administrators only). Log content is read-only — no write operations are possible from this panel.</p></div>
 </div>
 <hr class="cs-divider"/>
 </div>
