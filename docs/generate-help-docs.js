@@ -42,7 +42,7 @@ helpLib.run({
 <div style="position:absolute;top:-40px;right:-40px;width:260px;height:260px;background:rgba(99,102,241,.15);border-radius:50%;pointer-events:none;"></div>
 <div style="position:relative;">
 <p style="margin:0 0 10px;font-size:.85em;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#818cf8;">Free &amp; Open Source · No Subscription · Your Own API Key</p>
-<h1 style="margin:0 0 18px;font-size:2em;font-weight:900;line-height:1.2;color:#fff;">43% of the Internet Runs WordPress.<br>Most of It Is Dangerously Exposed.</h1>
+<h1 style="margin:0 0 18px;font-size:2em;font-weight:900;line-height:1.2;color:#fff;background:transparent!important;padding:0!important;border:none!important;">43% of the Internet Runs WordPress.<br>Most of It Is Dangerously Exposed.</h1>
 <p style="margin:0 0 22px;font-size:1.1em;line-height:1.75;color:#cbd5e1;max-width:700px;">CloudScale Cyber and Devtools brings the same AI-powered security intelligence used by enterprise security teams directly into your WordPress dashboard. Completely free, open-source, and running on your own server. Powered by <strong style="color:#fff;">Anthropic Claude 4</strong> and <strong style="color:#fff;">Google Gemini 2.5 Pro</strong>.</p>
 <div style="display:flex;flex-wrap:wrap;gap:12px;">
 <a href="#download" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;font-weight:700;font-size:.95em;padding:12px 28px;border-radius:8px;">Download Free Plugin</a>
@@ -51,7 +51,7 @@ helpLib.run({
 </div>
 </div>
 
-<h2 style="font-size:1.5em;font-weight:800;color:#0f172a;margin:0 0 14px;">The WordPress Security Reality No One Talks About</h2>
+<h2 style="font-size:1.5em;font-weight:800;color:#0f172a;margin:0 0 14px;background:transparent!important;padding:0!important;border:none!important;">The WordPress Security Reality No One Talks About</h2>
 
 <p style="font-size:1.05em;color:#374151;margin:0 0 16px;line-height:1.75;">WordPress powers <strong>43% of every website on the internet</strong>, over 810 million sites. That extraordinary market dominance makes it the single most targeted platform in the history of the web. Automated attack bots don't discriminate by site size or traffic. Your personal blog, your agency client's e-commerce store, your company's marketing site: they are all being probed right now, regardless of how small or "not worth hacking" you think they are.</p>
 
@@ -66,7 +66,7 @@ helpLib.run({
 <p style="margin:0;color:#374151;line-height:1.7;">For years, WordPress security advice has come in the form of checklists: "enable these constants in wp-config.php, install a firewall plugin, keep plugins updated." This advice is correct but woefully incomplete. A checklist tells you <em>what</em> to check. It cannot tell you what your specific configuration actually means from a risk perspective, whether a combination of settings creates an exposure that no individual setting would reveal, or whether one of your installed plugins contains obfuscated code that bypasses every firewall rule written. Checklists treat all sites as identical. Your site is not identical to anyone else's.</p>
 </div>
 
-<h2 style="font-size:1.5em;font-weight:800;color:#0f172a;margin:0 0 14px;">Why the Existing Security Tools Fall Short</h2>
+<h2 style="font-size:1.5em;font-weight:800;color:#0f172a;margin:0 0 14px;background:transparent!important;padding:0!important;border:none!important;">Why the Existing Security Tools Fall Short</h2>
 
 <div style="background:#f1f5f9;border-radius:8px;padding:20px 24px;margin:0 0 24px;">
 <h3 style="margin:0 0 12px;font-size:1.02em;font-weight:700;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">Understanding the Terminology</h3>
@@ -105,13 +105,13 @@ helpLib.run({
 <p style="margin:0;color:#374151;line-height:1.7;">Real AI security analysis means sending your actual configuration, your actual plugin list, your actual code (not a pre-processed summary) to a frontier model and asking it to reason about the specific risk profile. It means the AI can identify that <em>your combination</em> of an outdated caching plugin, a relaxed CORS policy, and a public-facing REST API endpoint creates an exposure that no individual component would trigger on its own. That requires genuine frontier intelligence, not pattern-matching dressed up with AI branding.</p>
 </div>
 
-<h2 style="font-size:1.5em;font-weight:800;color:#0f172a;margin:0 0 14px;">What Frontier AI Actually Changes</h2>
+<h2 style="font-size:1.5em;font-weight:800;color:#0f172a;margin:0 0 14px;background:transparent!important;padding:0!important;border:none!important;">What Frontier AI Actually Changes</h2>
 
 <p style="font-size:1.05em;color:#374151;margin:0 0 16px;line-height:1.75;">Anthropic Claude Opus 4 and Google Gemini 2.5 Pro are not chatbots with a security FAQ. They are frontier reasoning systems with deep knowledge of CVEs, OWASP vulnerabilities, PHP exploitation techniques, WordPress internals, and the full threat landscape. A professional security consultant doing a WordPress audit is doing fundamentally the same thing: reading your configuration, reasoning about what it means, cross-referencing known vulnerability patterns, and applying judgement about real-world risk. The audit a consultant would charge $500–$5,000 for and take days to schedule? The AI does it in under 60 seconds, on your specific site.</p>
 
 <p style="font-size:1.05em;color:#374151;margin:0 0 24px;line-height:1.75;">The critical difference from signature-based tools: the AI doesn't need your vulnerability to be in a database first. It reasons from first principles. When it reads your sshd_config and sees that <code>PasswordAuthentication yes</code> is set with no fail2ban equivalent running and port 22 open to the internet, it knows from its training on real-world security incidents that this configuration actively gets servers recruited into DDoS botnets. Not because that specific combination is in a signature database. Because it understands what that configuration means.</p>
 
-<h2 style="font-size:1.5em;font-weight:800;color:#0f172a;margin:0 0 14px;">The Mythology of AI Security</h2>
+<h2 style="font-size:1.5em;font-weight:800;color:#0f172a;margin:0 0 14px;background:transparent!important;padding:0!important;border:none!important;">The Mythology of AI Security</h2>
 
 <p style="font-size:1.05em;color:#374151;margin:0 0 16px;line-height:1.75;">There is a prevailing mythology in the security industry that AI is a magic layer you bolt onto existing tools to make them better. Vendors who spent the last decade building signature databases rebranded overnight. The product didn't change. The marketing did. "AI-powered" became the new "cloud-enabled": a phrase that means everything and nothing at once.</p>
 
@@ -126,7 +126,7 @@ helpLib.run({
 <p style="margin:0;color:#94a3b8;line-height:1.7;">CloudScale is built to absorb every new model the day it launches. No migration, no upgrade fee, no waiting. Your plugin gets smarter as the underlying AI gets smarter. The architecture was designed specifically for this: your site, your API key, your direct relationship with the provider. When the next breakthrough model drops, you flip a dropdown and you're on it.</p>
 </div>
 
-<h2 style="font-size:1.5em;font-weight:800;color:#0f172a;margin:0 0 14px;">CloudScale Cyber and Devtools: The Breakthrough</h2>
+<h2 style="font-size:1.5em;font-weight:800;color:#0f172a;margin:0 0 14px;background:transparent!important;padding:0!important;border:none!important;">CloudScale Cyber and Devtools: The Breakthrough</h2>
 
 <p style="font-size:1.05em;color:#374151;margin:0 0 16px;line-height:1.75;">CloudScale Cyber and Devtools is a <strong>free, open-source WordPress security and developer toolkit</strong> that gives every WordPress site owner access to exactly this level of analysis. No premium tier. No "upgrade to see your full results." No monthly subscription. You bring your own API key (Google Gemini has a <strong>free tier that requires no credit card</strong>), and the plugin runs on your own server. Your data never goes anywhere except directly to the AI provider you choose.</p>
 
@@ -139,7 +139,7 @@ helpLib.run({
 <p style="margin:0;color:#374151;line-height:1.7;">When Anthropic releases Claude Opus 5 or Google ships Gemini 3, <strong>you get it immediately.</strong> No waiting for a plugin vendor to integrate it, no being held on an older model to protect their infrastructure margins. CloudScale ships support for the latest frontier models as soon as they launch. You choose your model, you own the key, you get the best intelligence available from day one.</p>
 </div>
 
-<h2 style="font-size:1.5em;font-weight:800;color:#0f172a;margin:0 0 14px;">Installing the Plugin: Step by Step</h2>
+<h2 style="font-size:1.5em;font-weight:800;color:#0f172a;margin:0 0 14px;background:transparent!important;padding:0!important;border:none!important;">Installing the Plugin: Step by Step</h2>
 
 <p style="font-size:1.05em;color:#374151;margin:0 0 20px;line-height:1.75;">The plugin isn't in the WordPress.org directory yet, so installation takes one extra step compared to a typical plugin. It's still under five minutes from download to your first security scan.</p>
 
@@ -391,7 +391,7 @@ helpLib.run({
 
 <hr style="border:none;border-top:1px solid #e2e8f0;margin:28px 0;">
 
-<h2 style="font-size:1.3em;font-weight:800;color:#0f172a;margin:0 0 6px;">Setting Up Your AI Provider</h2>
+<h2 style="font-size:1.3em;font-weight:800;color:#0f172a;margin:0 0 6px;background:transparent!important;padding:0!important;border:none!important;">Setting Up Your AI Provider</h2>
 <p style="color:#64748b;margin:0 0 20px;font-size:.95em;">You need one API key to use the AI Cyber Audit. Google Gemini has a free tier with no credit card needed. Anthropic Claude requires a credit card but delivers the deepest analysis. Either works; both are excellent.</p>
 
 <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:22px 24px;margin:0 0 24px;">
