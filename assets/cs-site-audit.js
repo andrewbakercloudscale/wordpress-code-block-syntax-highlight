@@ -10,7 +10,7 @@
     var progressText  = document.getElementById('csdt-site-audit-progress-text');
     var resultsDiv    = document.getElementById('csdt-site-audit-results');
 
-    var SEV_ORDER = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+    var SEV_ORDER = { critical: 1, high: 2, medium: 3, low: 4, info: 5 };
     var SEV_COLOR = {
         critical: { bg: '#fef2f2', border: '#fca5a5', badge: '#dc2626', text: '#7f1d1d' },
         high:     { bg: '#fff7ed', border: '#fed7aa', badge: '#ea580c', text: '#7c2d12' },
