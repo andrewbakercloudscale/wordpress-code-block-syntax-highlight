@@ -599,7 +599,18 @@
         wireQuickFixButtons();
 
         // ── Scan history chart ────────────────────────────────────────
-        renderScanHistoryChart(cfg.scanHistory || []);
+        // Defer one frame so CSS layout is finalised before measuring canvas width.
+        requestAnimationFrame(function () {
+            renderScanHistoryChart(cfg.scanHistory || []);
+        });
+        // Redraw on viewport resize (orientation change, split-screen, etc.)
+        var resizeTimer;
+        window.addEventListener('resize', function () {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function () {
+                renderScanHistoryChart(cfg.scanHistory || []);
+            }, 150);
+        });
     });
 
     // ── Quick Fixes ──────────────────────────────────────────────────────
@@ -681,7 +692,7 @@
         var data = history.slice().reverse(); // oldest → newest left → right
 
         var dpr = window.devicePixelRatio || 1;
-        var W   = canvas.offsetWidth || canvas.parentElement.offsetWidth || 600;
+        var W   = canvas.offsetWidth || canvas.parentElement.offsetWidth || (window.innerWidth - 80);
         var H   = 190;
         canvas.width        = W * dpr;
         canvas.height       = H * dpr;
@@ -731,13 +742,17 @@
 
         // ── X-axis: date labels ───────────────────────────────────────
         var step = cW / Math.max(data.length - 1, 1);
+        // On narrow screens skip labels when they would overlap (min 36px apart)
+        var labelEvery = Math.ceil(36 / Math.max(step, 1));
         ctx.fillStyle = LABEL_COLOR;
         ctx.font      = FONT;
         ctx.textAlign = 'center';
         data.forEach(function (entry, i) {
             var x = PAD_L + i * step;
             var d = new Date((entry.scanned_at || 0) * 1000);
-            ctx.fillText((d.getMonth() + 1) + '/' + d.getDate(), x, PAD_T + cH + 14);
+            if (i % labelEvery === 0 || i === data.length - 1) {
+                ctx.fillText((d.getMonth() + 1) + '/' + d.getDate(), x, PAD_T + cH + 14);
+            }
             ctx.strokeStyle = GRID_COLOR;
             ctx.lineWidth   = 1;
             ctx.beginPath(); ctx.moveTo(x, PAD_T); ctx.lineTo(x, PAD_T + cH); ctx.stroke();
