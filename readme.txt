@@ -4,7 +4,7 @@ Tags: security, code block, syntax highlighting, AI security scan, WordPress har
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.9.157
+Stable tag: 1.9.160
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,7 +85,7 @@ highlight.js with auto-detection — 190+ languages including Bash, Python, Java
 
 == Changelog ==
 
-= 1.9.157 =
+= 1.9.158 =
 * fix: Test Account Manager — replace single-use checkbox with Max Logins number input (0 = unlimited, 1 = single-use, N = N logins)
 * fix: Test Account Manager — reduce gap between Save Settings and Create Account divider
 
