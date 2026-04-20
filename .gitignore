@@ -27,3 +27,4 @@ docs/screenshots/
 repo/
 *.backup
 tests/.auth/
+.env.test

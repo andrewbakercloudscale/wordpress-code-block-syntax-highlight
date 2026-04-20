@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.170
+ * Version: 1.9.177
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.170';
+    const VERSION      = '1.9.177';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -435,6 +435,11 @@ class CloudScale_DevTools {
         // Performance monitor — EXPLAIN endpoint.
         add_action( 'wp_ajax_csdt_devtools_perf_explain',       [ __CLASS__, 'ajax_perf_explain' ] );
         add_action( 'wp_ajax_csdt_devtools_perf_debug_toggle',  [ __CLASS__, 'ajax_perf_debug_toggle' ] );
+
+        // Editor debug panel — only on post/post-new screens when enabled.
+        if ( get_option( 'csdt_devtools_editor_debug_panel', '0' ) === '1' ) {
+            add_action( 'admin_footer', [ __CLASS__, 'output_editor_debug_panel' ], 9998 );
+        }
 
         // Performance monitor — only register data-collection hooks when the monitor is enabled.
         // This prevents SAVEQUERIES-scale memory accumulation on every request when disabled.
@@ -9118,6 +9123,17 @@ class CloudScale_DevTools {
                 'dismiss_id'   => 'app_pw_2fa_ack',
             ],
             [
+                'id'        => 'enforce_2fa_admins',
+                'title'     => get_option( 'csdt_devtools_2fa_force_admins', '0' ) === '1'
+                    ? '2FA enforcement is active — admins must complete a second factor'
+                    : 'Admin accounts not required to use two-factor authentication',
+                'detail'    => get_option( 'csdt_devtools_2fa_force_admins', '0' ) === '1'
+                    ? 'All administrator accounts are required to set up and use 2FA on every login. Accounts without 2FA configured will be redirected to the enrollment page.'
+                    : 'Administrator accounts can log in with a password alone. A single leaked or guessed password gives an attacker full site control. Enabling enforcement redirects admins without 2FA to the enrollment page on their next login.',
+                'fixed'     => get_option( 'csdt_devtools_2fa_force_admins', '0' ) === '1',
+                'fix_label' => 'Enforce 2FA for Admins',
+            ],
+            [
                 'id'        => 'hide_wp_version',
                 'title'     => 'WordPress version exposed in HTML',
                 'detail'    => 'The <generator> meta tag and asset ?ver= query strings reveal your WP version, helping attackers target known vulnerabilities.',
@@ -9286,6 +9302,26 @@ class CloudScale_DevTools {
                     'fixed'     => $running,
                     'fix_label' => 'Copy fail2ban config',
                     'fix_modal' => 'csdt-fail2ban-modal',
+                ];
+            } )(),
+            ( function () {
+                $cfg_file = ABSPATH . 'wp-config.php';
+                $fixed    = false;
+                if ( is_readable( $cfg_file ) ) {
+                    // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+                    $cfg   = file_get_contents( $cfg_file );
+                    $fixed = (bool) preg_match( "/define\s*\(\s*['\"]DISABLE_WP_CRON['\"]\s*,\s*true\s*\)\s*;/i", $cfg );
+                }
+                return [
+                    'id'        => 'disable_wp_cron',
+                    'title'     => $fixed
+                        ? 'DISABLE_WP_CRON is set — wp-cron.php cannot be abused externally'
+                        : 'wp-cron.php is publicly accessible — denial-of-service risk',
+                    'detail'    => $fixed
+                        ? "define('DISABLE_WP_CRON', true) is present in wp-config.php. Ensure a system cron or WP-CLI fires scheduled events every 5–15 minutes."
+                        : "Any HTTP request to wp-cron.php triggers all due scheduled tasks. Attackers can spam it to cause repeated CPU spikes (denial-of-service). Fix writes define('DISABLE_WP_CRON', true) to wp-config.php — you must then configure a system cron to keep events running.",
+                    'fixed'     => $fixed,
+                    'fix_label' => 'Disable Public WP-Cron',
                 ];
             } )(),
         ];
@@ -9471,6 +9507,10 @@ class CloudScale_DevTools {
                     <input type="checkbox" id="cs-csp-enabled" <?php checked( $csp_on ); ?>>
                     <?php esc_html_e( 'Enable CSP', 'cloudscale-devtools' ); ?>
                 </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;" title="Shows a floating debug panel on post/post-new screens capturing CSP violations, JS errors, failed resources and network issues">
+                    <input type="checkbox" id="cs-csp-debug-panel" <?php checked( get_option( 'csdt_devtools_editor_debug_panel', '0' ), '1' ); ?>>
+                    <?php esc_html_e( 'Editor Debug Panel', 'cloudscale-devtools' ); ?>
+                </label>
                 <label style="display:flex;align-items:center;gap:6px;font-size:13px;">
                     <input type="radio" name="cs-csp-mode" value="enforce" <?php checked( $csp_mode, 'enforce' ); ?>>
                     <?php esc_html_e( 'Enforce', 'cloudscale-devtools' ); ?>
@@ -9591,10 +9631,12 @@ class CloudScale_DevTools {
                     var fd = new FormData();
                     fd.append('action',   'csdt_devtools_csp_save');
                     fd.append('nonce',    csdtVulnScan.nonce);
-                    fd.append('enabled',  document.getElementById('cs-csp-enabled').checked ? '1' : '0');
-                    fd.append('mode',     modeEl ? modeEl.value : 'enforce');
-                    fd.append('services', JSON.stringify(services));
-                    fd.append('custom',   customIn ? customIn.value.trim() : '');
+                    fd.append('enabled',      document.getElementById('cs-csp-enabled').checked ? '1' : '0');
+                    fd.append('mode',         modeEl ? modeEl.value : 'enforce');
+                    fd.append('services',     JSON.stringify(services));
+                    fd.append('custom',       customIn ? customIn.value.trim() : '');
+                    var dbgCb = document.getElementById('cs-csp-debug-panel');
+                    fd.append('debug_panel',  dbgCb && dbgCb.checked ? '1' : '0');
                     fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
                         .then(function(r){ return r.json(); })
                         .then(function(resp){
@@ -9746,6 +9788,273 @@ class CloudScale_DevTools {
         <?php
     }
 
+    // ── Editor Debug Panel ────────────────────────────────────────────────────
+
+    public static function output_editor_debug_panel(): void {
+        $screen = get_current_screen();
+        if ( ! $screen || $screen->base !== 'post' ) { return; }
+        ?>
+<style>
+#csdt-dbg{position:fixed;top:32px;right:10px;z-index:99999;width:460px;max-width:calc(100vw - 20px);max-height:70vh;display:flex;flex-direction:column;background:#1e1e2e;color:#cdd6f4;font-family:monospace;font-size:12px;border-radius:10px;box-shadow:0 6px 30px rgba(0,0,0,.75);overflow:hidden}
+#csdt-dbg-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#181825;border-bottom:1px solid #313244;flex-shrink:0;cursor:move;user-select:none}
+#csdt-dbg-head h3{margin:0;font-size:12px;font-weight:700;color:#cba6f7;letter-spacing:.04em}
+#csdt-dbg-head-btns{display:flex;gap:6px}
+#csdt-dbg-head-btns button{background:none;border:none;cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;border-radius:4px;color:#a6adc8}
+#csdt-dbg-head-btns button:hover{background:#313244;color:#cdd6f4}
+#csdt-dbg-tabs{display:flex;gap:2px;padding:6px 8px 0;background:#181825;flex-shrink:0}
+#csdt-dbg-tabs button{background:#313244;border:none;color:#a6adc8;font-size:11px;font-family:monospace;padding:4px 10px;border-radius:6px 6px 0 0;cursor:pointer;position:relative}
+#csdt-dbg-tabs button.active{background:#1e1e2e;color:#cdd6f4;font-weight:700}
+#csdt-dbg-tabs button .badge{position:absolute;top:-5px;right:-5px;background:#f38ba8;color:#1e1e2e;font-size:10px;font-weight:700;border-radius:999px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 3px;display:none}
+#csdt-dbg-tabs button .badge.show{display:block}
+#csdt-dbg-body{overflow-y:auto;flex:1;padding:8px}
+.csdt-row{border-bottom:1px solid #313244;padding:5px 2px;line-height:1.5;word-break:break-all}
+.csdt-row:last-child{border-bottom:none}
+.csdt-row .ts{color:#6c7086;font-size:10px;margin-right:5px}
+.csdt-row .lbl{font-weight:700;margin-right:4px}
+.csdt-row .detail{color:#bac2de;font-size:11px}
+.csdt-csp .lbl{color:#f38ba8}.csdt-js .lbl{color:#fab387}.csdt-res .lbl{color:#f9e2af}
+.csdt-net .lbl{color:#89b4fa}.csdt-ok .lbl{color:#a6e3a1}.csdt-info .lbl{color:#89dceb}
+.csdt-empty{color:#6c7086;font-size:11px;padding:12px 4px}
+</style>
+<div id="csdt-dbg">
+    <div id="csdt-dbg-head">
+        <h3>&#x1F6E0; DevTools Debug</h3>
+        <div id="csdt-dbg-head-btns">
+            <button id="csdt-dbg-clear" title="Clear all">&#x1F5D1;</button>
+            <button id="csdt-dbg-min"   title="Minimise">&#x2212;</button>
+            <button id="csdt-dbg-close" title="Close">&#x2715;</button>
+        </div>
+    </div>
+    <div id="csdt-dbg-tabs">
+        <button class="active" data-tab="all">All<span class="badge" id="csdt-b-all"></span></button>
+        <button data-tab="csp">CSP<span class="badge" id="csdt-b-csp"></span></button>
+        <button data-tab="js">JS<span class="badge" id="csdt-b-js"></span></button>
+        <button data-tab="res">Assets<span class="badge" id="csdt-b-res"></span></button>
+        <button data-tab="net">Network<span class="badge" id="csdt-b-net"></span></button>
+        <button data-tab="frames">Frames<span class="badge" id="csdt-b-frames"></span></button>
+    </div>
+    <div id="csdt-dbg-body"><div class="csdt-empty">Listening&hellip;</div></div>
+</div>
+<script>
+(function () {
+    'use strict';
+    var panel   = document.getElementById('csdt-dbg');
+    var body    = document.getElementById('csdt-dbg-body');
+    var tabs    = document.querySelectorAll('#csdt-dbg-tabs button');
+    var activeTab = 'all';
+    var logs    = [];          // {type, tab, ts, html}
+    var counts  = {csp:0,js:0,res:0,net:0,frames:0};
+
+    /* ── helpers ── */
+    function ts() {
+        var d = new Date();
+        return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2)+'.'+('00'+d.getMilliseconds()).slice(-3);
+    }
+    function esc(s) {
+        return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function push(tab, cssClass, label, detail, extra) {
+        counts[tab] = (counts[tab]||0)+1;
+        logs.unshift({ tab:tab, html:
+            '<div class="csdt-row '+cssClass+'">'
+            +'<span class="ts">'+ts()+'</span>'
+            +'<span class="lbl">'+label+'</span>'
+            +'<span class="detail">'+esc(detail)+(extra?'<br>'+esc(extra):'')+'</span>'
+            +'</div>'
+        });
+        if (logs.length > 200) { logs.pop(); }
+        renderBadges();
+        render();
+    }
+    function renderBadges() {
+        var total = 0;
+        ['csp','js','res','net'].forEach(function(t){
+            var b = document.getElementById('csdt-b-'+t);
+            if (b) { var n=counts[t]||0; b.textContent=n; b.className='badge'+(n?' show':''); total+=n; }
+        });
+        var ba = document.getElementById('csdt-b-all');
+        if (ba) { ba.textContent=total; ba.className='badge'+(total?' show':''); }
+    }
+    function render() {
+        var rows = logs.filter(function(l){ return activeTab==='all'||l.tab===activeTab; });
+        body.innerHTML = rows.length
+            ? rows.map(function(l){return l.html;}).join('')
+            : '<div class="csdt-empty">'+(activeTab==='frames'?'Scanning…':'No events yet')+'</div>';
+    }
+
+    /* ── tabs ── */
+    tabs.forEach(function(btn){
+        btn.addEventListener('click', function(){
+            activeTab = btn.dataset.tab;
+            tabs.forEach(function(b){ b.classList.remove('active'); });
+            btn.classList.add('active');
+            render();
+        });
+    });
+
+    /* ── toolbar buttons ── */
+    document.getElementById('csdt-dbg-close').addEventListener('click', function(){ panel.style.display='none'; });
+    document.getElementById('csdt-dbg-min').addEventListener('click', function(){
+        var collapsed = body.style.display === 'none';
+        body.style.display    = collapsed ? '' : 'none';
+        document.getElementById('csdt-dbg-tabs').style.display = collapsed ? '' : 'none';
+        this.textContent = collapsed ? '−' : '□';
+    });
+    document.getElementById('csdt-dbg-clear').addEventListener('click', function(){
+        logs=[]; counts={csp:0,js:0,res:0,net:0,frames:0}; renderBadges(); render();
+    });
+
+    /* ── drag to reposition ── */
+    (function(){
+        var hd = document.getElementById('csdt-dbg-head'), dx=0, dy=0, mx=0, my=0;
+        hd.addEventListener('mousedown', function(e){
+            e.preventDefault();
+            mx=e.clientX; my=e.clientY;
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up, {once:true});
+        });
+        function move(e){
+            dx=mx-e.clientX; dy=my-e.clientY; mx=e.clientX; my=e.clientY;
+            panel.style.top  = (panel.offsetTop-dy)+'px';
+            panel.style.right= 'auto';
+            panel.style.left = (panel.offsetLeft-dx)+'px';
+        }
+        function up(){ document.removeEventListener('mousemove', move); }
+    })();
+
+    /* ── 1. CSP violations ── */
+    document.addEventListener('securitypolicyviolation', function(e){
+        push('csp','csdt-csp',
+            'CSP '+e.violatedDirective,
+            (e.blockedURI||'(empty)'),
+            (e.sourceFile?e.sourceFile+':'+e.lineNumber:'')
+        );
+    });
+
+    /* ── 2. JS errors ── */
+    var origError = window.onerror;
+    window.onerror = function(msg, src, line, col, err){
+        push('js','csdt-js','JS Error', msg, (src?src+':'+line+':'+col:''));
+        return origError ? origError.apply(this, arguments) : false;
+    };
+
+    /* ── 3. Unhandled promise rejections ── */
+    window.addEventListener('unhandledrejection', function(e){
+        var reason = e.reason;
+        var msg = reason instanceof Error ? reason.message : String(reason||'unknown');
+        push('js','csdt-js','Promise Reject', msg);
+    });
+
+    /* ── 4. Console.error capture ── */
+    var origConsoleError = console.error;
+    console.error = function() {
+        var args = Array.prototype.slice.call(arguments);
+        var msg = args.map(function(a){ return typeof a==='object'?JSON.stringify(a):String(a); }).join(' ');
+        if (!/csdt-dbg/.test(msg)) {
+            push('js','csdt-js','console.error', msg.substring(0,300));
+        }
+        return origConsoleError.apply(console, arguments);
+    };
+
+    /* ── 5. Console.warn capture (only for errors containing key words) ── */
+    var origConsoleWarn = console.warn;
+    console.warn = function() {
+        var args = Array.prototype.slice.call(arguments);
+        var msg = args.map(function(a){ return typeof a==='object'?JSON.stringify(a):String(a); }).join(' ');
+        if (/error|fail|block|csp|403|401|unauthorized/i.test(msg) && !/csdt-dbg/.test(msg)) {
+            push('js','csdt-js','console.warn', msg.substring(0,300));
+        }
+        return origConsoleWarn.apply(console, arguments);
+    };
+
+    /* ── 6. Failed resource loads (script, link, img, audio, video) ── */
+    document.addEventListener('error', function(e){
+        var t = e.target;
+        if (!t || !t.tagName) return;
+        var tag  = t.tagName.toLowerCase();
+        var url  = t.src || t.href || '(unknown)';
+        if (tag === 'script' || tag === 'link' || tag === 'img' || tag === 'audio' || tag === 'video' || tag === 'source') {
+            push('res','csdt-res','Failed '+tag, url.replace(window.location.origin,''));
+        }
+    }, true);
+
+    /* ── 7. Fetch / XHR intercept for network failures ── */
+    var origFetch = window.fetch;
+    window.fetch = function(input, init) {
+        var url = typeof input === 'string' ? input : (input && input.url) || String(input);
+        return origFetch.apply(this, arguments).then(function(resp){
+            if (!resp.ok && resp.status >= 400) {
+                push('net','csdt-net','HTTP '+resp.status, url.replace(window.location.origin,''));
+            }
+            return resp;
+        }).catch(function(err){
+            push('net','csdt-net','Fetch Fail', url.replace(window.location.origin,''), err.message||String(err));
+            throw err;
+        });
+    };
+
+    var origOpen = XMLHttpRequest.prototype.open;
+    var origSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function(method, url) {
+        this._csdt_url = url;
+        return origOpen.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function() {
+        var xhr = this;
+        xhr.addEventListener('load', function(){
+            if (xhr.status >= 400) {
+                push('net','csdt-net','XHR '+xhr.status, String(xhr._csdt_url||'?').replace(window.location.origin,''));
+            }
+        });
+        xhr.addEventListener('error', function(){
+            push('net','csdt-net','XHR Error', String(xhr._csdt_url||'?').replace(window.location.origin,''));
+        });
+        return origSend.apply(this, arguments);
+    };
+
+    /* ── 8. Iframe scanner ── */
+    function scanFrames() {
+        var frames = document.querySelectorAll('iframe');
+        var found  = [];
+        frames.forEach(function(f, i){
+            var src   = f.src || '';
+            var proto = src ? src.split(':')[0] : '—';
+            found.push('['+i+'] '+f.name+' '+proto+'://… '+(f.src?f.src.substring(0,60):'(no src)'));
+        });
+        /* Update frames tab content independently so it doesn't duplicate in All */
+        var old = logs.findIndex(function(l){ return l.tab==='frames'; });
+        var html = found.length
+            ? found.map(function(s){return '<div class="csdt-row csdt-info"><span class="lbl">iframe</span><span class="detail">'+esc(s)+'</span></div>';}).join('')
+            : '<div class="csdt-empty">No iframes yet</div>';
+        var entry = { tab:'frames', html: html };
+        if (old >= 0) logs[old] = entry; else logs.push(entry);
+        render();
+    }
+    scanFrames();
+    setInterval(scanFrames, 3000);
+
+    /* ── 9. REST API errors surfaced via Gutenberg notices ── */
+    if (window.wp && window.wp.data) {
+        var lastNoticeCount = 0;
+        setInterval(function(){
+            try {
+                var notices = wp.data.select('core/notices').getNotices();
+                if (notices.length > lastNoticeCount) {
+                    notices.slice(lastNoticeCount).forEach(function(n){
+                        if (n.status === 'error' || n.status === 'warning') {
+                            push('net','csdt-net','WP Notice ['+n.status+']', n.content||n.id||'?');
+                        }
+                    });
+                    lastNoticeCount = notices.length;
+                }
+            } catch(e) {}
+        }, 2000);
+    }
+})();
+</script>
+        <?php
+    }
+
     public static function ajax_csp_save(): void {
         check_ajax_referer( 'csdt_devtools_security_nonce', 'nonce' );
         if ( ! current_user_can( 'manage_options' ) ) { wp_send_json_error( 'Unauthorized', 403 ); }
@@ -9768,10 +10077,12 @@ class CloudScale_DevTools {
             'saved_at' => time(),
         ] ) );
 
-        update_option( 'csdt_devtools_csp_enabled',  $enabled === '1' ? '1' : '0' );
-        update_option( 'csdt_devtools_csp_mode',     in_array( $mode, [ 'enforce', 'report_only' ], true ) ? $mode : 'enforce' );
-        update_option( 'csdt_devtools_csp_services', wp_json_encode( $services ) );
-        update_option( 'csdt_devtools_csp_custom',   $custom );
+        update_option( 'csdt_devtools_csp_enabled',       $enabled === '1' ? '1' : '0' );
+        update_option( 'csdt_devtools_csp_mode',          in_array( $mode, [ 'enforce', 'report_only' ], true ) ? $mode : 'enforce' );
+        update_option( 'csdt_devtools_csp_services',      wp_json_encode( $services ) );
+        update_option( 'csdt_devtools_csp_custom',        $custom );
+        $debug_panel = isset( $_POST['debug_panel'] ) && $_POST['debug_panel'] === '1' ? '1' : '0'; // phpcs:ignore
+        update_option( 'csdt_devtools_editor_debug_panel', $debug_panel );
 
         wp_send_json_success( [ 'has_backup' => true ] );
     }
@@ -11103,6 +11414,42 @@ bantime  = 86400</pre>
                 update_option( 'csdt_csp_inline_ack', '1' );
                 delete_transient( 'csdt_csp_unsafe_check' );
                 break;
+            case 'enforce_2fa_admins':
+                update_option( 'csdt_devtools_2fa_force_admins', '1' );
+                break;
+            case 'disable_wp_cron':
+                $cfg_file = ABSPATH . 'wp-config.php';
+                if ( ! is_readable( $cfg_file ) || ! is_writable( $cfg_file ) ) {
+                    wp_send_json_success( [
+                        'fixes'   => self::get_quick_fixes(),
+                        'warning' => "wp-config.php is not writable. Add this line manually before the stop-editing marker:\n\ndefine( 'DISABLE_WP_CRON', true );\n\nThen add a system cron: */10 * * * * wp cron event run --due-now --path=/var/www/html",
+                    ] );
+                    return;
+                }
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+                $cfg        = file_get_contents( $cfg_file );
+                $new_define = "define( 'DISABLE_WP_CRON', true );";
+                $pattern    = "/define\s*\(\s*['\"]DISABLE_WP_CRON['\"]\s*,\s*(?:true|false)\s*\)\s*;/i";
+                if ( preg_match( $pattern, $cfg ) ) {
+                    $cfg = preg_replace( $pattern, $new_define, $cfg );
+                } else {
+                    $cfg = preg_replace(
+                        '/\/\*\s*That\'s all[^*]*\*\//is',
+                        $new_define . "\n\n/* That's all, stop editing! Happy publishing. */",
+                        $cfg,
+                        1
+                    );
+                }
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+                if ( ! $cfg || file_put_contents( $cfg_file, $cfg ) === false ) {
+                    wp_send_json_error( 'Failed to write wp-config.php' );
+                    return;
+                }
+                wp_send_json_success( [
+                    'fixes'   => self::get_quick_fixes(),
+                    'warning' => "DISABLE_WP_CRON set in wp-config.php. Scheduled events will no longer run automatically — add a system cron to keep them firing:\n*/10 * * * * wp cron event run --due-now --path=/var/www/html",
+                ] );
+                return;
             default:
                 wp_send_json_error( 'Unknown fix ID' );
                 return;
@@ -14666,16 +15013,35 @@ PROMPT;
     }
 
     public static function cleanup_expired_test_accounts(): void {
+        $now = time();
+
+        // 1. Meta-tracked test accounts with an expiry timestamp.
         $users = get_users( [
             'meta_key'   => 'csdt_test_account',
             'meta_value' => '1',
             'fields'     => [ 'ID' ],
         ] );
-
-        $now = time();
         foreach ( $users as $u ) {
             $expires_at = (int) get_user_meta( $u->ID, 'csdt_test_expires_at', true );
             if ( $expires_at && $expires_at < $now ) {
+                wp_delete_user( $u->ID );
+            }
+        }
+
+        // 2. Orphaned test accounts not tracked by meta — sweep by known patterns.
+        //    @test.local email domain is never a real account; cs_devtools_test* and
+        //    temp-* usernames with no posts are plugin/debug artifacts safe to remove.
+        $orphans = get_users( [
+            'fields'     => [ 'ID', 'user_login', 'user_email', 'user_registered' ],
+            'number'     => 200,
+        ] );
+        foreach ( $orphans as $u ) {
+            $is_test_email    = str_ends_with( strtolower( $u->user_email ), '@test.local' );
+            $is_test_login    = strncmp( $u->user_login, 'cs_devtools_test', 16 ) === 0;
+            $is_temp_login    = strncmp( $u->user_login, 'temp-', 5 ) === 0
+                             && strtotime( $u->user_registered ) < $now - DAY_IN_SECONDS
+                             && (int) count_user_posts( $u->ID ) === 0;
+            if ( $is_test_email || $is_test_login || $is_temp_login ) {
                 wp_delete_user( $u->ID );
             }
         }
