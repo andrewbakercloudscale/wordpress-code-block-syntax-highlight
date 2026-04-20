@@ -575,6 +575,29 @@ $content = <<<'HTML'
 
 <h4 class="cs-sub-heading">Requirements</h4>
 <p>An Anthropic or Gemini API key must be configured under <strong>Security Scan → Settings</strong>. The assistant uses the same API key and model as the AI Cyber Audit — no separate configuration is needed. Log files must be readable by the web server process; see the <a href="#server-logs">Server Logs</a> section for setup instructions.</p>
+
+<h4 class="cs-sub-heading" id="php-error-alerting">PHP Error Alerting</h4>
+<div style="background:#fff7ed;border-left:4px solid #f97316;padding:16px 20px;border-radius:0 8px 8px 0;margin-bottom:20px;">
+<p style="margin:0;"><strong>Stop finding out your site is broken from your users.</strong> PHP Error Alerting watches your error logs in the background and sends you a push notification + email the moment a new fatal or error appears — before any visitor has a chance to report it.</p>
+</div>
+<p>The <strong>PHP Error Alerting</strong> panel (Debug AI tab, bottom section) monitors your PHP error log and WordPress debug log on a 5-minute cron cycle. When new fatal or error lines are detected since the last check, you receive:</p>
+<ul>
+<li><strong>ntfy.sh push notification</strong> — delivered to your phone or desktop immediately. Priority is set to <em>urgent</em> for PHP fatals, <em>high</em> for warnings/errors. Uses the same ntfy.sh topic configured under Scheduled Scans.</li>
+<li><strong>Email alert</strong> — sent to the site administrator's registered email address with the error excerpt.</li>
+</ul>
+<p><strong>How it works:</strong></p>
+<ol>
+<li>On each 5-minute tick, the monitor reads only the <em>new bytes</em> appended since the last check (byte-offset tracking) — it never re-reads old content.</li>
+<li>New content is filtered for lines matching PHP Fatal, PHP Error, PHP Parse, PHP Warning, and PHP Critical patterns.</li>
+<li>If the count of new error lines meets the configured threshold, an alert fires. Alerts are throttled to one per 15 minutes to prevent flooding during an error storm.</li>
+<li>On first activation, the current end-of-file position is recorded as the baseline — you will not be alerted for errors that existed before you turned the feature on.</li>
+</ol>
+<p><strong>Configuration:</strong></p>
+<ul>
+<li><strong>Enable / Disable</strong> — toggle the monitor on or off.</li>
+<li><strong>Alert threshold</strong> — minimum number of new error lines in a 5-minute window before an alert fires (default: 1).</li>
+</ul>
+<p><strong>Requirements:</strong> ntfy.sh notifications require a topic configured under <strong>Security Scan → Scheduled Scans → ntfy.sh URL</strong>. Email alerts use your configured SMTP settings (or PHP mail as fallback).</p>
 </div>
 </div>
 <hr class="cs-divider"/>
@@ -588,7 +611,7 @@ HTML;
 // without unfiltered_html (e.g. www-data running this script via CLI).
 kses_remove_filters();
 $result = wp_update_post( [
-    'ID'           => 5708,
+    'ID'           => 6605,
     'post_content' => $content,
     'post_status'  => 'publish',
 ] );
