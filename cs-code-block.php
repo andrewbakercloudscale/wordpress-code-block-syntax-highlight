@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.197
+ * Version: 1.9.198
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.197';
+    const VERSION      = '1.9.198';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -327,6 +327,7 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_devtools_server_logs_status',     [ __CLASS__, 'ajax_server_logs_status' ] );
         add_action( 'wp_ajax_csdt_devtools_server_logs_fetch',      [ __CLASS__, 'ajax_server_logs_fetch' ] );
         add_action( 'wp_ajax_csdt_devtools_logs_setup_php',         [ __CLASS__, 'ajax_logs_setup_php' ] );
+        add_action( 'wp_ajax_csdt_devtools_logs_fix_mu_perms',      [ __CLASS__, 'ajax_logs_fix_mu_perms' ] );
         add_action( 'wp_ajax_csdt_devtools_logs_custom_save',       [ __CLASS__, 'ajax_logs_custom_save' ] );
         add_action( 'wp_ajax_csdt_devtools_scan_history',       [ __CLASS__, 'ajax_scan_history' ] );
         add_action( 'wp_ajax_csdt_devtools_save_schedule',      [ __CLASS__, 'ajax_save_schedule' ] );
@@ -1792,6 +1793,33 @@ class CloudScale_DevTools {
         wp_send_json_success( [ 'path' => $log_path, 'sources' => self::get_log_sources() ] );
     }
 
+    public static function ajax_logs_fix_mu_perms(): void {
+        check_ajax_referer( 'csdt_devtools_server_logs', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        $mu_dir = WP_CONTENT_DIR . '/mu-plugins';
+        if ( ! is_dir( $mu_dir ) ) {
+            wp_mkdir_p( $mu_dir );
+        }
+
+        $uid = posix_getuid();
+        if ( $uid !== 0 ) {
+            wp_send_json_error( [ 'message' => __( 'PHP is not running as root — cannot chown automatically. Run manually: docker exec pi_wordpress chown www-data:www-data /var/www/html/wp-content/mu-plugins', 'cloudscale-devtools' ) ] );
+            return;
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions
+        $ok = @chown( $mu_dir, 'www-data' ) && @chgrp( $mu_dir, 'www-data' );
+        if ( ! $ok ) {
+            wp_send_json_error( [ 'message' => __( 'chown failed. Run manually: docker exec pi_wordpress chown www-data:www-data /var/www/html/wp-content/mu-plugins', 'cloudscale-devtools' ) ] );
+            return;
+        }
+
+        wp_send_json_success( [ 'message' => __( 'Permissions fixed. mu-plugins is now writable.', 'cloudscale-devtools' ) ] );
+    }
+
     public static function ajax_logs_custom_save(): void {
         check_ajax_referer( 'csdt_devtools_server_logs', 'nonce' );
         if ( ! current_user_can( 'manage_options' ) ) {
@@ -1897,12 +1925,13 @@ class CloudScale_DevTools {
                             <span id="csdt-errmon-status" style="font-size:.82em;color:#94a3b8;"></span>
                         </div>
                     </div>
-                    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:.82em;color:#64748b;">
-                        <span>
-                            <?php esc_html_e( 'Alert after', 'cloudscale-devtools' ); ?>
+                    <div style="display:flex;flex-direction:column;gap:8px;font-size:.82em;color:#64748b;">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <span style="white-space:nowrap;"><?php esc_html_e( 'Alert after', 'cloudscale-devtools' ); ?></span>
                             <input type="number" id="csdt-errmon-threshold" min="1" max="50" value="<?php echo esc_attr( $mon_threshold ); ?>" style="width:52px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:2px 6px;font-size:1em;text-align:center;">
-                            <?php esc_html_e( 'new error(s) per check (fatals always alert)', 'cloudscale-devtools' ); ?>
-                        </span>
+                            <span style="white-space:nowrap;"><?php esc_html_e( 'new error(s) per check', 'cloudscale-devtools' ); ?></span>
+                            <span style="color:#94a3b8;font-size:.9em;"><?php esc_html_e( '(fatals always alert)', 'cloudscale-devtools' ); ?></span>
+                        </div>
                         <?php if ( ! $ntfy_set ) : ?>
                             <span style="color:#f59e0b;">
                                 <?php
@@ -2124,9 +2153,12 @@ class CloudScale_DevTools {
                         <strong><?php esc_html_e( 'PHP Error Log not writing to a file', 'cloudscale-devtools' ); ?></strong><br>
                         <?php esc_html_e( 'PHP is currently logging to a system stream (e.g. /dev/stderr) that cannot be read here. Click Enable to install a mu-plugin that redirects PHP errors to wp-content/php-error.log.', 'cloudscale-devtools' ); ?>
                         <?php if ( ! $mu_writable ) : ?>
-                        <br><span style="display:inline-block;margin-top:6px;padding:4px 8px;background:#fef3c7;border-radius:4px;font-size:11px;font-family:monospace;color:#78350f;">
-                            ⚠️ <?php esc_html_e( 'wp-content/mu-plugins is not writable. Fix:', 'cloudscale-devtools' ); ?><br>
-                            docker exec pi_wordpress chown www-data:www-data /var/www/html/wp-content/mu-plugins
+                        <br><span id="cs-logs-perm-warning" style="display:inline-block;margin-top:6px;padding:6px 10px;background:#fef3c7;border-radius:4px;font-size:12px;color:#78350f;">
+                            ⚠️ <?php esc_html_e( 'wp-content/mu-plugins is not writable by the web server.', 'cloudscale-devtools' ); ?>
+                            <button type="button" class="cs-btn-secondary cs-btn-sm" id="cs-logs-fix-perm-btn"
+                                    style="margin-left:8px;font-size:11px;vertical-align:middle;">
+                                🔧 <?php esc_html_e( 'Fix Permissions', 'cloudscale-devtools' ); ?>
+                            </button>
                         </span>
                         <?php endif; ?>
                     </div>

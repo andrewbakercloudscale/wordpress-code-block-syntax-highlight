@@ -246,6 +246,43 @@
         } );
     }
 
+    // ── Fix mu-plugins permissions ────────────────────────────────────────────
+    var fixPermBtn     = document.getElementById( 'cs-logs-fix-perm-btn' );
+    var permWarning    = document.getElementById( 'cs-logs-perm-warning' );
+
+    if ( fixPermBtn ) {
+        fixPermBtn.addEventListener( 'click', function () {
+            fixPermBtn.disabled = true;
+            fixPermBtn.textContent = '…';
+
+            var fd = new FormData();
+            fd.append( 'action', 'csdt_devtools_logs_fix_mu_perms' );
+            fd.append( 'nonce',  csdtServerLogs.nonce );
+
+            fetch( csdtServerLogs.ajaxUrl, { method: 'POST', body: fd } )
+                .then( function ( r ) { return r.json(); } )
+                .then( function ( resp ) {
+                    if ( resp.success ) {
+                        if ( permWarning ) { permWarning.style.display = 'none'; }
+                        var setupBtn = document.getElementById( 'cs-logs-php-setup-btn' );
+                        if ( setupBtn ) {
+                            setupBtn.disabled = false;
+                            setupBtn.removeAttribute( 'title' );
+                        }
+                    } else {
+                        fixPermBtn.disabled = false;
+                        fixPermBtn.textContent = '🔧 Fix Permissions';
+                        phpSetupShowError( resp.data && resp.data.message ? resp.data.message : 'Permission fix failed.' );
+                    }
+                } )
+                .catch( function () {
+                    fixPermBtn.disabled = false;
+                    fixPermBtn.textContent = '🔧 Fix Permissions';
+                    phpSetupShowError( 'Request failed — check your connection.' );
+                } );
+        } );
+    }
+
     // ── PHP error log setup ───────────────────────────────────────────────────
     var phpSetupBtn     = document.getElementById( 'cs-logs-php-setup-btn' );
     var phpSetupBanner  = document.getElementById( 'cs-logs-php-setup' );
