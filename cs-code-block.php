@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.200
+ * Version: 1.9.203
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.200';
+    const VERSION      = '1.9.203';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -305,6 +305,7 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_devtools_social_fix_all_batch',   [ __CLASS__, 'ajax_social_fix_all_batch' ] );
         add_action( 'wp_ajax_csdt_devtools_social_diagnose_formats', [ __CLASS__, 'ajax_social_diagnose_formats' ] );
         add_action( 'save_post_post',  [ __CLASS__, 'on_post_saved' ], 100, 3 );
+        add_action( 'transition_post_status', [ __CLASS__, 'on_post_status_change' ], 10, 3 );
         add_action( 'admin_notices',   [ __CLASS__, 'social_format_admin_notice' ] );
         // Serve platform-specific og:image based on crawler User-Agent.
         add_action( 'wp_head', [ __CLASS__, 'output_crawler_og_image' ], 1 );
@@ -8626,6 +8627,39 @@ class CloudScale_DevTools {
         set_transient( "cs_sfmt_{$user_id}_{$post_id}", $results, 120 );
     }
 
+    // ─── Hook: Cloudflare cache purge on post publish/update ────────────
+    public static function on_post_status_change( string $new_status, string $old_status, \WP_Post $post ): void {
+        if ( $new_status !== 'publish' ) return;
+        if ( ! in_array( $post->post_type, [ 'post', 'page' ], true ) ) return;
+
+        $zone_id = (string) get_option( 'csdt_devtools_cf_zone_id', '' );
+        if ( ! $zone_id ) return;
+
+        // Prefer scoped API Token (Bearer); fall back to Global API Key (email+key).
+        $token    = (string) get_option( 'csdt_devtools_cf_api_token', '' );
+        $cf_key   = (string) get_option( 'cloudflare_api_key', '' );
+        $cf_email = (string) get_option( 'cloudflare_api_email', '' );
+        if ( ! $token && ( ! $cf_key || ! $cf_email ) ) return;
+
+        $headers = [ 'Content-Type' => 'application/json' ];
+        if ( $token ) {
+            $headers['Authorization'] = 'Bearer ' . $token;
+        } else {
+            $headers['X-Auth-Key']   = $cf_key;
+            $headers['X-Auth-Email'] = $cf_email;
+        }
+
+        $urls = array_values( array_filter( [ get_permalink( $post->ID ), home_url( '/' ) ] ) );
+        wp_remote_post(
+            "https://api.cloudflare.com/client/v4/zones/{$zone_id}/purge_cache",
+            [
+                'timeout' => 8,
+                'headers' => $headers,
+                'body'    => wp_json_encode( [ 'files' => $urls ] ),
+            ]
+        );
+    }
+
     // ─── Admin notice: shown after auto-generation ───────────────────────
 
     public static function social_format_admin_notice(): void {
@@ -13329,6 +13363,17 @@ PROMPT;
     private static function generate_rule_based_findings( array $d ): array {
         $findings = [];
 
+        $csp_dupe_count = $d['csp_duplicate_count'] ?? 0;
+        if ( $csp_dupe_count > 1 ) {
+            $findings[] = [
+                'category' => 'Security',
+                'severity' => 'critical',
+                'title'    => "Duplicate Content-Security-Policy headers ({$csp_dupe_count} headers detected)",
+                'detail'   => 'Multiple Content-Security-Policy headers are being sent simultaneously. Browsers enforce the intersection of all CSP headers, which is almost always far more restrictive than intended — typically blocking JavaScript for all visitors and Googlebot, causing SEO rankings to collapse. Common cause: a plugin CSP and a web server (nginx/Apache) CSP both active at the same time.',
+                'fix'      => 'Ensure only one source outputs a Content-Security-Policy header. Check: (1) nginx/Apache add_header directives in server config, (2) WordPress security plugins with CSP settings, (3) CloudScale Devtools CSP panel under Login Security → Content Security Policy. Disable all but one.',
+            ];
+        }
+
         if ( $d['no_meta_desc_count'] > 0 ) {
             $sev     = $d['no_meta_desc_count'] > 10 ? 'high' : 'medium';
             $samples = ! empty( $d['no_meta_desc_sample'] )
@@ -14376,12 +14421,16 @@ PROMPT;
         // Security headers (from external perspective via public URL)
         $headers_r = wp_remote_get( $base, [ 'timeout' => 5, 'sslverify' => false ] );
         $ext['security_headers_external'] = [];
+        $ext['csp_duplicate_count']       = 0;
         if ( ! is_wp_error( $headers_r ) ) {
             $h = wp_remote_retrieve_headers( $headers_r );
             foreach ( [ 'x-frame-options', 'x-content-type-options', 'strict-transport-security',
                         'content-security-policy', 'referrer-policy', 'permissions-policy',
                         'access-control-allow-origin', 'x-powered-by', 'server' ] as $hname ) {
                 $val = $h[ $hname ] ?? null;
+                if ( 'content-security-policy' === $hname && is_array( $val ) ) {
+                    $ext['csp_duplicate_count'] = count( $val );
+                }
                 $ext['security_headers_external'][ $hname ] = is_array( $val ) ? implode( ', ', $val ) : $val;
             }
         }
