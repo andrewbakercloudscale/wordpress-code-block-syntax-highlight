@@ -4,7 +4,7 @@ Tags: security, code block, syntax highlighting, AI security scan, WordPress har
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.9.198
+Stable tag: 1.9.203
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,7 +85,11 @@ highlight.js with auto-detection — 190+ languages including Bash, Python, Java
 
 == Changelog ==
 
-= 1.9.198 =
+= 1.9.203 =
+* feat: Deep scan — CRITICAL finding when multiple Content-Security-Policy headers detected (browser intersection breaks JS for all visitors and Googlebot)
+* feat: Cloudflare cache auto-purge on post/page publish or update (replaces deactivated CF plugin's main feature); uses existing csdt_devtools_cf_zone_id / csdt_devtools_cf_api_token options
+
+= 1.9.201 =
 * feat: PHP-FPM Saturation Monitor — new panel in Debug AI tab; configurable threshold, cooldown, probe URL, and container names; shows crontab install command and config.env snippet; callback endpoint so last saturation event appears in the panel; default on
 
 = 1.9.191 =
