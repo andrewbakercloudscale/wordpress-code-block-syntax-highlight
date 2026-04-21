@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.195
+ * Version: 1.9.196
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.195';
+    const VERSION      = '1.9.196';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -2111,12 +2111,21 @@ class CloudScale_DevTools {
             <div class="cs-panel-body">
 
                 <?php if ( ! $php_configured ) : ?>
+                <?php $mu_dir = WP_CONTENT_DIR . '/mu-plugins'; $mu_writable = is_dir( $mu_dir ) && is_writable( $mu_dir ); ?>
                 <div id="cs-logs-php-setup" style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;margin-bottom:16px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;">
                     <div style="flex:1;font-size:13px;color:#92400e;line-height:1.5;">
                         <strong><?php esc_html_e( 'PHP Error Log not writing to a file', 'cloudscale-devtools' ); ?></strong><br>
                         <?php esc_html_e( 'PHP is currently logging to a system stream (e.g. /dev/stderr) that cannot be read here. Click Enable to install a mu-plugin that redirects PHP errors to wp-content/php-error.log.', 'cloudscale-devtools' ); ?>
+                        <?php if ( ! $mu_writable ) : ?>
+                        <br><span style="display:inline-block;margin-top:6px;padding:4px 8px;background:#fef3c7;border-radius:4px;font-size:11px;font-family:monospace;color:#78350f;">
+                            ⚠️ <?php esc_html_e( 'wp-content/mu-plugins is not writable. Fix:', 'cloudscale-devtools' ); ?><br>
+                            docker exec pi_wordpress chown www-data:www-data /var/www/html/wp-content/mu-plugins
+                        </span>
+                        <?php endif; ?>
                     </div>
-                    <button type="button" class="cs-btn-primary cs-btn-sm" id="cs-logs-php-setup-btn" style="flex-shrink:0;white-space:nowrap;">
+                    <button type="button" class="cs-btn-primary cs-btn-sm" id="cs-logs-php-setup-btn"
+                            style="flex-shrink:0;white-space:nowrap;"
+                            <?php echo ! $mu_writable ? 'disabled title="' . esc_attr__( 'Fix the permissions warning first', 'cloudscale-devtools' ) . '"' : ''; ?>>
                         ⚡ <?php esc_html_e( 'Enable', 'cloudscale-devtools' ); ?>
                     </button>
                 </div>
