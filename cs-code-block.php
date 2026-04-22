@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.228
+ * Version: 1.9.230
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.228';
+    const VERSION      = '1.9.230';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -14874,12 +14874,34 @@ PROMPT;
             }
         }
 
-        // CSP quality — presence alone is not enough; weak directives leave XSS open
-        $csp_val     = $ext['security_headers_external']['content-security-policy'] ?? null;
-        $csp_quality = [ 'present' => (bool) $csp_val, 'issues' => [] ];
+        // CSP quality — presence alone is not enough; weak directives leave XSS open.
+        // unsafe-inline and unsafe-eval are WordPress compatibility requirements (plugins
+        // like Underscore.js templates need eval; many plugins inject inline scripts).
+        // We flag them as acknowledged trade-offs rather than open issues when our plugin
+        // owns the CSP, so the AI doesn't report them as actionable findings.
+        $csp_val          = $ext['security_headers_external']['content-security-policy'] ?? null;
+        $csp_nonces_on    = get_option( 'csdt_csp_nonces_enabled', '0' ) === '1';
+        $csp_plugin_owned = get_option( 'csdt_devtools_csp_enabled', '0' ) === '1';
+        $csp_quality      = [ 'present' => (bool) $csp_val, 'issues' => [], 'acknowledged' => [] ];
         if ( $csp_val ) {
-            if ( stripos( $csp_val, "'unsafe-inline'" ) !== false ) { $csp_quality['issues'][] = 'unsafe-inline'; }
-            if ( stripos( $csp_val, "'unsafe-eval'" ) !== false )   { $csp_quality['issues'][] = 'unsafe-eval'; }
+            if ( stripos( $csp_val, "'unsafe-inline'" ) !== false ) {
+                // Only flag unsafe-inline if nonce mode is off AND we're not managing it ourselves
+                if ( $csp_nonces_on ) {
+                    $csp_quality['acknowledged'][] = 'unsafe-inline-removed-by-nonces';
+                } elseif ( $csp_plugin_owned ) {
+                    $csp_quality['acknowledged'][] = 'unsafe-inline-wordpress-compat';
+                } else {
+                    $csp_quality['issues'][] = 'unsafe-inline';
+                }
+            }
+            if ( stripos( $csp_val, "'unsafe-eval'" ) !== false ) {
+                // unsafe-eval is required by WordPress's bundled underscore.js (_.template)
+                if ( $csp_plugin_owned ) {
+                    $csp_quality['acknowledged'][] = 'unsafe-eval-wordpress-compat';
+                } else {
+                    $csp_quality['issues'][] = 'unsafe-eval';
+                }
+            }
             if ( preg_match( '/(?:^|[\s;])(\*)[\s;]/', $csp_val ) ) { $csp_quality['issues'][] = 'wildcard-source'; }
             if ( stripos( $csp_val, 'default-src' ) === false )     { $csp_quality['issues'][] = 'no-default-src'; }
             $csp_quality['grade'] = empty( $csp_quality['issues'] ) ? 'good' : 'weak';
@@ -15638,6 +15660,8 @@ Cross-correlate ALL categories for compound risks:
 - ssh_port_open=true + password_auth=no = good finding: SSH key-only authentication enforced, password attacks impossible
 - ssh_port_open=false = container/managed environment; omit all SSH findings entirely
 - csp_quality.grade=missing or weak + any XSS code finding = actively exploitable XSS without browser-side mitigation
+- csp_quality.acknowledged contains 'unsafe-inline-wordpress-compat' or 'unsafe-eval-wordpress-compat' = these are deliberate WordPress compatibility requirements (plugins/themes require inline scripts; underscore.js templates require eval). Do NOT report these as findings or weaknesses — they are known trade-offs. Only flag unsafe-inline/eval if they appear in csp_quality.issues (i.e. the CSP is externally managed and these are uncontrolled)
+- csp_quality.acknowledged contains 'unsafe-inline-removed-by-nonces' = nonce-based CSP is active, unsafe-inline is a no-op — report as a good finding
 - hsts_quality.grade=missing or max_age < 31536000 = HTTPS not enforced long-term, HTTP downgrade / MITM possible
 - server_version_leak.leaks_version=true + unpatched software = version fingerprinting directly aids targeted exploitation — escalate severity
 

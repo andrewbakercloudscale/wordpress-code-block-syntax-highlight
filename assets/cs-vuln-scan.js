@@ -792,11 +792,12 @@
                 ctx.fillStyle = 'rgba(220,38,38,0.85)';
                 ctx.fillRect(x, yBase - hBarH - cBarH, barW, cBarH);
             }
-            // Count label above bar
+            // Count label above bar: show C:N and/or H:N so type is explicit
+            var lbl = (cc > 0 ? 'C:' + cc : '') + (cc > 0 && hc > 0 ? ' ' : '') + (hc > 0 ? 'H:' + hc : '');
             ctx.fillStyle = cc > 0 ? '#dc2626' : '#ea580c';
             ctx.font      = 'bold ' + FONT;
             ctx.textAlign = 'center';
-            ctx.fillText(tot, scoreX(i), yBase - totalBarH - 3);
+            ctx.fillText(lbl, scoreX(i), yBase - totalBarH - 3);
         });
 
         // ── Score area fill ───────────────────────────────────────────
