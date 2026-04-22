@@ -2590,10 +2590,11 @@
             var color  = isFail ? '#f87171' : '#a6e3a1';
 
             if (e.type === 'jserr') {
+                var fileHtml = e.file ? '<br><span style="font-size:10px;opacity:.65;font-family:monospace;">' + esc(e.file) + '</span>' : '';
                 html += '<tr' + rowCls + '>'
                     + '<td class="c-t"><span class="cs-badge cs-badge-c">JS</span></td>'
                     + '<td>ERR</td>'
-                    + '<td colspan="2" style="color:' + color + ';font-size:11px;" title="' + esc(e.detail||'') + '">' + esc((e.detail||'').slice(0,120)) + '</td>'
+                    + '<td colspan="2" style="color:' + color + ';font-size:11px;white-space:normal;word-break:break-word;">' + esc(e.detail||'') + fileHtml + '</td>'
                     + '<td>—</td>'
                     + '</tr>';
             } else {
@@ -3160,13 +3161,32 @@
         var clearBtn = document.getElementById('cs-perf-clear');
         if (clearBtn) clearBtn.addEventListener('click', function (e) {
             e.stopPropagation();
-            editorLogs = [];
+            // Wipe all collected data
+            data.queries   = [];
+            data.http      = [];
+            data.hooks     = [];
+            data.logs      = [];
+            data.errors    = [];
+            data.transients = [];
+            data.assets    = { scripts: [], styles: [] };
+            data.cache     = {};
+            data.template  = { final: '', hierarchy: [] };
+            editorLogs     = [];
             editorFailCount = 0;
-            if (editorBadgeEl) { editorBadgeEl.textContent = ''; }
+            n1Patterns     = {};
+            if (editorBadgeEl) editorBadgeEl.textContent = '';
+            computeN1Patterns();
             computeIssues();
+            applyFilters();
+            renderLogs();
+            renderAssets();
+            renderHooks();
             renderIssues();
             renderEditor();
+            renderTransients();
+            renderSummary();
             updateBadges();
+            if (footTxt) footTxt.textContent = 'Cleared';
         });
         var copyBtn = document.getElementById('cs-perf-copy');
         if (copyBtn) copyBtn.addEventListener('click', function (e) { e.stopPropagation(); copyCurrentTab(); });
