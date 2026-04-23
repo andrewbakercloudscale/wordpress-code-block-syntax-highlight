@@ -135,10 +135,6 @@ class CSDT_Optimizer {
             return;
         }
 
-        $provider      = get_option( 'csdt_devtools_ai_provider', 'anthropic' );
-        $anthropic_key = get_option( 'csdt_devtools_anthropic_key', '' );
-        $gemini_key    = get_option( 'csdt_devtools_gemini_key', '' );
-
         $prompt = "Identify which WordPress plugin or theme created each of these database tables.\n"
                 . "Return ONLY a valid JSON object. Each key is the full table name. Each value is an object with:\n"
                 . "  \"plugin\": plugin name (2-5 words)\n"
@@ -148,42 +144,13 @@ class CSDT_Optimizer {
                 . "No markdown, no explanation, only the JSON.\n\n"
                 . "Tables:\n" . implode( "\n", $descriptions );
 
-        $raw_text = '';
-
         if ( function_exists( 'set_time_limit' ) ) { set_time_limit( 120 ); }
 
-        if ( $provider === 'gemini' && $gemini_key ) {
-            $url  = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . rawurlencode( $gemini_key );
-            $resp = wp_remote_post( $url, [
-                'timeout' => 90,
-                'headers' => [ 'Content-Type' => 'application/json' ],
-                'body'    => wp_json_encode( [
-                    'contents'         => [ [ 'role' => 'user', 'parts' => [ [ 'text' => $prompt ] ] ] ],
-                    'generationConfig' => [ 'maxOutputTokens' => 8192 ],
-                ] ),
-            ] );
-            if ( ! is_wp_error( $resp ) && wp_remote_retrieve_response_code( $resp ) === 200 ) {
-                $body     = json_decode( wp_remote_retrieve_body( $resp ), true );
-                $raw_text = trim( $body['candidates'][0]['content']['parts'][0]['text'] ?? '' );
-            }
-        } elseif ( $anthropic_key ) {
-            $resp = wp_remote_post( 'https://api.anthropic.com/v1/messages', [
-                'timeout' => 90,
-                'headers' => [
-                    'x-api-key'         => $anthropic_key,
-                    'anthropic-version' => '2023-06-01',
-                    'content-type'      => 'application/json',
-                ],
-                'body' => wp_json_encode( [
-                    'model'      => 'claude-haiku-4-5-20251001',
-                    'max_tokens' => 8192,
-                    'messages'   => [ [ 'role' => 'user', 'content' => $prompt ] ],
-                ] ),
-            ] );
-            if ( ! is_wp_error( $resp ) && wp_remote_retrieve_response_code( $resp ) === 200 ) {
-                $body     = json_decode( wp_remote_retrieve_body( $resp ), true );
-                $raw_text = trim( $body['content'][0]['text'] ?? '' );
-            }
+        try {
+            $raw_text = CSDT_AI_Dispatcher::call( '', $prompt, '_auto', 8192 );
+        } catch ( \RuntimeException $e ) {
+            wp_send_json_error( 'AI error: ' . $e->getMessage() );
+            return;
         }
 
         if ( ! $raw_text ) {

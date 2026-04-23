@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: AI security scanner and developer toolkit. Replaces your security scanner, 2FA plugin, SMTP mailer, SQL tool, and log viewer — one free plugin, no cloud dependency.
- * Version: 1.9.377
+ * Version: 1.9.378
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -54,7 +54,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.377';
+    const VERSION      = '1.9.378';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -3901,10 +3901,9 @@ class CloudScale_DevTools {
     }
 
     public static function render_dashboard_widget(): void {
-        $ai_provider   = get_option( 'csdt_devtools_ai_provider', 'anthropic' );
-        $anthropic_key = get_option( 'csdt_devtools_anthropic_key', '' );
-        $gemini_key    = get_option( 'csdt_devtools_gemini_key', '' );
-        $has_key       = $ai_provider === 'gemini' ? ! empty( $gemini_key ) : ! empty( $anthropic_key );
+        $ai_cfg        = CSDT_AI_Dispatcher::get_config();
+        $ai_provider   = $ai_cfg['provider'];
+        $has_key       = ! empty( $ai_cfg['key'] );
         $provider_lbl  = $ai_provider === 'gemini' ? 'Google Gemini' : 'Anthropic Claude';
 
         $history   = get_option( 'csdt_scan_history', [] );
@@ -4001,10 +4000,9 @@ class CloudScale_DevTools {
     }
 
     private static function render_home_panel(): void {
-        $ai_provider    = get_option( 'csdt_devtools_ai_provider', 'anthropic' );
-        $anthropic_key  = get_option( 'csdt_devtools_anthropic_key', '' );
-        $gemini_key     = get_option( 'csdt_devtools_gemini_key', '' );
-        $has_key        = $ai_provider === 'gemini' ? ! empty( $gemini_key ) : ! empty( $anthropic_key );
+        $ai_cfg         = CSDT_AI_Dispatcher::get_config();
+        $ai_provider    = $ai_cfg['provider'];
+        $has_key        = ! empty( $ai_cfg['key'] );
         $sched_enabled  = get_option( 'csdt_scan_schedule_enabled', '0' ) === '1';
         $sched_freq     = get_option( 'csdt_scan_schedule_freq',    'weekly' );
         $sched_type     = get_option( 'csdt_scan_schedule_type',    'deep' );
