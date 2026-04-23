@@ -220,10 +220,25 @@ class CSDT_AI_Dispatcher {
         if ( function_exists( 'fastcgi_finish_request' ) ) { fastcgi_finish_request(); }
     }
 
-    // ── Convenience: has any AI key configured? ───────────────────────
+    // ── Convenience helpers ───────────────────────────────────────────
 
+    /** Returns true when at least one API key is configured. */
     public static function has_key(): bool {
         return ! empty( get_option( 'csdt_devtools_anthropic_key', '' ) )
             || ! empty( get_option( 'csdt_devtools_gemini_key', '' ) );
+    }
+
+    /**
+     * Returns the active provider config: [ 'provider', 'key' ].
+     * 'key' is empty string when none is configured.
+     *
+     * @return array{ provider: string, key: string }
+     */
+    public static function get_config(): array {
+        $provider = get_option( 'csdt_devtools_ai_provider', 'anthropic' );
+        $key      = $provider === 'gemini'
+            ? get_option( 'csdt_devtools_gemini_key', '' )
+            : get_option( 'csdt_devtools_anthropic_key', '' );
+        return [ 'provider' => $provider, 'key' => $key ];
     }
 }

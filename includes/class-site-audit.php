@@ -3649,11 +3649,9 @@ PROMPT;
             return;
         }
 
-        $provider = get_option( 'csdt_devtools_ai_provider', 'anthropic' );
-        $has_key  = $provider === 'gemini'
-            ? ! empty( get_option( 'csdt_devtools_gemini_key', '' ) )
-            : ! empty( get_option( 'csdt_devtools_anthropic_key', '' ) );
-        if ( ! $has_key ) {
+        $ai_cfg  = CSDT_AI_Dispatcher::get_config();
+        $provider = $ai_cfg['provider'];
+        if ( ! $ai_cfg['key'] ) {
             wp_send_json_error( [ 'message' => 'No API key configured.', 'need_key' => true ] );
             return;
         }
