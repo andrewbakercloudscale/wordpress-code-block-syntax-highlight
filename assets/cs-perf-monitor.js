@@ -1903,7 +1903,10 @@
             var fixId = 'cs-fix-' + idx;
             var tabLabels = { editor: 'browser', db: 'db', http: 'http', logs: 'logs', assets: 'assets', hooks: 'hooks' };
             var tabLink = issue.tab ? ' <span class="cs-issue-tab-link" data-tab="' + esc(issue.tab) + '" style="font-size:10px;opacity:.6;cursor:pointer;text-decoration:underline;">→ ' + esc(tabLabels[issue.tab] || issue.tab) + ' tab</span>' : '';
-            html += '<div class="cs-issue-row cs-issue-' + esc(issue.sev) + '">'
+            var rowTab = (!fix && issue.tab) ? issue.tab : '';
+            html += '<div class="cs-issue-row cs-issue-' + esc(issue.sev) + '"'
+                + (rowTab ? ' data-nav-tab="' + esc(rowTab) + '" style="cursor:pointer;"' : '')
+                + '>'
                 + '<div class="cs-issue-top">'
                     + '<span class="cs-issue-title">' + esc(issue.title) + '</span>'
                     + (issue.plugin ? pluginChip(issue.plugin) : '')
@@ -1935,6 +1938,14 @@
             chip.addEventListener('click', function (e) {
                 e.stopPropagation();
                 switchTab(chip.dataset.tab, true);
+            });
+        });
+
+        // Rows without a fix but with a tab — whole row navigates
+        Array.prototype.forEach.call(issuesWrap.querySelectorAll('.cs-issue-row[data-nav-tab]'), function (row) {
+            row.addEventListener('click', function (e) {
+                if (e.target.classList.contains('cs-issue-tab-link')) return;
+                switchTab(row.dataset.navTab, true);
             });
         });
     }

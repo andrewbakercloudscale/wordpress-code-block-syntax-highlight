@@ -28,6 +28,20 @@
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    // Convert "Title" (https://url) patterns in detail text to clickable links
+    function linkifyDetail(text) {
+        var parts = [];
+        var re = /"([^"]+)"\s*\((https?:\/\/[^)]+)\)/g;
+        var last = 0, m;
+        while ((m = re.exec(text)) !== null) {
+            parts.push(escHtml(text.slice(last, m.index)));
+            parts.push('<a href="' + escHtml(m[2]) + '" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:underline;">' + escHtml(m[1]) + '</a>');
+            last = re.lastIndex;
+        }
+        parts.push(escHtml(text.slice(last)));
+        return parts.join('');
+    }
+
     function post(action, params) {
         var fd = new FormData();
         fd.append('action', action);
@@ -78,21 +92,25 @@
                 '</div>';
         }
         var fixActionHtml = '';
-        if (f.fix_action) {
+        var effectiveFixAction = f.fix_action;
+        if (!effectiveFixAction && f.title && f.title.toLowerCase().indexOf('wp-config.php') !== -1) {
+            effectiveFixAction = 'wpconfig_perms';
+        }
+        if (effectiveFixAction) {
             var seoFixActions   = { seo_ai_desc: 1, seo_ai_title: 1 };
-            var quickFixActions = { cron_health: 'cron_health', expired_transients: 'expired_transients' };
+            var quickFixActions = { cron_health: 'cron_health', expired_transients: 'expired_transients', wpconfig_perms: 'wpconfig_perms' };
             var modalFixActions = { db_prefix_modal: 'csdt-db-prefix-modal' };
-            if (seoFixActions[f.fix_action]) {
+            if (seoFixActions[effectiveFixAction]) {
                 fixActionHtml = '<div style="margin-top:8px;"><a href="' + escHtml(csdtSiteAudit.seoAiUrl || '') +
                     '" style="display:inline-block;background:#10b981;color:#fff;text-decoration:none;font-size:.8em;font-weight:700;padding:6px 14px;border-radius:6px;">⚡ Fix It — Open SEO AI</a></div>';
-            } else if (quickFixActions[f.fix_action]) {
+            } else if (quickFixActions[effectiveFixAction]) {
                 fixActionHtml = '<div style="margin-top:8px;">' +
-                    '<button class="csdt-fix-it-btn" data-fix-id="' + escHtml(quickFixActions[f.fix_action]) +
+                    '<button class="csdt-fix-it-btn" data-fix-id="' + escHtml(quickFixActions[effectiveFixAction]) +
                     '" style="background:#10b981;color:#fff;border:none;font-size:.8em;font-weight:700;padding:6px 14px;border-radius:6px;cursor:pointer;">⚡ Fix It</button>' +
                     '<span class="csdt-fix-it-status" style="display:none;margin-left:8px;font-size:.82em;"></span></div>';
-            } else if (modalFixActions[f.fix_action]) {
+            } else if (modalFixActions[effectiveFixAction]) {
                 fixActionHtml = '<div style="margin-top:8px;">' +
-                    '<button class="csdt-modal-fix-btn" data-modal="' + escHtml(modalFixActions[f.fix_action]) +
+                    '<button class="csdt-modal-fix-btn" data-modal="' + escHtml(modalFixActions[effectiveFixAction]) +
                     '" style="background:#10b981;color:#fff;border:none;font-size:.8em;font-weight:700;padding:6px 14px;border-radius:6px;cursor:pointer;">⚡ Fix It →</button>' +
                     '</div>';
             }
@@ -118,7 +136,7 @@
             ( f.affected ? '<span style="color:#94a3b8;font-size:.78em;">→ ' + escHtml(f.affected) + '</span>' : '' ) +
             '</div>' +
             '<p style="margin:0 0 6px;font-weight:700;color:#0f172a;font-size:.95em;line-height:1.4;">' + escHtml(f.title || '') + '</p>' +
-            '<p style="margin:0 0 8px;color:#4b5563;font-size:.87em;line-height:1.6;">' + escHtml(f.detail || '') + '</p>' +
+            '<p style="margin:0 0 8px;color:#4b5563;font-size:.87em;line-height:1.6;">' + linkifyDetail(f.detail || '') + '</p>' +
             linksHtml +
             '<div style="background:rgba(255,255,255,.7);border-left:2px solid ' + col.badge + ';padding:8px 12px;border-radius:0 4px 4px 0;font-size:.85em;color:#374151;line-height:1.5;">' +
             '<strong style="color:' + col.text + ';">Fix: </strong>' + escHtml(f.fix || '') +
@@ -268,7 +286,7 @@
                 cardsHtml += '<div style="border:1px solid #e5e7eb;border-top:none;padding:10px 12px;">' +
                     '<div style="font-weight:600;font-size:13px;color:#111;margin-bottom:3px;">' + esc(f.title) + '</div>' +
                     ( f.affected ? '<div style="font-size:11px;color:#6b7280;margin-bottom:3px;">→ ' + esc(f.affected) + '</div>' : '' ) +
-                    '<div style="font-size:12px;color:#374151;margin-bottom:3px;">' + esc(f.detail) + '</div>' +
+                    '<div style="font-size:12px;color:#374151;margin-bottom:3px;">' + linkifyDetail(f.detail) + '</div>' +
                     '<div style="font-size:11px;color:#4b5563;font-style:italic;">Fix: ' + esc(f.fix) + '</div>' +
                     '</div>';
             });

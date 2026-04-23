@@ -292,14 +292,17 @@
                         + '</tr>';
                 } ).join( '' );
 
-                // Memory total in tfoot
+                // Memory total in tfoot and header bar
+                var totalBytes = workers.reduce( function ( s, w ) { return s + ( parseInt( w.mem, 10 ) || 0 ); }, 0 );
+                var totalMemStr = fmtBytes( totalBytes );
                 if ( fpmDetailTfoot ) {
-                    var totalBytes = workers.reduce( function ( s, w ) { return s + ( parseInt( w.mem, 10 ) || 0 ); }, 0 );
                     fpmDetailTfoot.innerHTML = '<tr style="border-top:2px solid #334155;">'
                         + '<td colspan="7" style="padding:4px 8px;text-align:right;color:#94a3b8;font-size:.85em;">Total memory</td>'
-                        + '<td style="padding:4px 8px;text-align:right;white-space:nowrap;color:#e2e8f0;font-weight:700;">' + esc( fmtBytes( totalBytes ) ) + '</td>'
+                        + '<td style="padding:4px 8px;text-align:right;white-space:nowrap;color:#e2e8f0;font-weight:700;">' + esc( totalMemStr ) + '</td>'
                         + '</tr>';
                 }
+                var memHeader = document.getElementById( 'csdt-fpm-w-mem' );
+                if ( memHeader ) { memHeader.textContent = totalMemStr; }
             } )
             .catch( function () {
                 if ( fpmDetailTbody ) { fpmDetailTbody.innerHTML = '<tr><td colspan="8" style="padding:8px;color:#f87171;">Request failed.</td></tr>'; }

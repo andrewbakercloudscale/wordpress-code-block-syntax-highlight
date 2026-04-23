@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Developer toolkit with syntax-highlighted code blocks, SQL query tool, code migrator, site monitor, and login security (passkeys, TOTP, email 2FA, hide login URL).
- * Version: 1.9.252
+ * Version: 1.9.293
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -38,7 +38,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.252';
+    const VERSION      = '1.9.293';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -336,6 +336,14 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_devtools_quick_fix',          [ __CLASS__, 'ajax_apply_quick_fix' ] );
         add_action( 'wp_ajax_csdt_db_prefix_preflight',         [ __CLASS__, 'ajax_db_prefix_preflight' ] );
         add_action( 'wp_ajax_csdt_db_prefix_migrate',           [ __CLASS__, 'ajax_db_prefix_migrate' ] );
+        add_action( 'wp_ajax_csdt_db_prefix_rollback',          [ __CLASS__, 'ajax_db_prefix_rollback' ] );
+        add_action( 'wp_ajax_csdt_db_orphaned_scan',            [ __CLASS__, 'ajax_db_orphaned_scan' ] );
+        add_action( 'wp_ajax_csdt_db_identify_table',           [ __CLASS__, 'ajax_db_identify_table' ] );
+        add_action( 'wp_ajax_csdt_db_archive_tables',           [ __CLASS__, 'ajax_db_archive_tables' ] );
+        add_action( 'wp_ajax_csdt_db_trash_scan',               [ __CLASS__, 'ajax_db_trash_scan' ] );
+        add_action( 'wp_ajax_csdt_db_restore_tables',           [ __CLASS__, 'ajax_db_restore_tables' ] );
+        add_action( 'wp_ajax_csdt_db_drop_tables',              [ __CLASS__, 'ajax_db_drop_tables' ] );
+        add_action( 'wp_ajax_csdt_sec_headers_save',            [ __CLASS__, 'ajax_sec_headers_save' ] );
         add_action( 'wp_ajax_csdt_devtools_csp_save',           [ __CLASS__, 'ajax_csp_save' ] );
         add_action( 'wp_ajax_csdt_devtools_csp_rollback',       [ __CLASS__, 'ajax_csp_rollback' ] );
         add_action( 'wp_ajax_csdt_scan_headers',                 [ __CLASS__, 'ajax_scan_headers' ] );
@@ -1208,7 +1216,7 @@ class CloudScale_DevTools {
             ] );
         }
 
-        if ( $active_tab === 'security' ) {
+        if ( in_array( $active_tab, [ 'security', 'home' ], true ) ) {
             wp_enqueue_script(
                 'csdt-vuln-scan',
                 plugins_url( 'assets/cs-vuln-scan.js', __FILE__ ),
@@ -2069,6 +2077,10 @@ class CloudScale_DevTools {
                             <span style="color:#64748b;"><?php esc_html_e( 'Total:', 'cloudscale-devtools' ); ?></span>
                             <span id="csdt-fpm-w-total" style="color:#94a3b8;font-weight:700;">—</span>
                         </span>
+                        <span style="font-size:.82em;color:#e2e8f0;">
+                            <span style="color:#64748b;"><?php esc_html_e( 'Mem:', 'cloudscale-devtools' ); ?></span>
+                            <span id="csdt-fpm-w-mem" style="color:#e2e8f0;font-weight:700;" title="Total memory across all workers">—</span>
+                        </span>
                         <button type="button" id="csdt-fpm-workers-refresh" class="cs-btn-sm cs-btn-secondary" style="padding:5px 12px;font-size:.78em;line-height:1.4;">↻ <?php esc_html_e( 'Refresh', 'cloudscale-devtools' ); ?></button>
                         <button type="button" id="csdt-fpm-detail-toggle" class="cs-btn-sm cs-btn-secondary" style="padding:5px 12px;font-size:.78em;line-height:1.4;">▼ <?php esc_html_e( 'Workers', 'cloudscale-devtools' ); ?></button>
                         <button type="button" id="csdt-fpm-setup-btn" class="cs-btn-sm cs-btn-secondary" style="padding:5px 12px;font-size:.78em;line-height:1.4;background:#1e3a5f;color:#60a5fa;border-color:#2563eb;">⚙ <?php esc_html_e( 'Setup Status Page', 'cloudscale-devtools' ); ?></button>
@@ -2087,7 +2099,7 @@ class CloudScale_DevTools {
                                         <th style="padding:5px 8px;white-space:nowrap;">Running</th>
                                         <th style="padding:5px 8px;white-space:nowrap;">Last URI</th>
                                         <th style="padding:5px 8px;white-space:nowrap;">Script</th>
-                                        <th style="padding:5px 8px;white-space:nowrap;">CPU%</th>
+                                        <th style="padding:5px 8px;white-space:nowrap;" title="CPU% used by the last completed request. Running workers show — until their current request finishes.">Last CPU%</th>
                                         <th style="padding:5px 8px;white-space:nowrap;">Mem</th>
                                     </tr>
                                 </thead>
@@ -2097,7 +2109,7 @@ class CloudScale_DevTools {
                                 <tfoot id="csdt-fpm-detail-tfoot"></tfoot>
                             </table>
                         </div>
-                        <p style="margin:4px 0 8px;font-size:.72em;color:#475569;">CPU% = last completed request. Workers currently handling a request show 0.0 until that request finishes.</p>
+                        <p style="margin:4px 0 8px;font-size:.72em;color:#475569;">Last CPU% = CPU used by the most recently <em>completed</em> request. Idle workers show their last value; Running workers show — because their current request hasn't finished yet.</p>
                         <div id="csdt-fpm-pool-info" style="margin-top:4px;font-size:.74em;color:#94a3b8;"></div>
                     </div>
 
@@ -9621,7 +9633,8 @@ class CloudScale_DevTools {
                 'force_ssl_admin'    => defined( 'FORCE_SSL_ADMIN' ) && FORCE_SSL_ADMIN,
                 'db_prefix'          => $wpdb->prefix,
                 'db_prefix_default'  => $wpdb->prefix === 'wp_',
-                'wp_config_perms'    => $config_perms,
+                'wp_config_perms'         => $config_perms,
+                'wp_config_world_readable'=> file_exists( ABSPATH . 'wp-config.php' ) && (bool) ( fileperms( ABSPATH . 'wp-config.php' ) & 0004 ),
             ],
             'site' => [
                 'url'                    => home_url( '/' ),
@@ -9765,37 +9778,6 @@ class CloudScale_DevTools {
                     return in_array( $perms, [ '0400', '0440', '0600', '0640' ], true );
                 } )(),
                 'fix_label' => 'Set to 0400',
-            ],
-            [
-                'id'           => 'security_headers',
-                'title'        => 'Security headers not set',
-                'detail'       => get_option( 'csdt_devtools_sec_headers_ack', '0' ) === '1'
-                    ? 'Security headers are confirmed set externally (Cloudflare, nginx, or CDN).'
-                    : 'X-Content-Type-Options, X-Frame-Options, Referrer-Policy, and Permissions-Policy are missing. These prevent MIME sniffing, clickjacking, and referrer leakage.',
-                'fixed'        => ( function () {
-                    if ( get_option( 'csdt_devtools_safe_headers_enabled', '0' ) === '1' ) {
-                        return true;
-                    }
-                    if ( get_option( 'csdt_devtools_sec_headers_ack', '0' ) === '1' ) {
-                        return true;
-                    }
-                    $cached = get_transient( 'csdt_sec_headers_check' );
-                    if ( $cached !== false ) {
-                        return (bool) $cached;
-                    }
-                    $resp = wp_remote_get( home_url( '/' ), [ 'timeout' => 4, 'sslverify' => false ] );
-                    if ( is_wp_error( $resp ) ) {
-                        return false;
-                    }
-                    $h        = wp_remote_retrieve_headers( $resp );
-                    $required = [ 'x-content-type-options', 'x-frame-options', 'referrer-policy', 'permissions-policy' ];
-                    $all_set  = empty( array_filter( $required, fn( $n ) => empty( $h[ $n ] ) ) );
-                    set_transient( 'csdt_sec_headers_check', $all_set ? '1' : '0', 300 );
-                    return $all_set;
-                } )(),
-                'fix_label'    => 'Enable Headers',
-                'dismiss_label'=> 'Set Externally',
-                'dismiss_id'   => 'security_headers_ack',
             ],
             [
                 'id'        => 'block_debug_log',
@@ -10137,6 +10119,97 @@ class CloudScale_DevTools {
     public static function csp_nonce_inline_attrs( array $attrs ): array {
         $attrs['nonce'] = self::get_csp_nonce();
         return $attrs;
+    }
+
+    private static function render_security_headers_panel(): void {
+        $enabled = get_option( 'csdt_devtools_safe_headers_enabled', '0' ) === '1';
+        $ext_ack = get_option( 'csdt_devtools_sec_headers_ack', '0' ) === '1';
+
+        $headers = [
+            'X-Content-Type-Options: nosniff'                  => 'Prevents browsers from MIME-sniffing a response away from the declared content type. Stops certain XSS attacks via content confusion.',
+            'X-Frame-Options: SAMEORIGIN'                      => 'Blocks your site from being embedded in an iframe on another domain. Prevents clickjacking attacks.',
+            'Referrer-Policy: strict-origin-when-cross-origin' => 'Sends the full URL as Referer on same-origin requests; sends only the origin on cross-origin requests; sends nothing on downgrade (HTTPS→HTTP).',
+            'Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()' => 'Disables access to camera, microphone, geolocation, and payment APIs for this origin and all embedded iframes.',
+        ];
+        ?>
+        <hr class="cs-sec-divider">
+        <div class="cs-section-header" style="background:linear-gradient(90deg,#1e3a5f 0%,#1d4ed8 100%);border-left:3px solid #60a5fa;margin-bottom:0;border-radius:6px 6px 0 0;">
+            <span>🔒 <?php esc_html_e( 'Security Headers', 'cloudscale-devtools' ); ?></span>
+            <span class="cs-header-hint"><?php esc_html_e( 'X-Content-Type-Options, X-Frame-Options, Referrer-Policy, and Permissions-Policy', 'cloudscale-devtools' ); ?></span>
+            <?php self::render_explain_btn( 'sec-headers', 'Security Headers', [
+                [ 'name' => 'What these headers do',   'rec' => 'Info',     'html' => 'These four headers are low-risk, high-value hardening controls recommended by OWASP and required by most security audits. They are sent with every frontend page response and have no effect on wp-admin.' ],
+                [ 'name' => 'Set Externally option',   'rec' => 'Info',     'html' => 'If your Cloudflare, nginx, or CDN configuration already sends these headers, tick <strong>Set Externally</strong> instead of enabling them here. Sending duplicate headers can cause browser conflicts.' ],
+                [ 'name' => 'CSP is separate',         'rec' => 'Info',     'html' => 'Content Security Policy is configured separately in the panel below — it has many more options and requires a testing phase before enforcement.' ],
+            ] ); ?>
+        </div>
+        <div style="padding:20px;background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 6px 6px;margin-bottom:0;" id="cs-sec-headers-panel">
+
+            <!-- Header list -->
+            <div style="margin-bottom:18px;">
+                <?php foreach ( $headers as $header => $description ) : ?>
+                <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9;">
+                    <code style="flex-shrink:0;font-size:11px;color:#1d4ed8;background:#eff6ff;padding:3px 7px;border-radius:4px;align-self:flex-start;white-space:nowrap;"><?php echo esc_html( strtok( $header, ':' ) ); ?></code>
+                    <div>
+                        <div style="font-size:11px;font-family:monospace;color:#475569;margin-bottom:3px;"><?php echo esc_html( $header ); ?></div>
+                        <div style="font-size:12px;color:#64748b;"><?php echo esc_html( $description ); ?></div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- Controls -->
+            <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:14px;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;">
+                    <input type="checkbox" id="csdt-sec-headers-enabled" <?php checked( $enabled ); ?>>
+                    <?php esc_html_e( 'Enable — CloudScale sends these headers', 'cloudscale-devtools' ); ?>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+                    <input type="checkbox" id="csdt-sec-headers-ext" <?php checked( $ext_ack ); ?>>
+                    <?php esc_html_e( 'Set Externally (Cloudflare / nginx / CDN)', 'cloudscale-devtools' ); ?>
+                </label>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;">
+                <button type="button" id="csdt-sec-headers-save" class="cs-btn-primary cs-btn-sm"><?php esc_html_e( 'Save', 'cloudscale-devtools' ); ?></button>
+                <span id="csdt-sec-headers-msg" style="display:none;font-size:13px;font-weight:600;color:#16a34a;">✓ <?php esc_html_e( 'Saved', 'cloudscale-devtools' ); ?></span>
+            </div>
+        </div>
+        <script>
+        (function(){
+            var btn = document.getElementById('csdt-sec-headers-save');
+            if (!btn) return;
+            var msg = document.getElementById('csdt-sec-headers-msg');
+            btn.addEventListener('click', function(){
+                btn.disabled = true;
+                var fd = new FormData();
+                fd.append('action',  'csdt_sec_headers_save');
+                fd.append('nonce',   csdtVulnScan.nonce);
+                fd.append('enabled', document.getElementById('csdt-sec-headers-enabled').checked ? '1' : '0');
+                fd.append('ext_ack', document.getElementById('csdt-sec-headers-ext').checked     ? '1' : '0');
+                fetch(ajaxurl, { method: 'POST', body: fd })
+                    .then(function(r){ return r.json(); })
+                    .then(function(){
+                        msg.style.display = '';
+                        setTimeout(function(){ msg.style.display = 'none'; }, 3000);
+                    })
+                    .finally(function(){ btn.disabled = false; });
+            });
+        })();
+        </script>
+        <?php
+    }
+
+    public static function ajax_sec_headers_save(): void {
+        check_ajax_referer( 'csdt_devtools_security_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+        $enabled = isset( $_POST['enabled'] ) && '1' === $_POST['enabled'] ? '1' : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+        $ext_ack = isset( $_POST['ext_ack'] ) && '1' === $_POST['ext_ack']  ? '1' : '0'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+        update_option( 'csdt_devtools_safe_headers_enabled', $enabled );
+        update_option( 'csdt_devtools_sec_headers_ack',      $ext_ack );
+        delete_transient( 'csdt_sec_headers_check' );
+        wp_send_json_success();
     }
 
     private static function render_csp_panel(): void {
@@ -11263,7 +11336,6 @@ class CloudScale_DevTools {
         $anthropic_key = get_option( 'csdt_devtools_anthropic_key', '' );
         $gemini_key    = get_option( 'csdt_devtools_gemini_key', '' );
         $has_key       = $ai_provider === 'gemini' ? ! empty( $gemini_key ) : ! empty( $anthropic_key );
-        $provider_lbl  = $ai_provider === 'gemini' ? 'Google Gemini' : 'Anthropic Claude';
 
         $history   = get_option( 'csdt_scan_history', [] );
         $last_scan = ! empty( $history ) ? $history[0] : null;
@@ -11686,6 +11758,335 @@ class CloudScale_DevTools {
                     <div id="csdt-db-intelligence-results" style="display:none;margin-top:20px;"></div>
                 </div>
 
+                <!-- ── Orphaned Table Cleanup ────────────────────────────── -->
+                <div style="border-top:1px solid #e5e7eb;padding-top:28px;padding-bottom:28px;">
+                    <h2 class="cs-panel-heading">🗑️ <?php esc_html_e( 'Orphaned Table Cleanup', 'cloudscale-devtools' ); ?></h2>
+                    <p style="color:#4b5563;margin:0 0 6px;line-height:1.65;font-size:.95em;">
+                        <?php esc_html_e( 'Scans for database tables left behind by removed plugins. WordPress core tables are always protected — only non-core tables appear here.', 'cloudscale-devtools' ); ?>
+                    </p>
+                    <p style="color:#9ca3af;margin:0 0 16px;font-size:.88em;">
+                        <?php esc_html_e( 'Tables are moved to the Recycle Bin first (renamed with a _trash_ prefix). You can then restore or permanently delete them.', 'cloudscale-devtools' ); ?>
+                    </p>
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+                        <button id="csdt-orphan-scan-btn" type="button" class="cs-btn-primary">
+                            🔍 <?php esc_html_e( 'Scan for Orphaned Tables', 'cloudscale-devtools' ); ?>
+                        </button>
+                    </div>
+                    <div id="csdt-orphan-results" style="margin-top:8px;"></div>
+
+                    <!-- Recycle Bin -->
+                    <div style="margin-top:28px;border-top:1px solid #fde68a;padding-top:20px;">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                            <h3 style="margin:0;font-size:1rem;font-weight:600;color:#374151;">♻️ <?php esc_html_e( 'Recycle Bin', 'cloudscale-devtools' ); ?></h3>
+                            <button id="csdt-trash-refresh-btn" type="button" style="font-size:11px;background:none;border:1px solid #d1d5db;border-radius:4px;padding:2px 8px;cursor:pointer;color:#6b7280;">🔄 <?php esc_html_e( 'Refresh', 'cloudscale-devtools' ); ?></button>
+                        </div>
+                        <p style="color:#9ca3af;font-size:.88em;margin:0 0 12px;"><?php esc_html_e( 'Archived tables can be restored to their original names or permanently deleted.', 'cloudscale-devtools' ); ?></p>
+                        <div id="csdt-trash-results"><span style="color:#9ca3af;font-size:13px;">⏳ <?php esc_html_e( 'Loading…', 'cloudscale-devtools' ); ?></span></div>
+                    </div>
+                </div>
+                <?php
+                $ai_key_set = ! empty( get_option( 'csdt_devtools_anthropic_key', '' ) ) || ! empty( get_option( 'csdt_devtools_gemini_key', '' ) );
+                ?>
+                <script>
+                (function(){
+                    var ajaxUrl = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
+                    var nonce   = <?php echo wp_json_encode( wp_create_nonce( 'csdt_optimizer_nonce' ) ); ?>;
+                    var hasAi   = <?php echo $ai_key_set ? 'true' : 'false'; ?>;
+
+                    function post(action, data) {
+                        var params = 'action=' + encodeURIComponent(action) + '&nonce=' + encodeURIComponent(nonce);
+                        if (data) {
+                            Object.keys(data).forEach(function(k) {
+                                params += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(
+                                    typeof data[k] === 'object' ? JSON.stringify(data[k]) : data[k]
+                                );
+                            });
+                        }
+                        return fetch(ajaxUrl, {
+                            method: 'POST', credentials: 'same-origin',
+                            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                            body: params
+                        }).then(function(r){ return r.json(); });
+                    }
+
+                    function esc(s) {
+                        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                    }
+
+                    function fmtKb(kb) {
+                        return kb >= 1024 ? (kb/1024).toFixed(1)+' MB' : kb+' KB';
+                    }
+
+                    /* ── Orphan Scan ───────────────────────────── */
+                    function runOrphanScan() {
+                        var btn = document.getElementById('csdt-orphan-scan-btn');
+                        var res = document.getElementById('csdt-orphan-results');
+                        if (!btn || !res) return;
+                        btn.disabled = true;
+                        btn.textContent = '⏳ Scanning…';
+                        res.innerHTML = '';
+                        post('csdt_db_orphaned_scan').then(function(r) {
+                            btn.disabled = false;
+                            btn.textContent = '🔍 Scan for Orphaned Tables';
+                            if (!r.success) { res.innerHTML = '<p style="color:#ef4444;font-size:13px;">' + esc(r.data||'Scan failed.') + '</p>'; return; }
+                            renderOrphanResults(r.data.tables||[], res);
+                        }).catch(function(e){
+                            btn.disabled = false;
+                            btn.textContent = '🔍 Scan for Orphaned Tables';
+                            res.innerHTML = '<p style="color:#ef4444;font-size:13px;">Error: ' + esc(e.message) + '</p>';
+                        });
+                    }
+
+                    function renderOrphanResults(tables, container) {
+                        if (!tables.length) {
+                            container.innerHTML = '<p style="color:#16a34a;font-size:13px;margin:0;">✅ No orphaned tables found.</p>';
+                            return;
+                        }
+                        var totalKb = tables.reduce(function(s,t){ return s + (t.size_kb||0); }, 0);
+                        var unknownTables = tables.filter(function(t){ return t.plugin === 'Unknown plugin'; });
+                        var emptyCount = tables.filter(function(t){ return !t.rows; }).length;
+                        var html = '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">'
+                            + '<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:8px 16px;text-align:center;"><div style="font-size:1.3rem;font-weight:700;color:#92400e;">' + tables.length + '</div><div style="font-size:11px;color:#78350f;">tables found</div></div>'
+                            + '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:8px 16px;text-align:center;"><div style="font-size:1.3rem;font-weight:700;color:#166534;">' + fmtKb(totalKb) + '</div><div style="font-size:11px;color:#14532d;">total size</div></div>'
+                            + (emptyCount ? '<button id="csdt-select-empty-btn" type="button" style="background:#0f172a;color:#fff;border:1px solid #0f172a;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">☑ Select ' + emptyCount + ' Empty Tables</button>' : '')
+                            + (hasAi && unknownTables.length ? '<button id="csdt-orphan-ai-btn" type="button" style="background:#6366f1;color:#fff;border:1px solid #4f46e5;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;margin-left:auto;">🤖 Identify ' + unknownTables.length + ' Unknown with AI</button>' : '')
+                            + '</div>';
+                        html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px;">'
+                            + '<thead><tr style="background:#f1f5f9;text-align:left;">'
+                            + '<th style="padding:6px 8px;border:1px solid #e2e8f0;width:36px;"><input type="checkbox" id="csdt-orphan-chk-all"></th>'
+                            + '<th style="padding:6px 8px;border:1px solid #e2e8f0;width:50px;"></th>'
+                            + '<th style="padding:6px 8px;border:1px solid #e2e8f0;">Table</th>'
+                            + '<th style="padding:6px 8px;border:1px solid #e2e8f0;">Plugin</th>'
+                            + '<th style="padding:6px 8px;border:1px solid #e2e8f0;">Description</th>'
+                            + '<th style="padding:6px 8px;border:1px solid #e2e8f0;">URL</th>'
+                            + '<th style="padding:6px 8px;border:1px solid #e2e8f0;text-align:center;">Confidence</th>'
+                            + '<th style="padding:6px 8px;border:1px solid #e2e8f0;">Created</th>'
+                            + '<th style="padding:6px 8px;border:1px solid #e2e8f0;">Rows</th>'
+                            + '<th style="padding:6px 8px;border:1px solid #e2e8f0;">Size</th>'
+                            + '</tr></thead><tbody>';
+                        tables.forEach(function(t){
+                            var isUnknown = t.plugin === 'Unknown plugin';
+                            var typeTag = (t.table_type && t.table_type !== 'BASE TABLE') ? ' <span style="background:#fde68a;color:#92400e;font-size:10px;padding:1px 4px;border-radius:3px;">' + esc(t.table_type) + '</span>' : '';
+                            var pluginCell = isUnknown
+                                ? '<span class="csdt-plugin-label" data-table="' + esc(t.table) + '" style="color:#9ca3af;font-style:italic;">Unknown</span>' + typeTag
+                                : esc(t.plugin) + typeTag;
+                            var descCell = '<span class="csdt-desc-label" data-table="' + esc(t.table) + '" style="color:#9ca3af;">—</span>';
+                            var urlCell  = '<span class="csdt-url-label"  data-table="' + esc(t.table) + '" style="color:#9ca3af;">—</span>';
+                            var confCell = '<span class="csdt-conf-label" data-table="' + esc(t.table) + '" style="color:#9ca3af;">—</span>';
+                            html += '<tr>'
+                                + '<td style="padding:5px 8px;border:1px solid #e2e8f0;"><input type="checkbox" class="csdt-orphan-cb" value="' + esc(t.table) + '" data-rows="' + (t.rows||0) + '"></td>'
+                                + '<td style="padding:5px 8px;border:1px solid #e2e8f0;text-align:center;"><button type="button" class="csdt-row-archive-btn" data-table="' + esc(t.table) + '" style="background:#f59e0b;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;" title="Move to Recycle Bin">📦 Bin</button></td>'
+                                + '<td style="padding:5px 8px;border:1px solid #e2e8f0;font-family:monospace;font-size:11px;">' + esc(t.table) + '</td>'
+                                + '<td style="padding:5px 8px;border:1px solid #e2e8f0;">' + pluginCell + '</td>'
+                                + '<td style="padding:5px 8px;border:1px solid #e2e8f0;max-width:240px;font-size:11px;">' + descCell + '</td>'
+                                + '<td style="padding:5px 8px;border:1px solid #e2e8f0;font-size:11px;">' + urlCell + '</td>'
+                                + '<td style="padding:5px 8px;border:1px solid #e2e8f0;text-align:center;">' + confCell + '</td>'
+                                + '<td style="padding:5px 8px;border:1px solid #e2e8f0;color:#6b7280;font-size:11px;">' + esc(t.created_date||'—') + '</td>'
+                                + '<td style="padding:5px 8px;border:1px solid #e2e8f0;">' + Number(t.rows).toLocaleString() + '</td>'
+                                + '<td style="padding:5px 8px;border:1px solid #e2e8f0;">' + fmtKb(t.size_kb||0) + '</td>'
+                                + '</tr>';
+                        });
+                        html += '</tbody></table></div>'
+                            + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">'
+                            + '<button id="csdt-orphan-archive-btn" type="button" class="cs-btn-primary" style="background:#f59e0b;border-color:#d97706;">📦 Move Selected to Recycle Bin</button>'
+                            + '</div>'
+                            + '<span id="csdt-orphan-archive-msg" style="display:block;margin-top:8px;font-size:12px;color:#6b7280;"></span>';
+                        container.innerHTML = html;
+
+                        var chkAll = container.querySelector('#csdt-orphan-chk-all');
+                        chkAll.addEventListener('change', function(){
+                            container.querySelectorAll('.csdt-orphan-cb').forEach(function(c){ c.checked = chkAll.checked; });
+                        });
+
+                        var selectEmptyBtn = container.querySelector('#csdt-select-empty-btn');
+                        if (selectEmptyBtn) {
+                            selectEmptyBtn.addEventListener('click', function() {
+                                container.querySelectorAll('.csdt-orphan-cb').forEach(function(c){
+                                    c.checked = c.dataset.rows === '0';
+                                });
+                            });
+                        }
+
+                        // Single batch AI identify
+                        var aiIdentifyBtn = container.querySelector('#csdt-orphan-ai-btn');
+                        if (aiIdentifyBtn) {
+                            aiIdentifyBtn.addEventListener('click', function() {
+                                var names = unknownTables.map(function(t){ return t.table; });
+                                aiIdentifyBtn.disabled = true;
+                                aiIdentifyBtn.textContent = '⏳ Asking AI…';
+                                post('csdt_db_identify_table', {table_names: names}).then(function(r){
+                                    aiIdentifyBtn.disabled = false;
+                                    aiIdentifyBtn.textContent = '🤖 Identify Unknown with AI';
+                                    if (!r.success || !r.data || !r.data.map) {
+                                        var errMsg = (r.data && r.data.message) ? r.data.message : (typeof r.data === 'string' ? r.data : 'AI identification failed — check console.');
+                                        aiIdentifyBtn.insertAdjacentHTML('afterend', '<span id="csdt-ai-err" style="margin-left:10px;font-size:12px;color:#ef4444;">' + esc(errMsg) + '</span>');
+                                        return;
+                                    }
+                                    var errEl = container.querySelector('#csdt-ai-err');
+                                    if (errEl) errEl.remove();
+                                    var map = r.data.map;
+                                    var confColor = {'High':'#16a34a','Medium':'#d97706','Low':'#ef4444'};
+                                    container.querySelectorAll('.csdt-plugin-label').forEach(function(cell){
+                                        var tbl = cell.dataset.table;
+                                        var info = map[tbl];
+                                        if (!info) return;
+                                        cell.style.cssText = 'color:#6366f1;font-weight:600;font-style:normal;';
+                                        cell.textContent = info.plugin || info;
+                                    });
+                                    container.querySelectorAll('.csdt-desc-label').forEach(function(cell){
+                                        var info = map[cell.dataset.table];
+                                        if (info && info.description) { cell.style.color='#374151'; cell.textContent = info.description; }
+                                    });
+                                    container.querySelectorAll('.csdt-url-label').forEach(function(cell){
+                                        var info = map[cell.dataset.table];
+                                        if (info && info.url) {
+                                            cell.innerHTML = '<a href="' + esc(info.url) + '" target="_blank" rel="noopener" style="color:#2563eb;font-size:11px;">' + esc(info.url.replace(/^https?:\/\//, '')) + '</a>';
+                                        }
+                                    });
+                                    container.querySelectorAll('.csdt-conf-label').forEach(function(cell){
+                                        var info = map[cell.dataset.table];
+                                        if (info && info.confidence) {
+                                            var c = info.confidence;
+                                            cell.style.cssText = 'font-weight:600;color:' + (confColor[c]||'#6b7280') + ';';
+                                            cell.textContent = c;
+                                        }
+                                    });
+                                }).catch(function(){
+                                    aiIdentifyBtn.disabled = false;
+                                    aiIdentifyBtn.textContent = '🤖 Identify Unknown with AI';
+                                });
+                            });
+                        }
+
+                        container.querySelector('#csdt-orphan-archive-btn').addEventListener('click', function(){
+                            var sel = Array.from(container.querySelectorAll('.csdt-orphan-cb:checked')).map(function(c){ return c.value; });
+                            if (!sel.length) { alert('Select at least one table.'); return; }
+                            var btn = this, msg = container.querySelector('#csdt-orphan-archive-msg');
+                            btn.disabled = true; btn.textContent = '⏳ Archiving…'; msg.textContent = '';
+                            post('csdt_db_archive_tables', {tables: sel}).then(function(r){
+                                btn.disabled = false; btn.textContent = '📦 Move Selected to Recycle Bin';
+                                msg.style.color = r.success ? '#16a34a' : '#ef4444';
+                                msg.textContent = (r.data && r.data.message) || (r.success ? 'Done.' : 'Failed.');
+                                runOrphanScan(); loadTrash();
+                            }).catch(function(e){ btn.disabled=false; btn.textContent='📦 Move Selected to Recycle Bin'; msg.style.color='#ef4444'; msg.textContent='Error: '+e.message; });
+                        });
+
+                        // Per-row archive buttons — direct listeners added right after innerHTML
+                        container.querySelectorAll('.csdt-row-archive-btn').forEach(function(rowBtn) {
+                            rowBtn.addEventListener('click', function() {
+                                var tbl = rowBtn.dataset.table;
+                                var msg = container.querySelector('#csdt-orphan-archive-msg');
+                                rowBtn.disabled = true; rowBtn.textContent = '⏳';
+                                if (msg) { msg.style.color='#6b7280'; msg.textContent = 'Archiving ' + tbl + '…'; }
+                                post('csdt_db_archive_tables', {tables: [tbl]}).then(function(r){
+                                    rowBtn.disabled = false; rowBtn.textContent = '📦 Bin';
+                                    if (r.success) {
+                                        if (msg) { msg.style.color='#16a34a'; msg.textContent = (r.data && r.data.message) || 'Done.'; }
+                                        runOrphanScan(); loadTrash();
+                                    } else {
+                                        var errText = (r.data && r.data.message) || JSON.stringify(r.data) || 'Archive failed';
+                                        if (msg) { msg.style.color='#ef4444'; msg.textContent = '❌ ' + errText; }
+                                    }
+                                }).catch(function(err){
+                                    rowBtn.disabled=false; rowBtn.textContent='📦 Bin';
+                                    if (msg) { msg.style.color='#ef4444'; msg.textContent = '❌ Network error: ' + err.message; }
+                                });
+                            });
+                        });
+
+                    }
+
+                    /* ── Recycle Bin ───────────────────────────── */
+                    function loadTrash() {
+                        var res = document.getElementById('csdt-trash-results');
+                        if (!res) return;
+                        res.innerHTML = '<span style="color:#9ca3af;font-size:12px;">⏳ Loading…</span>';
+                        post('csdt_db_trash_scan').then(function(r){
+                            if (!r.success) { res.innerHTML = '<p style="color:#ef4444;font-size:13px;">' + esc(r.data||'Failed.') + '</p>'; return; }
+                            renderTrashResults(r.data.tables||[], res);
+                        }).catch(function(e){ res.innerHTML = '<p style="color:#ef4444;font-size:13px;">Error: ' + esc(e.message) + '</p>'; });
+                    }
+
+                    function renderTrashResults(tables, container) {
+                        if (!tables.length) {
+                            container.innerHTML = '<p style="color:#9ca3af;font-size:13px;margin:0;">Recycle bin is empty.</p>';
+                            return;
+                        }
+                        var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px;">'
+                            + '<thead><tr style="background:#fef2f2;text-align:left;">'
+                            + '<th style="padding:6px 8px;border:1px solid #fecaca;width:36px;"><input type="checkbox" id="csdt-trash-chk-all"></th>'
+                            + '<th style="padding:6px 8px;border:1px solid #fecaca;">Original Table</th>'
+                            + '<th style="padding:6px 8px;border:1px solid #fecaca;">Plugin</th>'
+                            + '<th style="padding:6px 8px;border:1px solid #fecaca;">Created</th>'
+                            + '<th style="padding:6px 8px;border:1px solid #fecaca;">Archived On</th>'
+                            + '<th style="padding:6px 8px;border:1px solid #fecaca;">Rows</th>'
+                            + '<th style="padding:6px 8px;border:1px solid #fecaca;">Size</th>'
+                            + '</tr></thead><tbody>';
+                        tables.forEach(function(t){
+                            var m = t.trash_table.match(/_trash_(\d{4})(\d{2})(\d{2})_/);
+                            var dated = m ? m[1]+'-'+m[2]+'-'+m[3] : '—';
+                            var isUnknown = !t.plugin || t.plugin === 'Unknown plugin';
+                            var pluginCell = isUnknown
+                                ? '<span style="color:#9ca3af;font-style:italic;">Unknown</span>'
+                                : (t.plugin_url ? '<a href="' + esc(t.plugin_url) + '" target="_blank" rel="noopener" style="color:#3b82f6;text-decoration:none;">' + esc(t.plugin) + '</a>' : esc(t.plugin));
+                            html += '<tr><td style="padding:5px 8px;border:1px solid #fecaca;"><input type="checkbox" class="csdt-trash-cb" value="' + esc(t.trash_table) + '"></td>'
+                                + '<td style="padding:5px 8px;border:1px solid #fecaca;font-family:monospace;font-size:11px;">' + esc(t.original_table) + '</td>'
+                                + '<td style="padding:5px 8px;border:1px solid #fecaca;font-size:11px;">' + pluginCell + '</td>'
+                                + '<td style="padding:5px 8px;border:1px solid #fecaca;color:#6b7280;font-size:11px;">' + esc(t.created_date||'—') + '</td>'
+                                + '<td style="padding:5px 8px;border:1px solid #fecaca;">' + esc(dated) + '</td>'
+                                + '<td style="padding:5px 8px;border:1px solid #fecaca;">' + Number(t.rows||0).toLocaleString() + '</td>'
+                                + '<td style="padding:5px 8px;border:1px solid #fecaca;">' + fmtKb(t.size_kb||0) + '</td></tr>';
+                        });
+                        html += '</tbody></table>'
+                            + '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+                            + '<button id="csdt-trash-restore-btn" type="button" class="cs-btn-secondary">↩ Restore Selected</button>'
+                            + '<button id="csdt-trash-delete-btn" type="button" style="background:#ef4444;color:#fff;border:1px solid #dc2626;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">🗑 Delete Forever</button>'
+                            + '</div>'
+                            + '<span id="csdt-trash-msg" style="display:block;margin-top:8px;font-size:12px;color:#6b7280;"></span>';
+                        container.innerHTML = html;
+
+                        var chkAll = container.querySelector('#csdt-trash-chk-all');
+                        chkAll.addEventListener('change', function(){
+                            container.querySelectorAll('.csdt-trash-cb').forEach(function(c){ c.checked = chkAll.checked; });
+                        });
+
+                        container.querySelector('#csdt-trash-restore-btn').addEventListener('click', function(){
+                            var sel = Array.from(container.querySelectorAll('.csdt-trash-cb:checked')).map(function(c){ return c.value; });
+                            if (!sel.length) { alert('Select at least one table.'); return; }
+                            if (!confirm('Restore ' + sel.length + ' table(s) to their original names?')) return;
+                            var btn = this, msg = container.querySelector('#csdt-trash-msg');
+                            btn.disabled=true; btn.textContent='⏳ Restoring…'; msg.textContent='';
+                            post('csdt_db_restore_tables', {tables: sel}).then(function(r){
+                                btn.disabled=false; btn.textContent='↩ Restore Selected';
+                                msg.style.color = r.success ? '#16a34a' : '#ef4444';
+                                msg.textContent = (r.data && r.data.message) || (r.success ? 'Restored.' : 'Failed.');
+                                loadTrash(); runOrphanScan();
+                            }).catch(function(e){ btn.disabled=false; btn.textContent='↩ Restore Selected'; msg.style.color='#ef4444'; msg.textContent='Error: '+e.message; });
+                        });
+
+                        container.querySelector('#csdt-trash-delete-btn').addEventListener('click', function(){
+                            var sel = Array.from(container.querySelectorAll('.csdt-trash-cb:checked')).map(function(c){ return c.value; });
+                            if (!sel.length) { alert('Select at least one table.'); return; }
+                            if (!confirm('⚠️ Permanently delete ' + sel.length + ' table(s)? This CANNOT be undone.')) return;
+                            var btn = this, msg = container.querySelector('#csdt-trash-msg');
+                            btn.disabled=true; btn.textContent='⏳ Deleting…'; msg.textContent='';
+                            post('csdt_db_drop_tables', {tables: sel}).then(function(r){
+                                btn.disabled=false; btn.textContent='🗑 Delete Forever';
+                                msg.style.color = r.success ? '#16a34a' : '#ef4444';
+                                msg.textContent = (r.data && r.data.message) || (r.success ? 'Deleted.' : 'Failed.');
+                                loadTrash();
+                            }).catch(function(e){ btn.disabled=false; btn.textContent='🗑 Delete Forever'; msg.style.color='#ef4444'; msg.textContent='Error: '+e.message; });
+                        });
+                    }
+
+                    /* ── Init ──────────────────────────────────── */
+                    document.getElementById('csdt-orphan-scan-btn').addEventListener('click', runOrphanScan);
+                    document.getElementById('csdt-trash-refresh-btn').addEventListener('click', loadTrash);
+
+                    loadTrash();
+                })();
+                </script>
+
             </div>
         </div>
         <?php
@@ -11882,6 +12283,51 @@ class CloudScale_DevTools {
                 </div>
 
                 <hr class="cs-sec-divider">
+
+                <?php
+                $rollback_info = get_option( 'csdt_db_prefix_rollback' );
+                if ( $rollback_info && ! empty( $rollback_info['old_prefix'] ) ) :
+                    $age_h = round( ( time() - ( $rollback_info['time'] ?? 0 ) ) / 3600, 1 );
+                ?>
+                <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:0;">
+                        <span style="font-weight:700;color:#dc2626;font-size:13px;">↩ DB Prefix Rollback Available</span>
+                        <span style="font-size:12px;color:#6b7280;margin-left:6px;"><?php echo esc_html( $age_h ); ?>h ago</span>
+                        <div style="font-size:12px;color:#374151;margin-top:2px;">
+                            Tables were renamed from <code><?php echo esc_html( $rollback_info['old_prefix'] ); ?></code> → <code><?php echo esc_html( $rollback_info['new_prefix'] ); ?></code>
+                            (<?php echo count( $rollback_info['tables'] ?? [] ); ?> tables). Rollback restores all tables and wp-config.php.
+                        </div>
+                    </div>
+                    <button type="button" id="csdt-prefix-rollback-persistent-btn" class="cs-btn-secondary cs-btn-sm" style="border-color:#ef4444;color:#dc2626;white-space:nowrap;">↩ Rollback Now</button>
+                    <span id="csdt-prefix-rollback-persistent-msg" style="display:none;font-size:12px;"></span>
+                </div>
+                <script>
+                (function(){
+                    var btn = document.getElementById('csdt-prefix-rollback-persistent-btn');
+                    if (!btn) { return; }
+                    btn.addEventListener('click', function () {
+                        if (!confirm('Roll back all renamed tables and restore wp-config.php?')) { return; }
+                        btn.disabled = true; btn.textContent = '⏳ Rolling back…';
+                        var msg = document.getElementById('csdt-prefix-rollback-persistent-msg');
+                        var fd = new FormData();
+                        fd.append('action', 'csdt_db_prefix_rollback');
+                        fd.append('nonce', <?php echo wp_json_encode( wp_create_nonce( 'csdt_devtools_security_nonce' ) ); ?>);
+                        fetch(<?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>, { method:'POST', body:fd, credentials:'same-origin' })
+                            .then(function(r){ return r.json(); })
+                            .then(function(r){
+                                btn.disabled = false;
+                                if (msg) {
+                                    msg.style.display = '';
+                                    msg.style.color = r.success ? '#16a34a' : '#dc2626';
+                                    msg.textContent = (r.data && r.data.message) || (r.success ? 'Rolled back.' : 'Failed.');
+                                }
+                                if (r.success) { btn.textContent = '✓ Done'; btn.disabled = true; btn.closest('div[style]').style.background='#f0fdf4'; }
+                                else { btn.textContent = '↩ Rollback Now'; }
+                            }).catch(function(){ btn.disabled=false; btn.textContent='↩ Rollback Now'; });
+                    });
+                })();
+                </script>
+                <?php endif; ?>
 
                 <!-- Quick Fixes -->
                 <div class="cs-section-header" style="background:linear-gradient(90deg,#78350f 0%,#b45309 100%);border-left:3px solid #fcd34d;margin-bottom:0;">
@@ -12150,6 +12596,8 @@ bantime  = 86400</pre>
                     </div>
                 </div>
 
+                <?php self::render_security_headers_panel(); ?>
+
                 <?php self::render_csp_panel(); ?>
 
                 <div style="margin:32px 0 0;border-top:2px solid #e2e8f0;"></div>
@@ -12247,15 +12695,15 @@ bantime  = 86400</pre>
                         $score_color = $score >= 90 ? '#22c55e' : ( $score >= 75 ? '#4ade80' : ( $score >= 55 ? '#fbbf24' : ( $score >= 35 ? '#f97316' : '#ef4444' ) ) );
                         $has_findings = ! empty( $entry['findings'] );
                     ?>
-                        <div style="display:flex;align-items:flex-start;gap:14px;padding:10px 12px;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid rgba(255,255,255,0.06);">
+                        <div style="display:flex;align-items:flex-start;gap:14px;padding:10px 12px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
                             <div style="flex-shrink:0;text-align:center;min-width:48px;">
                                 <div style="font-size:1.4rem;font-weight:700;color:<?php echo esc_attr( $score_color ); ?>;line-height:1;"><?php echo esc_html( $score ); ?></div>
                                 <div style="font-size:10px;color:<?php echo esc_attr( $score_color ); ?>;opacity:.8;"><?php echo esc_html( $label ); ?></div>
                             </div>
                             <div style="flex:1;min-width:0;">
                                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap;">
-                                    <span style="font-size:12px;font-weight:600;color:#9da5b4;"><?php echo esc_html( $type_label ); ?></span>
-                                    <span style="font-size:12px;font-weight:400;color:#9da5b4;opacity:.7;"><?php echo esc_html( $date ); ?></span>
+                                    <span style="font-size:12px;font-weight:600;color:#0f172a;"><?php echo esc_html( $type_label ); ?></span>
+                                    <span style="font-size:12px;font-weight:400;color:#64748b;"><?php echo esc_html( $date ); ?></span>
                                     <?php if ( $has_findings ) : ?>
                                     <button type="button"
                                         class="csdt-view-report-btn"
@@ -12268,9 +12716,16 @@ bantime  = 86400</pre>
                                         style="font-size:11px;font-weight:600;color:#60a5fa;background:none;border:1px solid #60a5fa;border-radius:4px;padding:1px 8px;cursor:pointer;line-height:1.5;flex-shrink:0;">
                                         View Report
                                     </button>
+                                    <button type="button"
+                                        class="csdt-history-pdf-btn"
+                                        data-idx="<?php echo esc_attr( $idx ); ?>"
+                                        data-scan-type="<?php echo esc_attr( $entry['type'] ?? 'standard' ); ?>"
+                                        style="font-size:11px;font-weight:600;color:#6b7280;background:none;border:1px solid #d1d5db;border-radius:4px;padding:1px 8px;cursor:pointer;line-height:1.5;flex-shrink:0;">
+                                        ↓ PDF
+                                    </button>
                                     <?php endif; ?>
                                 </div>
-                                <div style="font-size:12px;color:#c5cad4;line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">
+                                <div style="font-size:12px;color:#374151;line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">
                                     <?php echo esc_html( $entry['summary'] ?? '' ); ?>
                                 </div>
                             </div>
@@ -12494,7 +12949,8 @@ bantime  = 86400</pre>
                     wp_send_json_error( 'chmod failed — server may restrict permission changes.' );
                     return;
                 }
-                break;
+                wp_send_json_success( [ 'fixes' => self::get_quick_fixes(), 'message' => 'Permissions set to 0400 — wp-config.php is now read-only.' ] );
+                return;
             case 'block_debug_log':
                 $old_log = WP_CONTENT_DIR . '/debug.log';
                 $new_log = rtrim( dirname( rtrim( ABSPATH, '/\\' ) ), '/\\' ) . '/wordpress-debug.log';
@@ -12630,11 +13086,20 @@ bantime  = 86400</pre>
             return;
         }
 
-        $cfg_file    = ABSPATH . 'wp-config.php';
+        $cfg_file     = ABSPATH . 'wp-config.php';
         $cfg_writable = is_readable( $cfg_file ) && is_writable( $cfg_file );
+        $cfg_content  = is_readable( $cfg_file ) ? file_get_contents( $cfg_file ) : ''; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+
+        // Detect wp-config.php format: must have a static $table_prefix = 'wp_'; to be editable
+        $cfg_static   = (bool) preg_match( '/\$table_prefix\s*=\s*[\'"]wp_[\'"]\s*;/', $cfg_content );
+        $cfg_getenv   = (bool) preg_match( '/\$table_prefix\s*=\s*getenv/', $cfg_content );
 
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-        $tables = $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $current_prefix ) . '%' ) );
+        $all_tables  = $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $current_prefix ) . '%' ) );
+        $prefix_len  = strlen( $current_prefix );
+        $core        = self::core_table_suffixes();
+        $tables      = array_values( array_filter( $all_tables, fn( $t ) => in_array( substr( $t, $prefix_len ), $core, true ) ) );
+        $skipped     = count( $all_tables ) - count( $tables );
 
         // Generate a unique prefix and stash it for 5 minutes
         $new_prefix = 'cs' . substr( md5( wp_generate_uuid4() ), 0, 6 ) . '_';
@@ -12645,7 +13110,10 @@ bantime  = 86400</pre>
             'new_prefix'     => $new_prefix,
             'table_count'    => count( $tables ),
             'tables'         => $tables,
+            'skipped_count'  => $skipped,
             'cfg_writable'   => $cfg_writable,
+            'cfg_static'     => $cfg_static,
+            'cfg_getenv'     => $cfg_getenv,
         ] );
     }
 
@@ -12670,15 +13138,25 @@ bantime  = 86400</pre>
         }
 
         $cfg_file = ABSPATH . 'wp-config.php';
-        if ( ! is_readable( $cfg_file ) || ! is_writable( $cfg_file ) ) {
-            wp_send_json_error( 'wp-config.php is not writable. Fix file permissions and try again.' );
+        if ( ! is_readable( $cfg_file ) ) {
+            wp_send_json_error( 'wp-config.php is not readable.' );
+            return;
+        }
+        $original_perms = fileperms( $cfg_file );
+        $needs_chmod    = ! is_writable( $cfg_file );
+        if ( $needs_chmod && ! @chmod( $cfg_file, 0644 ) ) {
+            wp_send_json_error( 'wp-config.php is read-only and could not be unlocked. Run: chmod 644 ' . basename( $cfg_file ) . ' then retry.' );
             return;
         }
 
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-        $tables = $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $current_prefix ) . '%' ) );
+        $all_tables = $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $current_prefix ) . '%' ) );
+        $prefix_len = strlen( $current_prefix );
+        $core       = self::core_table_suffixes();
+        $tables     = array_values( array_filter( $all_tables, fn( $t ) => in_array( substr( $t, $prefix_len ), $core, true ) ) );
+
         if ( empty( $tables ) ) {
-            wp_send_json_error( 'No tables found with prefix "' . esc_html( $current_prefix ) . '".' );
+            wp_send_json_error( 'No core tables found with prefix "' . esc_html( $current_prefix ) . '".' );
             return;
         }
 
@@ -12726,14 +13204,22 @@ bantime  = 86400</pre>
             $wpdb->esc_like( $current_prefix ) . '%'
         ) );
 
-        // Rewrite $table_prefix in wp-config.php
+        // Rewrite $table_prefix in wp-config.php — handles both static and Docker getenv_docker() forms
         // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
         $cfg     = file_get_contents( $cfg_file );
         $new_cfg = preg_replace(
-            '/\$table_prefix\s*=\s*[\'"]wp_[\'"]\s*;/',
+            '/\$table_prefix\s*=\s*getenv_docker\s*\([^)]+\)\s*;/',
             "\$table_prefix = '" . $new_prefix . "';",
             $cfg
         );
+        if ( $new_cfg === null || $new_cfg === $cfg ) {
+            // Fall back to plain static pattern
+            $new_cfg = preg_replace(
+                '/\$table_prefix\s*=\s*[\'"]wp_[\'"]\s*;/',
+                "\$table_prefix = '" . $new_prefix . "';",
+                $cfg
+            );
+        }
 
         if ( $new_cfg === null || $new_cfg === $cfg ) {
             foreach ( $renamed as $pair ) {
@@ -12746,6 +13232,7 @@ bantime  = 86400</pre>
 
         // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
         if ( file_put_contents( $cfg_file, $new_cfg ) === false ) {
+            if ( $needs_chmod ) { @chmod( $cfg_file, $original_perms ); }
             foreach ( $renamed as $pair ) {
                 // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
                 $wpdb->query( 'RENAME TABLE `' . esc_sql( $pair['to'] ) . '` TO `' . esc_sql( $pair['from'] ) . '`' );
@@ -12754,12 +13241,680 @@ bantime  = 86400</pre>
             return;
         }
 
+        // Restore original permissions (e.g. 0400) after successful write
+        if ( $needs_chmod ) { @chmod( $cfg_file, $original_perms ); }
+
+        // Flush object cache — stale Redis/Memcached entries keyed to old prefix cause 404s
+        wp_cache_flush();
+
+        // Store rollback info so the user can undo within 24 hours
+        update_option( 'csdt_db_prefix_rollback', [
+            'old_prefix'   => $current_prefix,
+            'new_prefix'   => $new_prefix,
+            'tables'       => $renamed,   // [['from'=>..., 'to'=>...], ...]
+            'cfg_getenv'   => str_contains( $cfg, 'getenv_docker' ) ? false : false, // static form after write
+            'cfg_original' => $cfg,       // full original wp-config.php content
+            'time'         => time(),
+        ] );
+
         delete_transient( 'csdt_db_prefix_proposed' );
 
         wp_send_json_success( [
             'new_prefix'     => $new_prefix,
             'tables_renamed' => count( $renamed ),
-            'message'        => 'Success! Renamed ' . count( $renamed ) . ' tables to prefix "' . $new_prefix . '" and updated wp-config.php.',
+            'message'        => 'Success! Renamed ' . count( $renamed ) . ' core tables to prefix "' . $new_prefix . '" and updated wp-config.php.',
+        ] );
+    }
+
+    public static function ajax_db_prefix_rollback(): void {
+        check_ajax_referer( 'csdt_devtools_security_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        $info = get_option( 'csdt_db_prefix_rollback' );
+        if ( ! $info || empty( $info['tables'] ) ) {
+            wp_send_json_error( 'No rollback data found.' );
+            return;
+        }
+
+        global $wpdb;
+        $errors  = [];
+        $reverted = 0;
+
+        foreach ( $info['tables'] as $pair ) {
+            $from = sanitize_text_field( $pair['to'] );   // current name (new prefix)
+            $to   = sanitize_text_field( $pair['from'] ); // original name (old prefix)
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+            $r = $wpdb->query( 'RENAME TABLE `' . esc_sql( $from ) . '` TO `' . esc_sql( $to ) . '`' );
+            if ( $r === false ) {
+                $errors[] = $from;
+            } else {
+                $reverted++;
+            }
+        }
+
+        if ( ! empty( $errors ) ) {
+            wp_send_json_error( 'Rollback partially failed. Could not rename: ' . implode( ', ', $errors ) );
+            return;
+        }
+
+        // Revert option_name and meta_key keys back to old prefix
+        $old_prefix     = $info['old_prefix'];
+        $new_prefix     = $info['new_prefix'];
+        $options_table  = $old_prefix . 'options';
+        $usermeta_table = $old_prefix . 'usermeta';
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        $wpdb->query( $wpdb->prepare(
+            'UPDATE `' . esc_sql( $options_table ) . '` SET option_name = REPLACE(option_name, %s, %s) WHERE option_name LIKE %s',
+            $new_prefix, $old_prefix, $wpdb->esc_like( $new_prefix ) . '%'
+        ) );
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        $wpdb->query( $wpdb->prepare(
+            'UPDATE `' . esc_sql( $usermeta_table ) . '` SET meta_key = REPLACE(meta_key, %s, %s) WHERE meta_key LIKE %s',
+            $new_prefix, $old_prefix, $wpdb->esc_like( $new_prefix ) . '%'
+        ) );
+
+        // Restore original wp-config.php content
+        $cfg_file = ABSPATH . 'wp-config.php';
+        if ( ! empty( $info['cfg_original'] ) ) {
+            $original_perms = file_exists( $cfg_file ) ? fileperms( $cfg_file ) : 0644;
+            $needs_chmod    = ! is_writable( $cfg_file );
+            if ( $needs_chmod ) { @chmod( $cfg_file, 0644 ); }
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+            file_put_contents( $cfg_file, $info['cfg_original'] );
+            if ( $needs_chmod ) { @chmod( $cfg_file, $original_perms ); }
+        }
+
+        wp_cache_flush();
+        delete_option( 'csdt_db_prefix_rollback' );
+
+        wp_send_json_success( [
+            'reverted' => $reverted,
+            'message'  => 'Rolled back ' . $reverted . ' tables to prefix "' . esc_html( $old_prefix ) . '" and restored wp-config.php.',
+        ] );
+    }
+
+    // ── Shared list of WordPress core table suffixes (no prefix) ────────────
+    private static function core_table_suffixes(): array {
+        return [
+            'comments', 'commentmeta', 'links', 'options', 'postmeta', 'posts',
+            'terms', 'termmeta', 'term_relationships', 'term_taxonomy', 'usermeta', 'users',
+            // Multisite
+            'blogs', 'blog_versions', 'registration_log', 'signups', 'site', 'sitemeta', 'sitecategories',
+        ];
+    }
+
+    // ── Map a table suffix to a likely plugin name ───────────────────────────
+    private static function guess_plugin_from_suffix( string $suffix ): string {
+        $map = [
+            'rank_math'       => 'Rank Math SEO',
+            'shortpixel'      => 'ShortPixel',
+            'woocommerce'     => 'WooCommerce',
+            'wc_order'        => 'WooCommerce',
+            'wc_product'      => 'WooCommerce',
+            'wc_tax'          => 'WooCommerce',
+            'woo_'            => 'WooCommerce',
+            'elementor'       => 'Elementor',
+            'e_submissions'   => 'Elementor',
+            'aioseo'          => 'AIOSEO',
+            'yoast'           => 'Yoast SEO',
+            'wpseo'           => 'Yoast SEO',
+            'jetpack'         => 'Jetpack',
+            'ninja_forms'     => 'Ninja Forms',
+            'nf_'             => 'Ninja Forms',
+            'gf_'             => 'Gravity Forms',
+            'litespeed'       => 'LiteSpeed Cache',
+            'smush'           => 'Smush',
+            'wordfence'       => 'Wordfence',
+            'wfblockedip'     => 'Wordfence',
+            'wf_'             => 'Wordfence',
+            'cf7'             => 'Contact Form 7',
+            'wpcf7'           => 'Contact Form 7',
+            'redirection'     => 'Redirection',
+            'duplicator'      => 'Duplicator',
+            'itsec'           => 'iThemes Security',
+            'backwpup'        => 'BackWPup',
+            'mailpoet'        => 'MailPoet',
+            'wysija'          => 'MailPoet (legacy)',
+            'wpforms'         => 'WPForms',
+            'actionscheduler' => 'Action Scheduler',
+            'icl_'            => 'WPML',
+            'wpml_'           => 'WPML',
+            'learndash'       => 'LearnDash',
+            'bookly'          => 'Bookly',
+            'affilwp'         => 'AffiliateWP',
+            'give_'           => 'GiveWP',
+            'tribe_'          => 'The Events Calendar',
+            'em_'             => 'Events Manager',
+            'wsal_'           => 'WP Activity Log',
+            'formidable'      => 'Formidable Forms',
+            'wpo_'            => 'WP-Optimize',
+            'ewwwio'          => 'EWWW Image Optimizer',
+            'mepr_'           => 'MemberPress',
+            'pmpro'           => 'Paid Memberships Pro',
+            'mlw_'            => 'Quiz And Survey Master',
+            'wdr_'            => 'Discount Rules',
+            'berocket'        => 'BeRocket',
+            'cspv_'           => 'Cloudscale Devtools (legacy)',
+            'csdt_'           => 'Cloudscale Devtools',
+        ];
+        foreach ( $map as $key => $name ) {
+            if ( str_contains( $suffix, $key ) ) {
+                return $name;
+            }
+        }
+        return 'Unknown plugin';
+    }
+
+    private static function guess_plugin_url_from_suffix( string $suffix ): string {
+        $map = [
+            'rank_math'       => 'https://wordpress.org/plugins/seo-by-rank-math/',
+            'shortpixel'      => 'https://wordpress.org/plugins/shortpixel-image-optimiser/',
+            'woocommerce'     => 'https://wordpress.org/plugins/woocommerce/',
+            'wc_order'        => 'https://wordpress.org/plugins/woocommerce/',
+            'wc_product'      => 'https://wordpress.org/plugins/woocommerce/',
+            'wc_tax'          => 'https://wordpress.org/plugins/woocommerce/',
+            'woo_'            => 'https://wordpress.org/plugins/woocommerce/',
+            'elementor'       => 'https://wordpress.org/plugins/elementor/',
+            'e_submissions'   => 'https://wordpress.org/plugins/elementor/',
+            'aioseo'          => 'https://wordpress.org/plugins/all-in-one-seo-pack/',
+            'yoast'           => 'https://wordpress.org/plugins/wordpress-seo/',
+            'wpseo'           => 'https://wordpress.org/plugins/wordpress-seo/',
+            'jetpack'         => 'https://wordpress.org/plugins/jetpack/',
+            'ninja_forms'     => 'https://wordpress.org/plugins/ninja-forms/',
+            'nf_'             => 'https://wordpress.org/plugins/ninja-forms/',
+            'gf_'             => 'https://www.gravityforms.com/',
+            'litespeed'       => 'https://wordpress.org/plugins/litespeed-cache/',
+            'smush'           => 'https://wordpress.org/plugins/wp-smushit/',
+            'wordfence'       => 'https://wordpress.org/plugins/wordfence/',
+            'wfblockedip'     => 'https://wordpress.org/plugins/wordfence/',
+            'wf_'             => 'https://wordpress.org/plugins/wordfence/',
+            'cf7'             => 'https://wordpress.org/plugins/contact-form-7/',
+            'wpcf7'           => 'https://wordpress.org/plugins/contact-form-7/',
+            'redirection'     => 'https://wordpress.org/plugins/redirection/',
+            'duplicator'      => 'https://wordpress.org/plugins/duplicator/',
+            'itsec'           => 'https://wordpress.org/plugins/better-wp-security/',
+            'backwpup'        => 'https://wordpress.org/plugins/backwpup/',
+            'mailpoet'        => 'https://wordpress.org/plugins/mailpoet/',
+            'wysija'          => 'https://wordpress.org/plugins/mailpoet/',
+            'wpforms'         => 'https://wordpress.org/plugins/wpforms-lite/',
+            'actionscheduler' => 'https://wordpress.org/plugins/action-scheduler/',
+            'icl_'            => 'https://wpml.org/',
+            'wpml_'           => 'https://wpml.org/',
+            'learndash'       => 'https://www.learndash.com/',
+            'bookly'          => 'https://wordpress.org/plugins/bookly-responsive-appointment-booking-tool/',
+            'affilwp'         => 'https://affiliatewp.com/',
+            'give_'           => 'https://wordpress.org/plugins/give/',
+            'tribe_'          => 'https://wordpress.org/plugins/the-events-calendar/',
+            'em_'             => 'https://wordpress.org/plugins/events-manager/',
+            'wsal_'           => 'https://wordpress.org/plugins/wp-security-audit-log/',
+            'formidable'      => 'https://wordpress.org/plugins/formidable/',
+            'wpo_'            => 'https://wordpress.org/plugins/wp-optimize/',
+            'ewwwio'          => 'https://wordpress.org/plugins/ewww-image-optimizer/',
+            'mepr_'           => 'https://www.memberpress.com/',
+            'pmpro'           => 'https://www.paidmembershipspro.com/',
+            'mlw_'            => 'https://wordpress.org/plugins/quiz-master-next/',
+            'wdr_'            => 'https://wordpress.org/plugins/woo-discount-rules/',
+            'berocket'        => 'https://berocket.com/',
+            'cspv_'           => '',
+            'csdt_'           => '',
+        ];
+        foreach ( $map as $key => $url ) {
+            if ( str_contains( $suffix, $key ) ) {
+                return $url;
+            }
+        }
+        return '';
+    }
+
+    public static function ajax_db_orphaned_scan(): void {
+        check_ajax_referer( 'csdt_optimizer_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        global $wpdb;
+        $prefix     = $wpdb->prefix;
+        $prefix_len = strlen( $prefix );
+        $core       = self::core_table_suffixes();
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $all_tables = $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $prefix ) . '%' ) );
+
+        // Build a set of table suffixes owned by currently-active plugins via their table-prefix mappings.
+        // This prevents tables belonging to installed plugins from appearing as "orphaned".
+        $active_plugin_suffixes = [];
+        $active_plugins = (array) get_option( 'active_plugins', [] );
+        foreach ( $active_plugins as $plugin_file ) {
+            $slug = dirname( $plugin_file );
+            // Map known plugin slugs to the table-suffix prefixes they own.
+            $slug_suffix_map = [
+                'cloudscale-wordpress-free-analytics' => [ 'cspv_' ],
+            ];
+            if ( isset( $slug_suffix_map[ $slug ] ) ) {
+                foreach ( $slug_suffix_map[ $slug ] as $sfx ) {
+                    $active_plugin_suffixes[] = $sfx;
+                }
+            }
+        }
+
+        $non_core = array_values( array_filter( $all_tables, function ( $t ) use ( $prefix_len, $core, $active_plugin_suffixes ) {
+            $suffix = substr( $t, $prefix_len );
+            if ( in_array( $suffix, $core, true ) ) {
+                return false;
+            }
+            foreach ( $active_plugin_suffixes as $sfx ) {
+                if ( str_starts_with( $suffix, $sfx ) ) {
+                    return false;
+                }
+            }
+            return true;
+        } ) );
+
+        if ( empty( $non_core ) ) {
+            wp_send_json_success( [ 'tables' => [] ] );
+            return;
+        }
+
+        // Fetch row counts and sizes from information_schema
+        $placeholders = implode( ',', array_fill( 0, count( $non_core ), '%s' ) );
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                "SELECT TABLE_NAME as name, TABLE_ROWS as rows,
+                        ROUND((DATA_LENGTH + INDEX_LENGTH) / 1024) as size_kb,
+                        TABLE_TYPE as table_type,
+                        DATE_FORMAT(CREATE_TIME, '%%Y-%%m-%%d') as created_date
+                 FROM information_schema.TABLES
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ({$placeholders})",
+                ...$non_core
+            )
+        );
+
+        $size_map    = [];
+        $rows_map    = [];
+        $type_map    = [];
+        $created_map = [];
+        foreach ( $rows as $r ) {
+            $size_map[ $r->name ]    = (int) $r->size_kb;
+            $rows_map[ $r->name ]    = (int) $r->rows;
+            $type_map[ $r->name ]    = $r->table_type ?? 'BASE TABLE';
+            $created_map[ $r->name ] = $r->created_date ?? '';
+        }
+
+        $result = [];
+        foreach ( $non_core as $table ) {
+            $suffix   = substr( $table, $prefix_len );
+            $result[] = [
+                'table'        => $table,
+                'plugin'       => self::guess_plugin_from_suffix( $suffix ),
+                'rows'         => $rows_map[ $table ] ?? 0,
+                'size_kb'      => $size_map[ $table ] ?? 0,
+                'table_type'   => $type_map[ $table ] ?? 'BASE TABLE',
+                'created_date' => $created_map[ $table ] ?? '',
+            ];
+        }
+
+        usort( $result, fn( $a, $b ) => strcmp( $a['plugin'] . $a['table'], $b['plugin'] . $b['table'] ) );
+
+        wp_send_json_success( [ 'tables' => $result ] );
+    }
+
+    public static function ajax_db_identify_table(): void {
+        check_ajax_referer( 'csdt_optimizer_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $table_names = json_decode( wp_unslash( $_POST['table_names'] ?? '' ), true );
+        if ( ! is_array( $table_names ) || empty( $table_names ) ) {
+            wp_send_json_error( 'No tables specified.' );
+            return;
+        }
+
+        global $wpdb;
+
+        // Build table descriptions: name + columns for each
+        $descriptions = [];
+        foreach ( $table_names as $table ) {
+            $table = sanitize_text_field( $table );
+            if ( ! $table ) { continue; }
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+            $cols = $wpdb->get_col( 'SHOW COLUMNS FROM `' . esc_sql( $table ) . '`' );
+            if ( $cols ) {
+                $descriptions[] = '- ' . $table . ': ' . implode( ', ', $cols );
+            }
+        }
+
+        if ( empty( $descriptions ) ) {
+            wp_send_json_error( 'No valid tables found.' );
+            return;
+        }
+
+        $provider      = get_option( 'csdt_devtools_ai_provider', 'anthropic' );
+        $anthropic_key = get_option( 'csdt_devtools_anthropic_key', '' );
+        $gemini_key    = get_option( 'csdt_devtools_gemini_key', '' );
+
+        $prompt = "Identify which WordPress plugin or theme created each of these database tables.\n"
+                . "Return ONLY a valid JSON object. Each key is the full table name. Each value is an object with:\n"
+                . "  \"plugin\": plugin name (2-5 words)\n"
+                . "  \"description\": one sentence describing what the plugin does\n"
+                . "  \"url\": plugin homepage URL (wordpress.org/plugins/... or official site)\n"
+                . "  \"confidence\": \"High\", \"Medium\", or \"Low\"\n"
+                . "No markdown, no explanation, only the JSON.\n\n"
+                . "Tables:\n" . implode( "\n", $descriptions );
+
+        $raw_text = '';
+
+        if ( function_exists( 'set_time_limit' ) ) { set_time_limit( 120 ); }
+
+        if ( $provider === 'gemini' && $gemini_key ) {
+            $url  = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . rawurlencode( $gemini_key );
+            $resp = wp_remote_post( $url, [
+                'timeout' => 90,
+                'headers' => [ 'Content-Type' => 'application/json' ],
+                'body'    => wp_json_encode( [
+                    'contents'         => [ [ 'role' => 'user', 'parts' => [ [ 'text' => $prompt ] ] ] ],
+                    'generationConfig' => [ 'maxOutputTokens' => 8192 ],
+                ] ),
+            ] );
+            if ( ! is_wp_error( $resp ) && wp_remote_retrieve_response_code( $resp ) === 200 ) {
+                $body     = json_decode( wp_remote_retrieve_body( $resp ), true );
+                $raw_text = trim( $body['candidates'][0]['content']['parts'][0]['text'] ?? '' );
+            }
+        } elseif ( $anthropic_key ) {
+            $resp = wp_remote_post( 'https://api.anthropic.com/v1/messages', [
+                'timeout' => 90,
+                'headers' => [
+                    'x-api-key'         => $anthropic_key,
+                    'anthropic-version' => '2023-06-01',
+                    'content-type'      => 'application/json',
+                ],
+                'body' => wp_json_encode( [
+                    'model'      => 'claude-haiku-4-5-20251001',
+                    'max_tokens' => 8192,
+                    'messages'   => [ [ 'role' => 'user', 'content' => $prompt ] ],
+                ] ),
+            ] );
+            if ( ! is_wp_error( $resp ) && wp_remote_retrieve_response_code( $resp ) === 200 ) {
+                $body     = json_decode( wp_remote_retrieve_body( $resp ), true );
+                $raw_text = trim( $body['content'][0]['text'] ?? '' );
+            }
+        }
+
+        if ( ! $raw_text ) {
+            wp_send_json_error( 'AI did not respond.' );
+            return;
+        }
+
+        // Strip optional ```json ... ``` fences
+        $raw_text = preg_replace( '/^```(?:json)?\s*/i', '', $raw_text );
+        $raw_text = preg_replace( '/\s*```\s*$/i', '', $raw_text );
+
+        $map = json_decode( trim( $raw_text ), true );
+        if ( ! is_array( $map ) ) {
+            wp_send_json_error( 'AI returned unexpected format.' );
+            return;
+        }
+
+        // Sanitize values — support both flat string and object per entry
+        $clean = [];
+        foreach ( $map as $tbl => $entry ) {
+            $key = sanitize_text_field( $tbl );
+            if ( is_array( $entry ) ) {
+                $clean[ $key ] = [
+                    'plugin'      => sanitize_text_field( $entry['plugin']      ?? '' ),
+                    'description' => sanitize_text_field( $entry['description'] ?? '' ),
+                    'url'         => esc_url_raw( $entry['url']                 ?? '' ),
+                    'confidence'  => in_array( $entry['confidence'] ?? '', [ 'High', 'Medium', 'Low' ], true )
+                                     ? $entry['confidence'] : 'Low',
+                ];
+            } else {
+                $clean[ $key ] = [ 'plugin' => sanitize_text_field( (string) $entry ) ];
+            }
+        }
+
+        wp_send_json_success( [ 'map' => $clean ] );
+    }
+
+    public static function ajax_db_archive_tables(): void {
+        check_ajax_referer( 'csdt_optimizer_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $tables = json_decode( wp_unslash( $_POST['tables'] ?? '' ), true );
+        if ( ! is_array( $tables ) || empty( $tables ) ) {
+            wp_send_json_error( 'No tables specified.' );
+            return;
+        }
+
+        global $wpdb;
+        $prefix = $wpdb->prefix;
+        $core   = self::core_table_suffixes();
+        $prefix_len = strlen( $prefix );
+        $date   = gmdate( 'Ymd' );
+
+        $archived = [];
+        $errors   = [];
+
+        foreach ( $tables as $table ) {
+            $table = sanitize_text_field( $table );
+            if ( ! str_starts_with( $table, $prefix ) ) {
+                $errors[] = $table . ' (wrong prefix)';
+                continue;
+            }
+            if ( in_array( substr( $table, $prefix_len ), $core, true ) ) {
+                $errors[] = $table . ' (core — protected)';
+                continue;
+            }
+            $new_name = '_trash_' . $date . '_' . $table;
+            // Avoid collision
+            $i = 1;
+            while ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $new_name ) ) ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+                $new_name = '_trash_' . $date . '_' . $i . '_' . $table;
+                $i++;
+            }
+            // Check if this is a VIEW — RENAME TABLE doesn't work on views
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $table_type = $wpdb->get_var( $wpdb->prepare(
+                "SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s",
+                $table
+            ) );
+
+            if ( $table_type === 'VIEW' ) {
+                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+                $ok = $wpdb->query( 'DROP VIEW `' . esc_sql( $table ) . '`' );
+                if ( $ok === false ) {
+                    $db_err = $wpdb->last_error ?: 'unknown MySQL error';
+                    $errors[] = $table . ' (VIEW drop failed: ' . $db_err . ')';
+                } else {
+                    $archived[] = $table . ' (VIEW dropped)';
+                }
+            } else {
+                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+                $ok = $wpdb->query( 'RENAME TABLE `' . esc_sql( $table ) . '` TO `' . esc_sql( $new_name ) . '`' );
+                if ( $ok === false ) {
+                    $db_err = $wpdb->last_error ?: 'unknown MySQL error';
+                    $errors[] = $table . ' (' . $db_err . ')';
+                } else {
+                    $archived[] = $table;
+                }
+            }
+        }
+
+        if ( ! empty( $errors ) ) {
+            wp_send_json_error( [
+                'archived' => count( $archived ),
+                'message'  => 'Archived ' . count( $archived ) . ', failed: ' . implode( ', ', $errors ),
+            ] );
+            return;
+        }
+
+        wp_send_json_success( [
+            'archived' => count( $archived ),
+            'message'  => 'Moved ' . count( $archived ) . ' table(s) to Recycle Bin.',
+        ] );
+    }
+
+    public static function ajax_db_trash_scan(): void {
+        check_ajax_referer( 'csdt_optimizer_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        global $wpdb;
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $all    = $wpdb->get_col( 'SHOW TABLES' );
+        $trash  = array_values( array_filter( $all, fn( $t ) => preg_match( '/^_trash_\d{8}_/', $t ) ) );
+
+        if ( empty( $trash ) ) {
+            wp_send_json_success( [ 'tables' => [] ] );
+            return;
+        }
+
+        $placeholders = implode( ',', array_fill( 0, count( $trash ), '%s' ) );
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT TABLE_NAME as name, TABLE_ROWS as row_count, ROUND((DATA_LENGTH + INDEX_LENGTH) / 1024) as size_kb,
+                        DATE_FORMAT(CREATE_TIME, '%%Y-%%m-%%d') as created_date
+                 FROM information_schema.TABLES
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ({$placeholders})",
+                ...$trash
+            )
+        );
+        $size_map    = [];
+        $rows_map    = [];
+        $created_map = [];
+        foreach ( $rows as $r ) {
+            $size_map[ $r->name ]    = (int) $r->size_kb;
+            $rows_map[ $r->name ]    = (int) $r->row_count;
+            $created_map[ $r->name ] = $r->created_date ?? '';
+        }
+
+        $result = [];
+        foreach ( $trash as $t ) {
+            // Derive original table name by stripping _trash_YYYYMMDD_ or _trash_YYYYMMDD_N_ prefix
+            $original = preg_replace( '/^_trash_\d{8}_(?:\d+_)?/', '', $t );
+            $suffix   = substr( $original, strlen( $wpdb->prefix ) );
+            $result[] = [
+                'trash_table'    => $t,
+                'original_table' => $original,
+                'size_kb'        => $size_map[ $t ] ?? 0,
+                'rows'           => $rows_map[ $t ] ?? 0,
+                'created_date'   => $created_map[ $t ] ?? '',
+                'plugin'         => self::guess_plugin_from_suffix( $suffix ),
+                'plugin_url'     => self::guess_plugin_url_from_suffix( $suffix ),
+            ];
+        }
+
+        usort( $result, fn( $a, $b ) => strcmp( $a['original_table'], $b['original_table'] ) );
+
+        wp_send_json_success( [ 'tables' => $result ] );
+    }
+
+    public static function ajax_db_restore_tables(): void {
+        check_ajax_referer( 'csdt_optimizer_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $tables = json_decode( wp_unslash( $_POST['tables'] ?? '' ), true );
+        if ( ! is_array( $tables ) || empty( $tables ) ) {
+            wp_send_json_error( 'No tables specified.' );
+            return;
+        }
+
+        global $wpdb;
+        $restored = [];
+        $errors   = [];
+
+        foreach ( $tables as $table ) {
+            $table = sanitize_text_field( $table );
+            if ( ! preg_match( '/^_trash_\d{8}_/', $table ) ) {
+                $errors[] = $table . ' (not a trash table)';
+                continue;
+            }
+            $original = preg_replace( '/^_trash_\d{8}_(?:\d+_)?/', '', $table );
+            // If original name is already taken, skip
+            if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $original ) ) ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+                $errors[] = $table . ' (original name ' . $original . ' already exists)';
+                continue;
+            }
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+            $ok = $wpdb->query( 'RENAME TABLE `' . esc_sql( $table ) . '` TO `' . esc_sql( $original ) . '`' );
+            if ( $ok === false ) {
+                $errors[] = $table;
+            } else {
+                $restored[] = $original;
+            }
+        }
+
+        if ( ! empty( $errors ) ) {
+            wp_send_json_error( [
+                'restored' => count( $restored ),
+                'message'  => 'Restored ' . count( $restored ) . ', failed: ' . implode( ', ', $errors ),
+            ] );
+            return;
+        }
+
+        wp_send_json_success( [
+            'restored' => count( $restored ),
+            'message'  => 'Restored ' . count( $restored ) . ' table(s) successfully.',
+        ] );
+    }
+
+    public static function ajax_db_drop_tables(): void {
+        check_ajax_referer( 'csdt_optimizer_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $tables_json = wp_unslash( $_POST['tables'] ?? '' );
+        $tables      = json_decode( $tables_json, true );
+        if ( ! is_array( $tables ) || empty( $tables ) ) {
+            wp_send_json_error( 'No tables specified.' );
+            return;
+        }
+
+        global $wpdb;
+        $dropped = [];
+        $errors  = [];
+
+        foreach ( $tables as $table ) {
+            $table = sanitize_text_field( $table );
+            // Only allow dropping tables in the recycle bin (_trash_ prefix)
+            if ( ! preg_match( '/^_trash_\d{8}_/', $table ) ) {
+                $errors[] = $table . ' (not in recycle bin — archive first)';
+                continue;
+            }
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+            $result = $wpdb->query( 'DROP TABLE IF EXISTS `' . esc_sql( $table ) . '`' );
+            if ( $result === false ) {
+                $errors[] = $table;
+            } else {
+                $dropped[] = $table;
+            }
+        }
+
+        if ( ! empty( $errors ) ) {
+            wp_send_json_error( [
+                'dropped' => count( $dropped ),
+                'message' => 'Dropped ' . count( $dropped ) . ', failed: ' . implode( ', ', $errors ),
+            ] );
+            return;
+        }
+
+        wp_send_json_success( [
+            'dropped' => count( $dropped ),
+            'message' => 'Permanently deleted ' . count( $dropped ) . ' table(s).',
         ] );
     }
 
@@ -13505,7 +14660,7 @@ PROMPT;
                     ! empty( get_option( 'csdt_devtools_gemini_key', '' ) );
 
         if ( $has_key ) {
-            $system = 'You are a WordPress site auditor. You receive structured JSON data about a WordPress site and must return a JSON array of findings. Each finding must be a JSON object with these exact keys: category (string: "SEO", "Content", "Performance", "Database", "Security", or "Plugins"), severity ("critical", "high", "medium", "low", or "info"), title (string, max 80 chars), detail (string, 1-3 sentences explaining the issue), fix (string, 1-2 sentences of specific actionable advice), affected (string, e.g. "14 pages", "wp_options table", "All posts"). Return ONLY the raw JSON array, no markdown, no code fences, no explanation. Order findings by severity (critical first). IMPORTANT: (1) Do NOT generate findings about missing backup plugins or missing SEO plugins — those are handled separately. (2) The field "template_rendered_pages" lists pages whose post_content is empty because they use a custom theme template or page builder — their actual rendered content may be substantial. Do NOT flag these as thin or empty content. (3) Do NOT generate findings about post revisions in the database — those are handled separately. (4) Do NOT generate findings about missing meta descriptions or missing SEO title tags — those are handled separately. Never recommend Yoast SEO or Rank Math — use CloudScale SEO AI only. (5) Do NOT generate findings about brute-force protection, SSH monitor, login URL hiding, or two-factor authentication — those are already reported. (6) Do NOT generate findings about disk space, WordPress core updates, or the "admin" username — those are already reported. (7) Do NOT generate findings about passkey or WebAuthn authentication status — those are handled separately. (8) Do NOT generate findings about WP-Cron health, expired transients, or DISABLE_WP_CRON — those are handled separately. (9) Do NOT generate findings about autoloaded options or wp_options autoload size — those are handled separately. (10) Do NOT generate findings about the default featured image, default post thumbnail, or broken/missing default images — those are handled separately. (11) Do NOT generate findings about thin content, stub posts, near-zero word count, or average post word count being below any threshold — those are handled separately. (12) Do NOT generate findings about missing featured images on individual posts/pages (non-default) or overall featured image coverage — those are handled separately. (13) Do NOT generate findings about duplicate page titles or duplicate post titles — those are handled separately.';
+            $system = 'You are a WordPress site auditor. You receive structured JSON data about a WordPress site and must return a JSON array of findings. Each finding must be a JSON object with these exact keys: category (string: "SEO", "Content", "Performance", "Database", "Security", or "Plugins"), severity ("critical", "high", "medium", "low", or "info"), title (string, max 80 chars), detail (string, 1-3 sentences explaining the issue), fix (string, 1-2 sentences of specific actionable advice), affected (string, e.g. "14 pages", "wp_options table", "All posts"). Return ONLY the raw JSON array, no markdown, no code fences, no explanation. Order findings by severity (critical first). IMPORTANT: (1) Do NOT generate findings about missing backup plugins or missing SEO plugins — those are handled separately. (2) The field "template_rendered_pages" lists pages whose post_content is empty because they use a custom theme template or page builder — their actual rendered content may be substantial. Do NOT flag these as thin or empty content. (3) Do NOT generate findings about post revisions in the database — those are handled separately. (4) Do NOT generate findings about missing meta descriptions or missing SEO title tags — those are handled separately. Never recommend Yoast SEO or Rank Math — use CloudScale SEO AI only. (5) Do NOT generate findings about brute-force protection, SSH monitor, login URL hiding, or two-factor authentication — those are already reported. (6) Do NOT generate findings about disk space, WordPress core updates, or the "admin" username — those are already reported. (7) Do NOT generate findings about passkey or WebAuthn authentication status — those are handled separately. (8) Do NOT generate findings about WP-Cron health, expired transients, or DISABLE_WP_CRON — those are handled separately. (9) Do NOT generate findings about autoloaded options or wp_options autoload size — those are handled separately. (10) Do NOT generate findings about the default featured image, default post thumbnail, or broken/missing default images — those are handled separately. (11) Do NOT generate findings about thin content, stub posts, near-zero word count, or average post word count being below any threshold — those are handled separately. (12) Do NOT generate findings about missing featured images on individual posts/pages (non-default) or overall featured image coverage — those are handled separately. (13) Do NOT generate findings about duplicate page titles or duplicate post titles — those are handled separately. (14) Do NOT generate findings about wp-config.php file permissions, readability, or writability — those are handled separately.';
 
             $user_msg = "Audit this WordPress site and return findings as a JSON array:\n\n" . wp_json_encode( $data, JSON_PRETTY_PRINT );
 
@@ -13518,8 +14673,23 @@ PROMPT;
                 if ( ! is_array( $findings ) ) {
                     $findings = self::generate_rule_based_findings( $data );
                 } else {
+                    // Strip AI findings that duplicate rule-based topics — rule-based findings use
+                    // calibrated severities so AI versions (often inflated) must not override them.
+                    $findings = array_values( array_filter( $findings, function ( $f ) {
+                        $t = strtolower( $f['title'] ?? '' ) . ' ' . strtolower( $f['detail'] ?? '' );
+                        if ( strpos( $t, 'thin content' ) !== false )                                       return false;
+                        if ( strpos( $t, 'word count' ) !== false || strpos( $t, 'word-count' ) !== false ) return false;
+                        if ( strpos( $t, 'duplicate title' ) !== false )                                    return false;
+                        if ( strpos( $t, 'featured image' ) !== false )                                     return false;
+                        if ( strpos( $t, 'wp-config.php' ) !== false )                                     return false;
+                        if ( strpos( $t, 'missing image' ) !== false )                                     return false;
+                        if ( strpos( $t, 'brute-force' ) !== false || strpos( $t, 'brute force' ) !== false ) return false;
+                        if ( strpos( $t, 'lockout' ) !== false )                                            return false;
+                        if ( strpos( $t, 'two-factor' ) !== false || strpos( $t, '2fa' ) !== false )        return false;
+                        if ( strpos( $t, 'login url' ) !== false )                                          return false;
+                        return true;
+                    } ) );
                     // Always append cross-sell and all rule-based findings even with AI
-                    // (AI guard prevents the AI from generating these same findings as duplicates)
                     $findings = array_merge( $findings, self::get_cross_sell_findings( $data ) );
                     $findings = array_merge( $findings, self::generate_rule_based_findings( $data ) );
                 }
@@ -13749,7 +14919,12 @@ PROMPT;
 
         // ── Writable wp-config.php ──
         $wpconfig_path     = ABSPATH . 'wp-config.php';
-        $wpconfig_writable = file_exists( $wpconfig_path ) && is_writable( $wpconfig_path );
+        if ( file_exists( $wpconfig_path ) ) {
+            $wpconfig_oct      = substr( sprintf( '%o', fileperms( $wpconfig_path ) ), -4 );
+            $wpconfig_writable = ! in_array( $wpconfig_oct, [ '0400', '0440', '0600', '0640' ], true );
+        } else {
+            $wpconfig_writable = false;
+        }
 
         // ── WordPress core update ──
         $wp_update_available  = false;
@@ -14146,12 +15321,13 @@ PROMPT;
         // ── Writable wp-config.php ──
         if ( ! empty( $d['wpconfig_writable'] ) ) {
             $findings[] = [
-                'category' => 'Security',
-                'severity' => 'high',
-                'title'    => 'wp-config.php is world-writable',
-                'detail'   => 'wp-config.php contains your database credentials and secret keys. If the web server process can write to it, a PHP vulnerability in any plugin could overwrite it.',
-                'fix'      => 'Set permissions to 440 or 400: chmod 440 wp-config.php. The web server needs only read access.',
-                'affected' => 'wp-config.php',
+                'category'   => 'Security',
+                'severity'   => 'high',
+                'title'      => 'wp-config.php is writable by the web server process',
+                'detail'     => 'wp-config.php should be read-only (0400 or 0440) so no PHP process running as the web server user can overwrite database credentials or secret keys.',
+                'fix'        => 'Set permissions to 0400 (owner read-only): chmod 0400 wp-config.php. If the web server runs as a different user, use 0440 instead.',
+                'fix_action' => 'wpconfig_perms',
+                'affected'   => 'wp-config.php',
             ];
         }
 
@@ -14231,14 +15407,29 @@ PROMPT;
 
         // ── Login brute-force protection ──
         if ( ! empty( $d['bf_enabled'] ) ) {
-            $findings[] = [
-                'category' => 'Security',
-                'severity' => 'info',
-                'title'    => "WordPress login brute-force protection active — lockout after {$d['bf_attempts']} attempts ({$d['bf_lockout_mins']} min)",
-                'detail'   => 'Per-account lockout is enforced on the WordPress login form. Accounts are locked for the configured duration after repeated failed attempts.',
-                'fix'      => 'No action needed. Adjust thresholds in Security → Login Settings.',
-                'affected' => 'wp-login.php',
-            ];
+            $short_lockout = $d['bf_lockout_mins'] < 15;
+            $has_2fa       = ! empty( $d['twofa_admins'] );
+            if ( $short_lockout && ! $has_2fa ) {
+                // Short lockout with no 2FA — low concern, some protection exists
+                $findings[] = [
+                    'category' => 'Security',
+                    'severity' => 'low',
+                    'title'    => "Brute-force lockout is short ({$d['bf_lockout_mins']} min) and 2FA is not enforced",
+                    'detail'   => "A {$d['bf_lockout_mins']}-minute lockout after {$d['bf_attempts']} attempts provides limited protection — automated tools simply wait out the window. Enforcing 2FA on admin accounts would eliminate this risk entirely.",
+                    'fix'      => 'Increase the lockout to 30–60 minutes in Security → Login Settings, or enforce 2FA for all administrators to make lockout duration irrelevant.',
+                    'affected' => 'wp-login.php',
+                ];
+            } else {
+                $twofa_note = $has_2fa ? ' 2FA enforcement means successful credential guessing still cannot lead to account takeover.' : '';
+                $findings[] = [
+                    'category' => 'Security',
+                    'severity' => 'info',
+                    'title'    => "Login brute-force protection active — lockout after {$d['bf_attempts']} attempts ({$d['bf_lockout_mins']} min)",
+                    'detail'   => 'Per-account lockout is enforced on the WordPress login form.' . $twofa_note,
+                    'fix'      => 'No action needed. Adjust thresholds in Security → Login Settings.',
+                    'affected' => 'wp-login.php',
+                ];
+            }
         } else {
             $findings[] = [
                 'category' => 'Security',

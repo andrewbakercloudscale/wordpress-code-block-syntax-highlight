@@ -4,7 +4,7 @@ Tags: security, code block, syntax highlighting, AI security scan, WordPress har
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.9.252
+Stable tag: 1.9.293
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,7 +85,12 @@ highlight.js with auto-detection — 190+ languages including Bash, Python, Java
 
 == Changelog ==
 
-= 1.9.252 =
+= 1.9.272 =
+* feat: Orphaned Table Cleanup — 🤖 Ask AI button on Unknown plugin rows (uses configured AI provider to identify table owner)
+* feat: Orphaned Table Cleanup — add AIOSEO to plugin suffix map
+* feat: Scan History — add Download PDF button next to View Report on each history row
+* feat: Orphaned Table Cleanup — recycle bin approach: scan, archive to _trash_ prefix, then restore or permanently delete; self-contained inline script (no dependency on cs-plugin-stack.js)
+* fix: Scan History text colours — type/date/summary text was grey-washed on light background; updated to legible dark colours
 * feat: PHP-FPM "Setup Status Page" wizard — auto-detects www.conf, patches pm.status_path, reloads php-fpm, generates nginx snippet with copy button; one-click for everything except pasting the nginx block
 * fix: PHP-FPM worker Refresh button no longer silently does nothing — cs-debug.js early-exit guard was blocking FPM code when AI Debug elements weren't present
 * feat: AI audit findings now show a "Fix It →" button inline for findings that have a matching Quick Fix modal (currently: DB prefix, fail2ban)
