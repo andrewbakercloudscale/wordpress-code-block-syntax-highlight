@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Free AI penetration testing, brute-force protection, 2FA, passkeys, AI site audit, AI debugging, performance monitor, SMTP, SQL tool, server logs, vulnerability scanner, and Cloudflare uptime monitor. No subscription, no cloud dependency.
- * Version: 1.9.398
+ * Version: 1.9.399
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -54,7 +54,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.398';
+    const VERSION      = '1.9.399';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -4198,10 +4198,11 @@ class CloudScale_DevTools {
                 <span>⏱ <?php esc_html_e( 'Uptime Monitor', 'cloudscale-devtools' ); ?></span>
                 <span class="cs-header-hint"><?php esc_html_e( 'Cloudflare Worker probes DB + PHP-FPM + WP every 60 seconds from the edge', 'cloudscale-devtools' ); ?></span>
                 <?php self::render_explain_btn( 'uptime-monitor', 'Uptime Monitor', [
-                    [ 'name' => 'How it works',          'rec' => 'Overview',    'html' => 'Deploys a Cloudflare Worker that probes your readiness endpoint every 60 seconds from outside your server. The endpoint checks: DB connectivity (SELECT 1), PHP-FPM worker saturation, and WordPress boot. Returns 200 OK when healthy, 503 when degraded.' ],
-                    [ 'name' => 'Dynamic endpoint path', 'rec' => 'Recommended', 'html' => 'Set a random path suffix (e.g. <code>abc123</code>) to make your readiness URL unguessable. Without a suffix, the <code>/ready</code> endpoint is publicly discoverable. With a suffix, the plain <code>/ready</code> route returns 404 — only the exact slugged URL is valid.' ],
-                    [ 'name' => 'Alert notifications',   'rec' => 'Recommended', 'html' => 'Enter your ntfy.sh topic URL to receive instant push notifications when the site goes down. Alerts fire from the Cloudflare edge, so they arrive even if your entire server is offline.' ],
-                    [ 'name' => 'Last queried / failed', 'rec' => 'Overview',    'html' => 'The status panel shows when the endpoint was last probed successfully (with token) and the last time a probe arrived with a bad or missing token — useful to confirm the worker is running and to detect unauthorised probing attempts.' ],
+                    [ 'name' => 'Setup — step by step', 'rec' => 'Required', 'html' => '<ol style="margin:0;padding-left:1.4em;line-height:1.8;"><li><strong>Cloudflare credentials</strong> — Go to the <a href="' . esc_url( admin_url( 'tools.php?page=' . self::TOOLS_SLUG . '&tab=thumbnails' ) ) . '">Thumbnails tab</a> and enter your Cloudflare Zone ID and an API Token with <code>Workers:Edit</code> permission. Create the token at <em>dash.cloudflare.com → My Profile → API Tokens → Create Token → Edit Cloudflare Workers template</em>.</li><li><strong>Generate Token</strong> — Click <em>Generate Token</em> in this panel to create a shared secret between this site and the Worker.</li><li><strong>Endpoint path suffix</strong> (recommended) — Enter a random string (e.g. <code>ajb007</code>) to make the readiness URL unguessable. The plain <code>/ready</code> URL returns 404 when a suffix is set.</li><li><strong>ntfy.sh Alert URL</strong> (optional) — Enter your ntfy.sh topic URL (e.g. <code>https://ntfy.sh/your-topic</code>). You receive a push notification immediately when the site goes down.</li><li><strong>Save Settings</strong> — Click <em>Save Settings</em> to persist the suffix and ntfy URL.</li><li><strong>Deploy Worker</strong> — Click <em>Deploy Worker to Cloudflare</em>. This uploads the Worker script, sets the bindings (token, URLs), and activates the <code>* * * * *</code> cron trigger. Takes about 5 seconds.</li><li><strong>Test</strong> — Click <em>Test Endpoint</em> to trigger the Worker manually and confirm the full route is working. The status panel updates with DB, PHP-FPM, and WP health checks.</li></ol>' ],
+                    [ 'name' => 'How it works',          'rec' => 'Overview',    'html' => 'A Cloudflare Worker runs every 60 seconds from the edge — completely outside your server. It calls your readiness endpoint with a Bearer token. The endpoint checks: DB connectivity (SELECT 1), PHP-FPM worker saturation, and WordPress boot. Returns 200 OK when healthy, 503 when degraded. If the probe fails, the Worker sends an ntfy.sh push notification immediately — even if your server is completely offline.' ],
+                    [ 'name' => 'Dynamic endpoint path', 'rec' => 'Recommended', 'html' => 'Set a random path suffix (e.g. <code>ajb007</code>) to make your readiness URL unguessable. Without a suffix, the <code>/ready</code> endpoint is publicly discoverable. With a suffix configured, the plain <code>/ready</code> route returns 404 — only the exact slugged URL (e.g. <code>/wp-json/csdt/v1/ready/ajb007</code>) returns a real response.' ],
+                    [ 'name' => 'Alert notifications',   'rec' => 'Recommended', 'html' => 'Enter your ntfy.sh topic URL (e.g. <code>https://ntfy.sh/your-topic</code>) to receive instant push notifications when the site goes down. Install the ntfy app on iOS or Android to receive these alerts. Alerts fire from the Cloudflare edge — they arrive even if your server, database, and PHP are all offline.' ],
+                    [ 'name' => 'Last queried / failed', 'rec' => 'Overview',    'html' => 'The status panel shows when the endpoint was last probed successfully (with correct token) and the last time a probe arrived with a bad or missing token. Use <em>Last queried</em> to confirm the Worker is running on schedule. Use <em>Last failed query</em> to detect if someone is probing your endpoint with wrong tokens — a signal that the URL has been discovered and you should change your path suffix.' ],
                 ] ); ?>
             </div>
             <div class="cs-panel-body">
