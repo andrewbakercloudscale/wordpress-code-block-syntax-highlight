@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: AI security scanner and developer toolkit. Replaces your security scanner, 2FA plugin, SMTP mailer, SQL tool, and log viewer — one free plugin, no cloud dependency.
- * Version: 1.9.378
+ * Version: 1.9.379
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -54,7 +54,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.378';
+    const VERSION      = '1.9.379';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -1277,6 +1277,13 @@ class CloudScale_DevTools {
                 'defaultPrompt'  => CSDT_Site_Audit::default_security_prompt(),
                 'scanHistory'    => get_option( 'csdt_scan_history', [] ),
             ] );
+            wp_enqueue_script(
+                'csdt-sec-headers',
+                plugins_url( 'assets/cs-sec-headers.js', __FILE__ ),
+                [ 'csdt-vuln-scan' ],
+                self::VERSION,
+                true
+            );
         }
 
         if ( $active_tab === 'thumbnails' ) {
@@ -1456,14 +1463,6 @@ class CloudScale_DevTools {
                     🖼️ <?php esc_html_e( 'Thumbnails', 'cloudscale-devtools' ); ?>
                 </a>
             </div>
-            <script>
-            (function(){
-                var bar = document.getElementById('cs-tab-bar');
-                var active = bar && bar.querySelector('.cs-tab.active');
-                if (active) { active.scrollIntoView({block:'nearest',inline:'center'}); }
-            })();
-            </script>
-
             <!-- Copy All action bar -->
             <div id="cs-tab-actions">
                 <button id="cs-copy-all-btn" class="cs-copy-all-btn" title="<?php esc_attr_e( 'Copy all content from this tab to clipboard', 'cloudscale-devtools' ); ?>">
@@ -3627,270 +3626,6 @@ class CloudScale_DevTools {
        ================================================================== */
 
 
-    public static function output_editor_debug_panel(): void {
-        $screen = get_current_screen();
-        if ( ! $screen || $screen->base !== 'post' ) { return; }
-        ?>
-<style>
-#csdt-dbg{position:fixed;top:32px;right:10px;z-index:99999;width:460px;max-width:calc(100vw - 20px);max-height:70vh;display:flex;flex-direction:column;background:#1e1e2e;color:#cdd6f4;font-family:monospace;font-size:12px;border-radius:10px;box-shadow:0 6px 30px rgba(0,0,0,.75);overflow:hidden}
-#csdt-dbg-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#181825;border-bottom:1px solid #313244;flex-shrink:0;cursor:move;user-select:none}
-#csdt-dbg-head h3{margin:0;font-size:12px;font-weight:700;color:#cba6f7;letter-spacing:.04em}
-#csdt-dbg-head-btns{display:flex;gap:6px}
-#csdt-dbg-head-btns button{background:none;border:none;cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;border-radius:4px;color:#a6adc8}
-#csdt-dbg-head-btns button:hover{background:#313244;color:#cdd6f4}
-#csdt-dbg-tabs{display:flex;gap:2px;padding:6px 8px 0;background:#181825;flex-shrink:0}
-#csdt-dbg-tabs button{background:#313244;border:none;color:#a6adc8;font-size:11px;font-family:monospace;padding:4px 10px;border-radius:6px 6px 0 0;cursor:pointer;position:relative}
-#csdt-dbg-tabs button.active{background:#1e1e2e;color:#cdd6f4;font-weight:700}
-#csdt-dbg-tabs button .badge{position:absolute;top:-5px;right:-5px;background:#f38ba8;color:#1e1e2e;font-size:10px;font-weight:700;border-radius:999px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 3px;display:none}
-#csdt-dbg-tabs button .badge.show{display:block}
-#csdt-dbg-body{overflow-y:auto;flex:1;padding:8px}
-.csdt-row{border-bottom:1px solid #313244;padding:5px 2px;line-height:1.5;word-break:break-all}
-.csdt-row:last-child{border-bottom:none}
-.csdt-row .ts{color:#6c7086;font-size:10px;margin-right:5px}
-.csdt-row .lbl{font-weight:700;margin-right:4px}
-.csdt-row .detail{color:#bac2de;font-size:11px}
-.csdt-csp .lbl{color:#f38ba8}.csdt-js .lbl{color:#fab387}.csdt-res .lbl{color:#f9e2af}
-.csdt-net .lbl{color:#89b4fa}.csdt-ok .lbl{color:#a6e3a1}.csdt-info .lbl{color:#89dceb}
-.csdt-empty{color:#6c7086;font-size:11px;padding:12px 4px}
-</style>
-<div id="csdt-dbg">
-    <div id="csdt-dbg-head">
-        <h3>&#x1F6E0; DevTools Debug</h3>
-        <div id="csdt-dbg-head-btns">
-            <button id="csdt-dbg-clear" title="Clear all">&#x1F5D1;</button>
-            <button id="csdt-dbg-min"   title="Minimise">&#x2212;</button>
-            <button id="csdt-dbg-close" title="Close">&#x2715;</button>
-        </div>
-    </div>
-    <div id="csdt-dbg-tabs">
-        <button class="active" data-tab="all">All<span class="badge" id="csdt-b-all"></span></button>
-        <button data-tab="csp">CSP<span class="badge" id="csdt-b-csp"></span></button>
-        <button data-tab="js">JS<span class="badge" id="csdt-b-js"></span></button>
-        <button data-tab="res">Assets<span class="badge" id="csdt-b-res"></span></button>
-        <button data-tab="net">Network<span class="badge" id="csdt-b-net"></span></button>
-        <button data-tab="frames">Frames<span class="badge" id="csdt-b-frames"></span></button>
-    </div>
-    <div id="csdt-dbg-body"><div class="csdt-empty">Listening&hellip;</div></div>
-</div>
-<script>
-(function () {
-    'use strict';
-    var panel   = document.getElementById('csdt-dbg');
-    var body    = document.getElementById('csdt-dbg-body');
-    var tabs    = document.querySelectorAll('#csdt-dbg-tabs button');
-    var activeTab = 'all';
-    var logs    = [];          // {type, tab, ts, html}
-    var counts  = {csp:0,js:0,res:0,net:0,frames:0};
-
-    /* ── helpers ── */
-    function ts() {
-        var d = new Date();
-        return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2)+'.'+('00'+d.getMilliseconds()).slice(-3);
-    }
-    function esc(s) {
-        return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-    function push(tab, cssClass, label, detail, extra) {
-        counts[tab] = (counts[tab]||0)+1;
-        logs.unshift({ tab:tab, html:
-            '<div class="csdt-row '+cssClass+'">'
-            +'<span class="ts">'+ts()+'</span>'
-            +'<span class="lbl">'+label+'</span>'
-            +'<span class="detail">'+esc(detail)+(extra?'<br>'+esc(extra):'')+'</span>'
-            +'</div>'
-        });
-        if (logs.length > 200) { logs.pop(); }
-        renderBadges();
-        render();
-    }
-    function renderBadges() {
-        var total = 0;
-        ['csp','js','res','net'].forEach(function(t){
-            var b = document.getElementById('csdt-b-'+t);
-            if (b) { var n=counts[t]||0; b.textContent=n; b.className='badge'+(n?' show':''); total+=n; }
-        });
-        var ba = document.getElementById('csdt-b-all');
-        if (ba) { ba.textContent=total; ba.className='badge'+(total?' show':''); }
-    }
-    function render() {
-        var rows = logs.filter(function(l){ return activeTab==='all'||l.tab===activeTab; });
-        body.innerHTML = rows.length
-            ? rows.map(function(l){return l.html;}).join('')
-            : '<div class="csdt-empty">'+(activeTab==='frames'?'Scanning…':'No events yet')+'</div>';
-    }
-
-    /* ── tabs ── */
-    tabs.forEach(function(btn){
-        btn.addEventListener('click', function(){
-            activeTab = btn.dataset.tab;
-            tabs.forEach(function(b){ b.classList.remove('active'); });
-            btn.classList.add('active');
-            render();
-        });
-    });
-
-    /* ── toolbar buttons ── */
-    document.getElementById('csdt-dbg-close').addEventListener('click', function(){ panel.style.display='none'; });
-    document.getElementById('csdt-dbg-min').addEventListener('click', function(){
-        var collapsed = body.style.display === 'none';
-        body.style.display    = collapsed ? '' : 'none';
-        document.getElementById('csdt-dbg-tabs').style.display = collapsed ? '' : 'none';
-        this.textContent = collapsed ? '−' : '□';
-    });
-    document.getElementById('csdt-dbg-clear').addEventListener('click', function(){
-        logs=[]; counts={csp:0,js:0,res:0,net:0,frames:0}; renderBadges(); render();
-    });
-
-    /* ── drag to reposition ── */
-    (function(){
-        var hd = document.getElementById('csdt-dbg-head'), dx=0, dy=0, mx=0, my=0;
-        hd.addEventListener('mousedown', function(e){
-            e.preventDefault();
-            mx=e.clientX; my=e.clientY;
-            document.addEventListener('mousemove', move);
-            document.addEventListener('mouseup', up, {once:true});
-        });
-        function move(e){
-            dx=mx-e.clientX; dy=my-e.clientY; mx=e.clientX; my=e.clientY;
-            panel.style.top  = (panel.offsetTop-dy)+'px';
-            panel.style.right= 'auto';
-            panel.style.left = (panel.offsetLeft-dx)+'px';
-        }
-        function up(){ document.removeEventListener('mousemove', move); }
-    })();
-
-    /* ── 1. CSP violations ── */
-    document.addEventListener('securitypolicyviolation', function(e){
-        push('csp','csdt-csp',
-            'CSP '+e.violatedDirective,
-            (e.blockedURI||'(empty)'),
-            (e.sourceFile?e.sourceFile+':'+e.lineNumber:'')
-        );
-    });
-
-    /* ── 2. JS errors ── */
-    var origError = window.onerror;
-    window.onerror = function(msg, src, line, col, err){
-        push('js','csdt-js','JS Error', msg, (src?src+':'+line+':'+col:''));
-        return origError ? origError.apply(this, arguments) : false;
-    };
-
-    /* ── 3. Unhandled promise rejections ── */
-    window.addEventListener('unhandledrejection', function(e){
-        var reason = e.reason;
-        var msg = reason instanceof Error ? reason.message : String(reason||'unknown');
-        push('js','csdt-js','Promise Reject', msg);
-    });
-
-    /* ── 4. Console.error capture ── */
-    var origConsoleError = console.error;
-    console.error = function() {
-        var args = Array.prototype.slice.call(arguments);
-        var msg = args.map(function(a){ return typeof a==='object'?JSON.stringify(a):String(a); }).join(' ');
-        if (!/csdt-dbg/.test(msg)) {
-            push('js','csdt-js','console.error', msg.substring(0,300));
-        }
-        return origConsoleError.apply(console, arguments);
-    };
-
-    /* ── 5. Console.warn capture (only for errors containing key words) ── */
-    var origConsoleWarn = console.warn;
-    console.warn = function() {
-        var args = Array.prototype.slice.call(arguments);
-        var msg = args.map(function(a){ return typeof a==='object'?JSON.stringify(a):String(a); }).join(' ');
-        if (/error|fail|block|csp|403|401|unauthorized/i.test(msg) && !/csdt-dbg/.test(msg)) {
-            push('js','csdt-js','console.warn', msg.substring(0,300));
-        }
-        return origConsoleWarn.apply(console, arguments);
-    };
-
-    /* ── 6. Failed resource loads (script, link, img, audio, video) ── */
-    document.addEventListener('error', function(e){
-        var t = e.target;
-        if (!t || !t.tagName) return;
-        var tag  = t.tagName.toLowerCase();
-        var url  = t.src || t.href || '(unknown)';
-        if (tag === 'script' || tag === 'link' || tag === 'img' || tag === 'audio' || tag === 'video' || tag === 'source') {
-            push('res','csdt-res','Failed '+tag, url.replace(window.location.origin,''));
-        }
-    }, true);
-
-    /* ── 7. Fetch / XHR intercept for network failures ── */
-    var origFetch = window.fetch;
-    window.fetch = function(input, init) {
-        var url = typeof input === 'string' ? input : (input && input.url) || String(input);
-        return origFetch.apply(this, arguments).then(function(resp){
-            if (!resp.ok && resp.status >= 400) {
-                push('net','csdt-net','HTTP '+resp.status, url.replace(window.location.origin,''));
-            }
-            return resp;
-        }).catch(function(err){
-            push('net','csdt-net','Fetch Fail', url.replace(window.location.origin,''), err.message||String(err));
-            throw err;
-        });
-    };
-
-    var origOpen = XMLHttpRequest.prototype.open;
-    var origSend = XMLHttpRequest.prototype.send;
-    XMLHttpRequest.prototype.open = function(method, url) {
-        this._csdt_url = url;
-        return origOpen.apply(this, arguments);
-    };
-    XMLHttpRequest.prototype.send = function() {
-        var xhr = this;
-        xhr.addEventListener('load', function(){
-            if (xhr.status >= 400) {
-                push('net','csdt-net','XHR '+xhr.status, String(xhr._csdt_url||'?').replace(window.location.origin,''));
-            }
-        });
-        xhr.addEventListener('error', function(){
-            push('net','csdt-net','XHR Error', String(xhr._csdt_url||'?').replace(window.location.origin,''));
-        });
-        return origSend.apply(this, arguments);
-    };
-
-    /* ── 8. Iframe scanner ── */
-    function scanFrames() {
-        var frames = document.querySelectorAll('iframe');
-        var found  = [];
-        frames.forEach(function(f, i){
-            var src   = f.src || '';
-            var proto = src ? src.split(':')[0] : '—';
-            found.push('['+i+'] '+f.name+' '+proto+'://… '+(f.src?f.src.substring(0,60):'(no src)'));
-        });
-        /* Update frames tab content independently so it doesn't duplicate in All */
-        var old = logs.findIndex(function(l){ return l.tab==='frames'; });
-        var html = found.length
-            ? found.map(function(s){return '<div class="csdt-row csdt-info"><span class="lbl">iframe</span><span class="detail">'+esc(s)+'</span></div>';}).join('')
-            : '<div class="csdt-empty">No iframes yet</div>';
-        var entry = { tab:'frames', html: html };
-        if (old >= 0) logs[old] = entry; else logs.push(entry);
-        render();
-    }
-    scanFrames();
-    setInterval(scanFrames, 3000);
-
-    /* ── 9. REST API errors surfaced via Gutenberg notices ── */
-    if (window.wp && window.wp.data) {
-        var lastNoticeCount = 0;
-        setInterval(function(){
-            try {
-                var notices = wp.data.select('core/notices').getNotices();
-                if (notices.length > lastNoticeCount) {
-                    notices.slice(lastNoticeCount).forEach(function(n){
-                        if (n.status === 'error' || n.status === 'warning') {
-                            push('net','csdt-net','WP Notice ['+n.status+']', n.content||n.id||'?');
-                        }
-                    });
-                    lastNoticeCount = notices.length;
-                }
-            } catch(e) {}
-        }, 2000);
-    }
-})();
-</script>
-        <?php
-    }
     public static function register_dashboard_widget(): void {
         if ( ! current_user_can( 'manage_options' ) ) { return; }
         wp_add_dashboard_widget(

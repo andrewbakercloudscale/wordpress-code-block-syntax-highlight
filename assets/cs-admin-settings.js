@@ -86,3 +86,10 @@
         }
     } );
 } )();
+
+// Scroll the active tab into view after page load.
+( function () {
+    var bar    = document.getElementById( 'cs-tab-bar' );
+    var active = bar && bar.querySelector( '.cs-tab.active' );
+    if ( active ) { active.scrollIntoView( { block: 'nearest', inline: 'center' } ); }
+} )();
