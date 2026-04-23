@@ -693,7 +693,7 @@ bantime  = 86400</pre>
         if ( $type === 'deep' ) {
             self::cron_deep_scan();
         } else {
-            CloudScale_DevTools::cron_vuln_scan();
+            CSDT_Vuln_Scan::cron_vuln_scan();
         }
 
         // Fetch the freshly stored result to notify
