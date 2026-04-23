@@ -935,11 +935,21 @@
                         return;
                     }
                     var d = res.data;
+
                     var html = '<strong>Pre-flight results:</strong><br><br>';
+                    if (d.cfg_getenv) {
+                        html += '<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:4px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:#713f12;">' +
+                            '⚠ <strong>Docker config detected</strong> — <code>wp-config.php</code> uses <code>getenv_docker()</code> for the table prefix. ' +
+                            'The migration will replace that line with a static assignment so the new prefix persists across container restarts.' +
+                            '</div>';
+                    }
                     html += '• Current prefix: <code style="background:#e4e6ea;padding:1px 4px;border-radius:3px;">' + escHtml(d.current_prefix) + '</code><br>';
                     html += '• New prefix: <code style="background:#e4e6ea;padding:1px 4px;border-radius:3px;">' + escHtml(d.new_prefix) + '</code><br>';
-                    html += '• Tables to rename: <strong>' + d.table_count + '</strong><br>';
-                    html += '• wp-config.php writable: ' + (d.cfg_writable ? '<span style="color:#16a34a;">✓ Yes</span>' : '<span style="color:#dc2626;">✕ No — fix permissions first</span>') + '<br>';
+                    html += '• Core tables to rename: <strong>' + d.table_count + '</strong><br>';
+                    if (d.skipped_count) {
+                        html += '• Non-core tables skipped: <strong>' + d.skipped_count + '</strong> <span style="color:#6b7280;font-size:.88em;">(use Optimizer → Orphaned Table Cleanup to review)</span><br>';
+                    }
+                    html += '• wp-config.php: ' + (d.cfg_writable ? '<span style="color:#16a34a;">✓ Writable</span>' : '<span style="color:#6b7280;">🔒 Read-only (0400) — migration will unlock temporarily</span>') + '<br>';
                     if (d.tables && d.tables.length) {
                         html += '<details style="margin-top:8px;"><summary style="cursor:pointer;color:#1e6fd9;font-size:12px;">View ' + d.tables.length + ' tables</summary>';
                         html += '<div style="margin-top:6px;font-size:11px;color:#50575e;max-height:120px;overflow-y:auto;">' + d.tables.map(function(t){ return escHtml(t); }).join('<br>') + '</div></details>';
@@ -947,7 +957,7 @@
                     preflightOut.innerHTML = html;
                     step1.style.display = 'none';
                     step2.style.display = '';
-                    migrateBtn.disabled = !d.cfg_writable;
+                    migrateBtn.disabled = false;
                 })
                 .catch(function () {
                     preflightBtn.disabled = false;
@@ -984,7 +994,33 @@
                             '<p style="margin:0 0 8px;font-size:13px;color:#166534;">' + escHtml(res.data.message) + '</p>' +
                             '<p style="margin:0;font-size:13px;color:#166534;font-weight:600;">⚠ Your session has been invalidated — please log in again.</p>' +
                             '</div>' +
-                            '<div style="margin-top:12px;"><button class="cs-btn-primary" onclick="window.location.reload()">Reload page</button></div>';
+                            '<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px;color:#713f12;">' +
+                            '🔄 If the site shows 404s after reloading, use the rollback button below to undo immediately.' +
+                            '</div>' +
+                            '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
+                            '<button class="cs-btn-primary" onclick="window.location.reload()">Reload page</button>' +
+                            '<button class="cs-btn-secondary" id="csdt-dbp-rollback-btn" style="border-color:#ef4444;color:#dc2626;">↩ Rollback</button>' +
+                            '</div>' +
+                            '<span id="csdt-dbp-rollback-msg" style="display:block;margin-top:6px;font-size:12px;"></span>';
+                        var rbBtn = document.getElementById('csdt-dbp-rollback-btn');
+                        if (rbBtn) {
+                            rbBtn.addEventListener('click', function () {
+                                if (!confirm('Rollback will rename all tables back to the old prefix and restore wp-config.php. Continue?')) { return; }
+                                rbBtn.disabled = true; rbBtn.textContent = '⏳ Rolling back…';
+                                var msg = document.getElementById('csdt-dbp-rollback-msg');
+                                post('csdt_db_prefix_rollback', {}).then(function (r) {
+                                    rbBtn.disabled = false; rbBtn.textContent = '↩ Rollback';
+                                    if (msg) {
+                                        msg.style.color = r.success ? '#16a34a' : '#dc2626';
+                                        msg.textContent = (r.data && r.data.message) || (r.success ? 'Rolled back.' : 'Rollback failed.');
+                                    }
+                                    if (r.success) { rbBtn.disabled = true; rbBtn.textContent = '✓ Rolled back'; }
+                                }).catch(function (e) {
+                                    rbBtn.disabled = false; rbBtn.textContent = '↩ Rollback';
+                                    if (msg) { msg.style.color = '#dc2626'; msg.textContent = 'Error: ' + e.message; }
+                                });
+                            });
+                        }
                     } else {
                         resultOut.innerHTML =
                             '<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:14px 16px;">' +
@@ -1128,6 +1164,45 @@
             });
             return html || '<p style="color:#94a3b8;font-size:13px;">No findings recorded.</p>';
         }
+
+        document.addEventListener('click', function (e) {
+            var pdfBtn = e.target.closest('.csdt-history-pdf-btn');
+            if (pdfBtn) {
+                var idx      = pdfBtn.dataset.idx;
+                var scanType = pdfBtn.dataset.scanType || 'standard';
+                var orig     = pdfBtn.textContent;
+                pdfBtn.disabled = true;
+                pdfBtn.textContent = '…';
+                post('csdt_scan_history_item', { idx: idx })
+                    .then(function (resp) {
+                        pdfBtn.disabled = false;
+                        pdfBtn.textContent = orig;
+                        if (!resp.success || !resp.data || !resp.data.findings) {
+                            alert('No findings data for this scan.'); return;
+                        }
+                        var entry = resp.data;
+                        exportSecurityPDF({
+                            model_used: entry.model_used || '',
+                            report: {
+                                score:       entry.score,
+                                score_label: entry.score_label,
+                                summary:     entry.summary,
+                                critical:    entry.findings.critical || [],
+                                high:        entry.findings.high     || [],
+                                medium:      entry.findings.medium   || [],
+                                low:         entry.findings.low      || [],
+                                good:        entry.findings.good     || [],
+                            }
+                        }, scanType);
+                    })
+                    .catch(function () {
+                        pdfBtn.disabled = false;
+                        pdfBtn.textContent = orig;
+                        alert('Failed to load report data.');
+                    });
+                return;
+            }
+        });
 
         document.addEventListener('click', function (e) {
             var btn = e.target.closest('.csdt-view-report-btn');

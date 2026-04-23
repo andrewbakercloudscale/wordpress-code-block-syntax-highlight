@@ -644,6 +644,161 @@
             '</div>';
     }
 
+    // ── Orphaned Table Cleanup ───────────────────────────────────────────────
+
+    var orphanScanBtn  = document.getElementById('csdt-orphan-scan-btn');
+    var orphanScanning = document.getElementById('csdt-orphan-scanning');
+    var orphanResults  = document.getElementById('csdt-orphan-results');
+
+    function fmtSize(kb) {
+        if (!kb) return '0 KB';
+        return kb >= 1024 ? (kb / 1024).toFixed(1) + ' MB' : kb + ' KB';
+    }
+
+    function renderOrphanResults(tables) {
+        if (!orphanResults) return;
+        if (!tables || !tables.length) {
+            orphanResults.innerHTML =
+                '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:14px 16px;">' +
+                '<p style="margin:0;font-weight:700;color:#15803d;">✓ No orphaned tables found</p>' +
+                '<p style="margin:6px 0 0;font-size:.88em;color:#166534;">All non-core tables appear to belong to active plugins.</p>' +
+                '</div>';
+            orphanResults.style.display = '';
+            return;
+        }
+
+        var totalKb   = tables.reduce(function (s, t) { return s + (t.size_kb || 0); }, 0);
+        var totalRows = tables.reduce(function (s, t) { return s + (t.rows || 0); }, 0);
+
+        var html = '<div style="margin-bottom:14px;display:flex;gap:12px;flex-wrap:wrap;">' +
+            dbStatCard(tables.length, 'orphaned tables', '#dc2626') +
+            dbStatCard(totalRows.toLocaleString(), 'total rows', '#6b7280') +
+            dbStatCard(fmtSize(totalKb), 'wasted space', '#ca8a04') +
+            '</div>';
+
+        html += '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">';
+        html += '<table style="width:100%;border-collapse:collapse;font-size:.85em;">';
+        html += '<thead><tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb;">' +
+            '<th style="padding:8px 10px;width:32px;"><input type="checkbox" id="csdt-orphan-select-all" title="Select all"></th>' +
+            '<th style="padding:8px 10px;text-align:left;font-weight:600;color:#374151;">Table</th>' +
+            '<th style="padding:8px 10px;text-align:left;font-weight:600;color:#374151;">Likely Plugin</th>' +
+            '<th style="padding:8px 10px;text-align:right;font-weight:600;color:#374151;">Rows</th>' +
+            '<th style="padding:8px 10px;text-align:right;font-weight:600;color:#374151;">Size</th>' +
+            '</tr></thead><tbody>';
+
+        tables.forEach(function (t) {
+            html += '<tr style="border-top:1px solid #f3f4f6;">' +
+                '<td style="padding:7px 10px;"><input type="checkbox" class="csdt-orphan-chk" value="' + escHtml(t.table) + '"></td>' +
+                '<td style="padding:7px 10px;font-family:monospace;font-size:.9em;color:#1e293b;">' + escHtml(t.table) + '</td>' +
+                '<td style="padding:7px 10px;color:#6b7280;">' + escHtml(t.plugin) + '</td>' +
+                '<td style="padding:7px 10px;text-align:right;color:#374151;">' + (t.rows || 0).toLocaleString() + '</td>' +
+                '<td style="padding:7px 10px;text-align:right;color:#374151;">' + fmtSize(t.size_kb) + '</td>' +
+                '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        html += '<div style="margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">' +
+            '<button id="csdt-orphan-drop-btn" class="cs-btn-primary" style="background:#dc2626;border-color:#b91c1c;" disabled>' +
+            '🗑 Drop Selected</button>' +
+            '<span id="csdt-orphan-drop-status" style="font-size:.85em;"></span>' +
+            '</div>';
+
+        orphanResults.innerHTML = html;
+        orphanResults.style.display = '';
+
+        var selectAll  = document.getElementById('csdt-orphan-select-all');
+        var dropBtn    = document.getElementById('csdt-orphan-drop-btn');
+        var dropStatus = document.getElementById('csdt-orphan-drop-status');
+
+        function updateDropBtn() {
+            var checked = orphanResults.querySelectorAll('.csdt-orphan-chk:checked');
+            dropBtn.disabled    = checked.length === 0;
+            dropBtn.textContent = checked.length
+                ? '🗑 Drop ' + checked.length + ' table' + (checked.length === 1 ? '' : 's')
+                : '🗑 Drop Selected';
+        }
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                orphanResults.querySelectorAll('.csdt-orphan-chk').forEach(function (c) { c.checked = selectAll.checked; });
+                updateDropBtn();
+            });
+        }
+        orphanResults.querySelectorAll('.csdt-orphan-chk').forEach(function (c) {
+            c.addEventListener('change', updateDropBtn);
+        });
+
+        if (dropBtn) {
+            dropBtn.addEventListener('click', function () {
+                var checked = Array.prototype.slice.call(orphanResults.querySelectorAll('.csdt-orphan-chk:checked'));
+                if (!checked.length) return;
+                var names = checked.map(function (c) { return c.value; });
+                if (!confirm('Permanently DROP ' + names.length + ' table(s)?\n\n' + names.join('\n') + '\n\nThis cannot be undone.')) return;
+
+                dropBtn.disabled    = true;
+                dropBtn.textContent = '⏳ Dropping…';
+                if (dropStatus) { dropStatus.style.color = '#6b7280'; dropStatus.textContent = ''; }
+
+                post('csdt_db_drop_tables', { tables: JSON.stringify(names) })
+                    .then(function (res) {
+                        if (res && res.success) {
+                            if (dropStatus) { dropStatus.style.color = '#16a34a'; dropStatus.textContent = '✓ ' + (res.data.message || 'Done'); }
+                            runOrphanScan();
+                        } else {
+                            dropBtn.disabled    = false;
+                            dropBtn.textContent = '🗑 Drop Selected';
+                            var msg = (res && res.data && res.data.message) || (res && res.data) || 'Error';
+                            if (dropStatus) { dropStatus.style.color = '#dc2626'; dropStatus.textContent = '✕ ' + msg; }
+                        }
+                    })
+                    .catch(function () {
+                        dropBtn.disabled    = false;
+                        dropBtn.textContent = '🗑 Drop Selected';
+                        if (dropStatus) { dropStatus.style.color = '#dc2626'; dropStatus.textContent = 'Request failed'; }
+                    });
+            });
+        }
+    }
+
+    function runOrphanScan() {
+        var btn = document.getElementById('csdt-orphan-scan-btn');
+        var scanning = document.getElementById('csdt-orphan-scanning');
+        var results  = document.getElementById('csdt-orphan-results');
+        if (!btn) return;
+        btn.disabled    = true;
+        btn.textContent = '⏳ Scanning…';
+        if (scanning) scanning.style.display = '';
+        if (results)  results.style.display  = 'none';
+
+        post('csdt_db_orphaned_scan').then(function (res) {
+            btn.disabled  = false;
+            btn.innerHTML = '🔍 Scan for Orphaned Tables';
+            if (scanning) scanning.style.display = 'none';
+            if (!results) return;
+            if (!res.success) {
+                results.innerHTML = '<p style="color:#dc2626;font-size:.9em;">Scan failed: ' + escHtml((res && res.data) || 'unknown error') + '</p>';
+                results.style.display = '';
+                return;
+            }
+            renderOrphanResults(res.data.tables);
+        }).catch(function (err) {
+            btn.disabled  = false;
+            btn.innerHTML = '🔍 Scan for Orphaned Tables';
+            if (scanning) scanning.style.display = 'none';
+            if (results) {
+                results.innerHTML = '<p style="color:#dc2626;font-size:.9em;">Request failed — please reload and try again.</p>';
+                results.style.display = '';
+            }
+        });
+    }
+
+    // Use event delegation so it works regardless of getElementById timing
+    document.addEventListener('click', function (e) {
+        if (e.target && e.target.id === 'csdt-orphan-scan-btn') {
+            runOrphanScan();
+        }
+    });
+
     // ── AI Debugging Assistant ───────────────────────────────────────────────
 
     var debugBtn     = document.getElementById('csdt-debug-analyze-btn');

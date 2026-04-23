@@ -337,7 +337,8 @@ helpLib.run({
 <li><strong>Code Block Migrator:</strong> batch-convert blocks from other plugins</li>
 <li><strong>SQL Query Tool:</strong> read-only SELECT queries in-browser</li>
 <li><strong>SMTP Mail:</strong> replace PHP mail() with authenticated SMTP</li>
-<li><strong>Performance Monitor:</strong> overlay showing queries, hooks, assets per page</li>
+<li><strong>CS Monitor:</strong> floating overlay showing DB queries, hooks, HTTP calls, assets, and PHP errors on every page</li>
+<li><strong>PHP-FPM Monitor:</strong> live worker status, saturation alerts, and optional auto-restart from the host OS</li>
 <li><strong>Custom 404 Page:</strong> branded 404 with 7 playable mini-games and leaderboard</li>
 </ul>
 </div>
@@ -352,6 +353,8 @@ helpLib.run({
 <li><a href="#cs-section-sql-tool" style="color:#6366f1;">SQL Query Tool</a> and built-in queries</li>
 <li><a href="#cs-section-server-logs" style="color:#6366f1;">Server Logs</a> viewer and tail mode</li>
 <li><a href="#cs-section-optimizer" style="color:#6366f1;">Plugin Optimizer</a> — plugin stack scanner and AI debugging</li>
+<li><a href="#cs-section-cs-monitor" style="color:#6366f1;">CS Monitor</a> — per-page performance overlay for admins</li>
+<li><a href="#cs-section-fpm-monitor" style="color:#6366f1;">PHP-FPM Monitor</a> — live worker status and saturation alerting</li>
 </ul>
 </div>
 </div>
@@ -449,6 +452,10 @@ helpLib.run({
           altText: 'WordPress server log viewer for PHP error logs, debug logs, and web server logs without SSH access' },
         { id: 'optimizer',  label: 'Plugin Optimizer',      file: 'panel-optimizer.png',   tabSelector: 'a[href*="tab=optimizer"]',
           altText: 'WordPress plugin stack scanner showing which plugins CloudScale replaces with AI debugging assistant' },
+        { id: 'cs-monitor', label: 'CS Monitor',             file: 'panel-cs-monitor.png',  tabSelector: 'a[href*="tab=migrate"]', elementSelector: '#cs-panel-code-settings',
+          altText: 'CS Monitor floating performance panel showing DB queries, hooks, HTTP calls, and PHP errors on every WordPress page' },
+        { id: 'fpm-monitor',label: 'FPM Monitor',            file: 'panel-fpm-monitor.png', tabSelector: 'a[href*="tab=debug"]',   elementSelector: '#cs-panel-debug',
+          altText: 'PHP-FPM saturation monitor showing live worker counts and memory usage with auto-restart and ntfy alerts' },
     ],
 
     docs: {
@@ -715,5 +722,68 @@ helpLib.run({
 </ul>
 <p>Works with PHP fatal errors, deprecated notices, plugin conflicts, database connection failures, 500 server errors, missing function errors, and more. The AI receives your WordPress version and PHP version as context for more accurate answers.</p>
 <p><strong>Requires an AI API key.</strong> Add one on the Security tab under AI Settings. Google Gemini's free tier works perfectly for debugging queries.</p>`,
+
+        'cs-monitor': `
+<div style="background:linear-gradient(135deg,#f0f4ff,#fdf4ff);border-left:4px solid #6366f1;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
+<h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">⚡ A DevTools-Style Performance Panel, Built Into Every WordPress Page</h2>
+<p style="margin:0 0 10px;color:#374151;">Query Monitor shows database queries. Debug Bar surfaces WP_DEBUG output. Neither one shows you everything happening on a single page request — HTTP calls, hook timings, PHP errors, asset inventory, transients, and template resolution — in one panel without switching tools or reading raw logs. CS Monitor does.</p>
+<p style="margin:0;color:#374151;"><strong>It appears automatically</strong> for logged-in administrators on every wp-admin screen and every frontend page. No configuration required. Toggle it off under <strong>Code Settings → Show the CS Monitor performance panel</strong> if you need a clean view.</p>
+</div>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Tabs at a Glance</h3>
+<ul>
+<li><strong>Issues</strong> — auto-detected problems ranked by severity: N+1 query loops, slow queries, missing indexes, high load, OPcache off, and more. Each issue links directly to the relevant tab for investigation.</li>
+<li><strong>DB Queries</strong> — every database query with execution time, calling plugin/theme, and call stack. Click any SELECT to run <code>EXPLAIN</code> inline and see the query plan. N+1 patterns are grouped and flagged automatically.</li>
+<li><strong>HTTP / REST</strong> — all outbound <code>wp_remote_get/post</code> calls and internal REST API requests with URLs and response times. Slow external calls that block page generation are immediately visible.</li>
+<li><strong>Logs</strong> — PHP notices, warnings, deprecation notices, and fatal errors captured for the current request with file and line number. No need to tail a log file.</li>
+<li><strong>Assets</strong> — every script and stylesheet enqueued for the current page, including source plugin/theme. Identify asset bloat from inactive features still loading.</li>
+<li><strong>Hooks</strong> — all WordPress actions and filters that fired, with execution time per hook. Find the slow hooks holding up page generation.</li>
+<li><strong>Request</strong> — current request details: method, URL, matched rewrite rule, query vars, and WordPress globals.</li>
+<li><strong>Template</strong> — the full chain of template files WordPress evaluated to produce the current page, in order.</li>
+<li><strong>Transients</strong> — every transient <code>set</code> and <code>delete</code> operation triggered during the request.</li>
+<li><strong>Browser</strong> — JavaScript console errors captured client-side and reported back to the panel. Catch JS exceptions without opening DevTools.</li>
+<li><strong>Summary</strong> — request totals at a glance: query count, total query time, hook count, HTTP calls, memory used, and wall-clock page time.</li>
+</ul>
+
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Copy and Export</h3>
+<p>Every tab has a <strong>📋 Copy</strong> button that puts the current tab's data onto your clipboard as plain text — ready to paste into a bug report, a Slack message, or the AI Debugging Assistant. A full-panel JSON export is available from the Summary tab for sharing with developers.</p>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Performance Impact</h3>
+<p>CS Monitor adds a small overhead to collect data — primarily from hooking into <code>SAVEQUERIES</code> and <code>shutdown</code>. It is <strong>only active for logged-in administrators</strong>. Regular visitors are completely unaffected. Disable it on a per-page basis using the panel's close button, or globally under <strong>Tools → Cyber and Devtools → Code Settings</strong>.</p>`,
+
+        'fpm-monitor': `
+<div style="background:linear-gradient(135deg,#0f172a,#1e293b);border-left:4px solid #60a5fa;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
+<h2 style="margin:0 0 8px;font-size:1.25em;color:#e2e8f0;background:transparent!important;padding:0!important;border:none!important;">🖥️ Know When Your PHP Workers Are Exhausted — Before Your Site Goes Down</h2>
+<p style="margin:0 0 10px;color:#94a3b8;">PHP-FPM (FastCGI Process Manager) maintains a fixed pool of worker processes. When all workers are busy — during a traffic spike, a slow query holding workers open, or a runaway loop — new requests queue and the site freezes. WP-Cron can't alert you when this happens because WP-Cron itself runs inside PHP-FPM. The FPM Monitor runs as a shell script on the host OS, outside Docker, so it fires even when every PHP worker is consumed.</p>
+<p style="margin:0;color:#94a3b8;"><strong>No other WordPress plugin does this.</strong> External uptime monitors just tell you the site is down after it's already down. The FPM Monitor tells you saturation is building while you can still act — and can restart the container automatically.</p>
+</div>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Live Worker Status</h3>
+<p>The worker bar at the top of the FPM Monitor section shows real-time counts polled from your PHP-FPM status page:</p>
+<ul>
+<li><strong>Active</strong> — workers currently processing a request (shown in red when high)</li>
+<li><strong>Idle</strong> — workers ready to accept a new request (shown in green)</li>
+<li><strong>Total</strong> — pool size: active + idle + any in graceful-finish state</li>
+<li><strong>Mem</strong> — total memory consumed across all workers combined</li>
+</ul>
+<p>Click <strong>▼ Workers</strong> to expand a per-worker table showing PID, state, request count, running time, last URI, last script, last CPU%, and memory per worker. Running workers show <code>—</code> for CPU% because their current request hasn't completed yet. Click <strong>↻ Refresh</strong> to re-poll at any time.</p>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Enabling the Status Page</h3>
+<p>Worker data requires <code>pm.status_path = /fpm-status</code> in your PHP-FPM pool config (<code>www.conf</code>) and a matching Nginx location block. Click <strong>⚙ Setup Status Page</strong> and the wizard will detect whether your setup is already configured, show you the exact config changes needed, and offer to apply them automatically.</p>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Saturation Detection and Alerts</h3>
+<p>The monitor runs as a host-level cron job (not WP-Cron) that probes your site's HTTP URL every minute. If the probe times out or fails N consecutive times (the <strong>saturation threshold</strong>), saturation is declared. On saturation it:</p>
+<ol>
+<li>Sends an <strong>ntfy.sh push notification</strong> to your phone instantly</li>
+<li>Sends an <strong>email alert</strong> to the WordPress admin address</li>
+<li>Optionally <strong>restarts the WordPress Docker container</strong> (with a configurable restart cooldown to prevent thrashing)</li>
+<li>POSTs an event back to this panel via the callback URL, logging the incident in the event log</li>
+</ol>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Setup</h3>
+<p>Configure the settings in the panel, then copy the <strong>crontab line</strong> and <strong>config.env snippet</strong> from the Host Cron Setup section. The config includes the callback URL and a secret token that authenticates events back to this panel. Add the crontab line to your host's crontab with <code>crontab -e</code>, and source the config.env from your cron script. The monitor starts detecting saturation immediately.</p>
+<p><strong>Auto-restart:</strong> when enabled, the script issues <code>docker restart {container}</code> after declaring saturation. Use with care on production — a restart drops all in-flight requests. The restart cooldown (default: 20 minutes) prevents the script from restarting more than once per incident.</p>`,
     },
 }).catch(err => { console.error('ERROR:', err.message); process.exit(1); });
