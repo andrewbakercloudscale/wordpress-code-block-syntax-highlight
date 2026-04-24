@@ -211,6 +211,41 @@ class CSDT_Uptime {
         self::uptime_aggregate_hourly( $now, $is_up, $response_ms );
     }
 
+    // ── WP-Cron heartbeat push ───────────────────────────────────────────────
+
+    public static function add_cron_schedules( array $schedules ): array {
+        if ( ! isset( $schedules['csdt_minutely'] ) ) {
+            $schedules['csdt_minutely'] = [ 'interval' => 60, 'display' => 'Every Minute (CloudScale)' ];
+        }
+        return $schedules;
+    }
+
+    public static function push_heartbeat(): void {
+        // Paused for Test Alert — skip heartbeat so CF Worker will detect site as down.
+        if ( time() < (int) get_option( 'csdt_uptime_pause_until', 0 ) ) { return; }
+
+        $worker_url = (string) get_option( 'csdt_uptime_worker_url', '' );
+        $token      = (string) get_option( 'csdt_uptime_token', '' );
+        if ( $worker_url === '' || $token === '' ) { return; }
+
+        $start = microtime( true );
+        $resp  = wp_remote_post( rtrim( $worker_url, '/' ), [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $token,
+                'Content-Type'  => 'application/x-www-form-urlencoded',
+            ],
+            'body'    => 'action=csdt_heartbeat',
+            'timeout' => 4,
+        ] );
+        $ms   = (int) round( ( microtime( true ) - $start ) * 1000 );
+        $code = is_wp_error( $resp ) ? 0 : (int) wp_remote_retrieve_response_code( $resp );
+
+        // Record a ping: site is up (WP-Cron is running), log Worker reachability as response
+        self::record_ping( $code === 200 ? 200 : ( $code ?: 0 ), $ms );
+    }
+
+    // ── Legacy ping receiver (kept for backward compat with old workers) ─────
+
     public static function ajax_uptime_ping(): void {
         $token        = sanitize_text_field( wp_unslash( $_POST['token'] ?? '' ) );
         $stored_token = (string) get_option( 'csdt_uptime_token', '' );
@@ -222,34 +257,8 @@ class CSDT_Uptime {
 
         $status_code = absint( $_POST['status_code'] ?? 0 );
         $response_ms = absint( $_POST['response_ms'] ?? 0 );
-        $is_up       = $status_code >= 200 && $status_code < 500;
-        $now         = time();
-
-        $prev_ping = get_option( 'csdt_uptime_last_ping', null );
-        $was_up    = $prev_ping ? (bool) $prev_ping['up'] : true;
 
         self::record_ping( $status_code, $response_ms );
-
-        // Downtime alert (5-min cooldown)
-        if ( ! $is_up ) {
-            $last_alert   = (int) get_option( 'csdt_uptime_alert_sent_at', 0 );
-            $outage_start = (int) get_option( 'csdt_uptime_outage_start', 0 );
-            if ( $outage_start === 0 ) {
-                update_option( 'csdt_uptime_outage_start', $now, false );
-            }
-            if ( $now - $last_alert > 300 ) {
-                self::uptime_send_alert( $status_code, $response_ms );
-                update_option( 'csdt_uptime_alert_sent_at', $now, false );
-            }
-        } elseif ( ! $was_up && $is_up ) {
-            // Site recovered — calculate outage duration and send recovery alert
-            $outage_start    = (int) get_option( 'csdt_uptime_outage_start', 0 );
-            $outage_duration = $outage_start > 0 ? ( $now - $outage_start ) : 0;
-            self::uptime_send_recovery_alert( $response_ms, $outage_duration );
-            update_option( 'csdt_uptime_alert_sent_at', 0, false );
-            update_option( 'csdt_uptime_outage_start',  0, false );
-        }
-
         wp_send_json_success( [ 'ok' => true ] );
     }
 
@@ -263,23 +272,26 @@ class CSDT_Uptime {
             update_option( 'csdt_uptime_token', $token, false );
         }
 
-        $site_url  = get_site_url();
-        $ping_url  = admin_url( 'admin-ajax.php' );
-        $ready_url = self::readiness_url();
-        $ntfy_url  = (string) get_option( 'csdt_uptime_ntfy_url', get_option( 'csdt_scan_schedule_ntfy_url', '' ) );
+        $site_url = get_site_url();
+        $ntfy_url = (string) get_option( 'csdt_uptime_ntfy_url', get_option( 'csdt_scan_schedule_ntfy_url', '' ) );
 
         wp_send_json_success( [
             'token'         => $token,
-            'ready_url'     => $ready_url,
-            'ready_slug'    => get_option( 'csdt_readiness_slug', '' ),
             'worker_js'     => self::uptime_worker_js(),
-            'wrangler_toml' => self::uptime_wrangler_toml( $site_url, $ping_url, $ready_url, $token, $ntfy_url ),
+            'wrangler_toml' => self::uptime_wrangler_toml( $site_url, $token, $ntfy_url ),
         ] );
     }
 
     public static function ajax_uptime_history(): void {
         check_ajax_referer( CloudScale_DevTools::OPTIMIZER_NONCE, 'nonce' );
         if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'Unauthorized', 403 );
+
+        // If the caller wants a live push (e.g. Refresh button), send a heartbeat now.
+        $pushed = false;
+        if ( ! empty( $_POST['push'] ) ) {
+            self::push_heartbeat();
+            $pushed = true;
+        }
 
         $last_ping = get_option( 'csdt_uptime_last_ping', null );
         $raw       = get_option( 'csdt_uptime_raw', [] );
@@ -319,24 +331,34 @@ class CSDT_Uptime {
             $last_ping['age_seconds'] = time() - $last_ping['time'];
         }
 
-        $readiness_last    = (int) get_option( 'csdt_readiness_last_queried',       0 );
-        $readiness_bad     = (int) get_option( 'csdt_readiness_last_bad_auth',      0 );
-        $readiness_checks  = get_option( 'csdt_readiness_last_queried_checks',      null );
-
         wp_send_json_success( [
-            'last_ping'          => $last_ping,
-            'raw'                => $raw,
-            'hourly'             => array_values( array_slice( $hourly, -48 ) ),
-            'uptime_24h'         => $uptime_24h,
-            'uptime_7d'          => $uptime_7d,
-            'avg_ms_24h'         => $avg_ms_24h,
-            'enabled'            => get_option( 'csdt_uptime_enabled', '0' ) === '1',
-            'ready_url'          => self::readiness_url(),
-            'ready_slug'         => get_option( 'csdt_readiness_slug', '' ),
-            'readiness_last'     => $readiness_last ?: null,
-            'readiness_bad'      => $readiness_bad  ?: null,
-            'readiness_checks'   => $readiness_checks,
+            'last_ping'   => $last_ping,
+            'raw'         => $raw,
+            'hourly'      => array_values( array_slice( $hourly, -48 ) ),
+            'uptime_24h'  => $uptime_24h,
+            'uptime_7d'   => $uptime_7d,
+            'avg_ms_24h'  => $avg_ms_24h,
+            'enabled'     => get_option( 'csdt_uptime_enabled', '0' ) === '1',
+            'worker_url'  => get_option( 'csdt_uptime_worker_url', '' ),
+            'pushed'      => $pushed,
+            'pause_until' => (int) get_option( 'csdt_uptime_pause_until', 0 ),
         ] );
+    }
+
+    public static function ajax_uptime_pause_heartbeat(): void {
+        check_ajax_referer( CloudScale_DevTools::OPTIMIZER_NONCE, 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'Unauthorized', 403 );
+
+        $cancel = ! empty( $_POST['cancel'] );
+        if ( $cancel ) {
+            delete_option( 'csdt_uptime_pause_until' );
+            wp_send_json_success( [ 'paused' => false, 'pause_until' => 0 ] );
+            return;
+        }
+
+        $until = time() + 5 * MINUTE_IN_SECONDS;
+        update_option( 'csdt_uptime_pause_until', $until, false );
+        wp_send_json_success( [ 'paused' => true, 'pause_until' => $until ] );
     }
 
     public static function ajax_uptime_save_settings(): void {
@@ -358,73 +380,62 @@ class CSDT_Uptime {
         $worker_url = (string) get_option( 'csdt_uptime_worker_url', '' );
 
         if ( $token === '' ) {
-            wp_send_json_error( [ 'message' => 'No token set — click Generate Token first.' ] );
+            wp_send_json_error( [ 'message' => 'No token set — deploy the Worker first.' ] );
             return;
         }
-
-        // Resolve worker URL if not stored — look it up via CF API
         if ( $worker_url === '' ) {
             $worker_url = self::resolve_worker_url();
             if ( $worker_url !== '' ) {
                 update_option( 'csdt_uptime_worker_url', $worker_url, false );
             }
         }
-
-        // If we have the worker URL, trigger CF Worker (full E2E: CF → readiness → ping back)
-        if ( $worker_url !== '' ) {
-            $start = microtime( true );
-            $resp  = wp_remote_post( $worker_url, [
-                'timeout' => 20,
-                'headers' => [ 'Authorization' => 'Bearer ' . $token ],
-            ] );
-            $ms = (int) round( ( microtime( true ) - $start ) * 1000 );
-
-            if ( is_wp_error( $resp ) ) {
-                wp_send_json_error( [ 'message' => 'Could not reach CF Worker: ' . $resp->get_error_message() . '. Try redeploying the Worker to refresh its URL.' ] );
-                return;
-            }
-            $code = wp_remote_retrieve_response_code( $resp );
-            if ( $code === 401 ) {
-                wp_send_json_error( [ 'message' => 'CF Worker rejected the token. Redeploy the Worker to sync the token.' ] );
-                return;
-            }
-            $body       = json_decode( wp_remote_retrieve_body( $resp ), true );
-            $probe_code = (int) ( $body['status_code'] ?? $code );
-            $probe_ms   = (int) ( $body['response_ms']  ?? $ms );
-            self::record_ping( $probe_code, $probe_ms );
-            wp_send_json_success( [
-                'via'         => 'cf_worker',
-                'ok'          => ! empty( $body['ok'] ),
-                'status_code' => $probe_code,
-                'ms'          => $probe_ms,
-                'worker_url'  => $worker_url,
-            ] );
+        if ( $worker_url === '' ) {
+            wp_send_json_error( [ 'message' => 'Worker URL not found — deploy the Worker first.' ] );
             return;
         }
 
-        // Fallback: call readiness endpoint directly from WP server
-        $url   = self::readiness_url();
+        // Send a heartbeat to the Worker, verify it's accepted
         $start = microtime( true );
-        $resp  = wp_remote_get( $url, [
-            'timeout' => 15,
-            'headers' => [ 'Authorization' => 'Bearer ' . $token, 'Cache-Control' => 'no-store' ],
+        $resp  = wp_remote_post( rtrim( $worker_url, '/' ), [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $token,
+                'Content-Type'  => 'application/x-www-form-urlencoded',
+            ],
+            'body'    => 'action=csdt_heartbeat',
+            'timeout' => 6,
         ] );
-        $ms = (int) round( ( microtime( true ) - $start ) * 1000 );
+        $ms   = (int) round( ( microtime( true ) - $start ) * 1000 );
+        $code = is_wp_error( $resp ) ? 0 : (int) wp_remote_retrieve_response_code( $resp );
 
         if ( is_wp_error( $resp ) ) {
-            wp_send_json_error( [ 'message' => 'Request failed: ' . $resp->get_error_message() ] );
+            wp_send_json_error( [ 'message' => 'Could not reach Worker: ' . $resp->get_error_message() ] );
             return;
         }
-        $code = wp_remote_retrieve_response_code( $resp );
-        $body = json_decode( wp_remote_retrieve_body( $resp ), true );
-        self::record_ping( (int) $code, $ms );
+        if ( $code === 401 ) {
+            wp_send_json_error( [ 'message' => 'Worker rejected the token — redeploy to re-sync.' ] );
+            return;
+        }
+
+        self::record_ping( $code === 200 ? 200 : $code, $ms );
+
+        // Also read back the watchdog state
+        $state_resp = wp_remote_post( rtrim( $worker_url, '/' ), [
+            'headers' => [ 'Authorization' => 'Bearer ' . $token ],
+            'body'    => '',
+            'timeout' => 10,
+        ] );
+        $state = [];
+        if ( ! is_wp_error( $state_resp ) ) {
+            $state = json_decode( wp_remote_retrieve_body( $state_resp ), true ) ?: [];
+        }
+
         wp_send_json_success( [
             'via'         => 'direct',
-            'status_code' => $code,
             'ok'          => $code === 200,
+            'status_code' => $code,
             'ms'          => $ms,
-            'checks'      => $body['checks'] ?? null,
-            'url'         => $url,
+            'worker_url'  => $worker_url,
+            'stale'       => $state['stale'] ?? null,
         ] );
     }
 
@@ -450,9 +461,7 @@ class CSDT_Uptime {
             update_option( 'csdt_uptime_token', $token, false );
         }
 
-        $site_url  = get_site_url();
-        $ping_url  = admin_url( 'admin-ajax.php' );
-        $ready_url = self::readiness_url();
+        $site_url = get_site_url();
 
         // Step 1: Resolve Account ID from zone
         $zone_resp = wp_remote_get(
@@ -470,17 +479,54 @@ class CSDT_Uptime {
             return;
         }
 
-        // Step 2: Upload Worker (module syntax + env bindings)
+        // Step 2a: Create or reuse KV namespace for watchdog state
+        $kv_id = (string) get_option( 'csdt_uptime_kv_id', '' );
+        if ( $kv_id === '' ) {
+            $kv_resp = wp_remote_post(
+                "https://api.cloudflare.com/client/v4/accounts/{$account_id}/storage/kv/namespaces",
+                [
+                    'headers' => [ 'Authorization' => 'Bearer ' . $cf_token, 'Content-Type' => 'application/json' ],
+                    'body'    => wp_json_encode( [ 'title' => 'csdt-uptime-state' ] ),
+                    'timeout' => 15,
+                ]
+            );
+            if ( ! is_wp_error( $kv_resp ) ) {
+                $kv_data = json_decode( wp_remote_retrieve_body( $kv_resp ), true );
+                $kv_id   = $kv_data['result']['id'] ?? '';
+            }
+            // If title already taken, find it in the list
+            if ( $kv_id === '' ) {
+                $list_resp = wp_remote_get(
+                    "https://api.cloudflare.com/client/v4/accounts/{$account_id}/storage/kv/namespaces?per_page=100",
+                    [ 'headers' => [ 'Authorization' => 'Bearer ' . $cf_token ], 'timeout' => 10 ]
+                );
+                if ( ! is_wp_error( $list_resp ) ) {
+                    $namespaces = json_decode( wp_remote_retrieve_body( $list_resp ), true )['result'] ?? [];
+                    foreach ( $namespaces as $ns ) {
+                        if ( ( $ns['title'] ?? '' ) === 'csdt-uptime-state' ) {
+                            $kv_id = $ns['id'];
+                            break;
+                        }
+                    }
+                }
+            }
+            if ( $kv_id === '' ) {
+                wp_send_json_error( [ 'message' => 'Could not create KV namespace. Ensure your API token has Workers KV Storage:Edit permission.' ] );
+                return;
+            }
+            update_option( 'csdt_uptime_kv_id', $kv_id, false );
+        }
+
+        // Step 2b: Upload Worker (module syntax + env bindings)
         $boundary = '---CSDTWorkerBnd' . bin2hex( random_bytes( 8 ) );
         $metadata = wp_json_encode( [
             'main_module'        => 'worker.js',
             'compatibility_date' => '2024-11-01',
             'bindings'           => [
-                [ 'type' => 'plain_text', 'name' => 'SITE_URL',   'text' => $site_url  ],
-                [ 'type' => 'plain_text', 'name' => 'PING_URL',   'text' => $ping_url  ],
-                [ 'type' => 'plain_text', 'name' => 'READY_URL',  'text' => $ready_url ],
-                [ 'type' => 'plain_text', 'name' => 'PING_TOKEN', 'text' => $token     ],
-                [ 'type' => 'plain_text', 'name' => 'NTFY_URL',   'text' => $ntfy_url  ],
+                [ 'type' => 'plain_text',   'name' => 'SITE_URL',   'text'         => $site_url ],
+                [ 'type' => 'plain_text',   'name' => 'PING_TOKEN', 'text'         => $token    ],
+                [ 'type' => 'plain_text',   'name' => 'NTFY_URL',   'text'         => $ntfy_url ],
+                [ 'type' => 'kv_namespace', 'name' => 'STATE',      'namespace_id' => $kv_id   ],
             ],
         ] );
         $script_js = self::uptime_worker_js();
@@ -526,7 +572,7 @@ class CSDT_Uptime {
 
         update_option( 'csdt_uptime_enabled', '1', false );
 
-        // Step 4: Get workers.dev subdomain so we can trigger the worker via HTTP for the Test button
+        // Step 4: Get workers.dev subdomain for the Test button and WP-Cron heartbeat target
         $subdomain_resp = wp_remote_get(
             "https://api.cloudflare.com/client/v4/accounts/{$account_id}/workers/subdomain",
             [ 'headers' => [ 'Authorization' => 'Bearer ' . $cf_token ], 'timeout' => 10 ]
@@ -541,11 +587,16 @@ class CSDT_Uptime {
             }
         }
 
+        // Schedule WP-Cron heartbeat (reschedule to pick up new worker URL)
+        wp_clear_scheduled_hook( 'csdt_uptime_heartbeat' );
+        wp_schedule_event( time() + 10, 'csdt_minutely', 'csdt_uptime_heartbeat' );
+
         wp_send_json_success( [
-            'message'    => 'Worker deployed! Pings will arrive every 60 seconds.',
-            'worker_url' => "https://dash.cloudflare.com/{$account_id}/workers/view/cloudscale-uptime",
-            'cron_ok'    => $cron_ok,
-            'token'      => $token,
+            'message'        => 'Worker deployed! WordPress will push heartbeats every 60 seconds.',
+            'cf_worker_url'  => "https://dash.cloudflare.com/{$account_id}/workers/view/cloudscale-uptime",
+            'worker_url'     => $worker_trigger_url,
+            'cron_ok'        => $cron_ok,
+            'token'          => $token,
         ] );
     }
 
@@ -570,72 +621,6 @@ class CSDT_Uptime {
         update_option( 'csdt_uptime_hourly', $hourly, false );
     }
 
-    private static function uptime_send_alert( int $status_code, int $response_ms ): void {
-        $site    = get_bloginfo( 'name' );
-        $url     = get_site_url();
-        $subject = "[{$site}] Site is DOWN";
-        $body    = "<p>Your site <strong>{$url}</strong> appears to be down.</p>"
-                 . "<p>Status: <strong>" . ( $status_code ?: 'Timeout' ) . "</strong> — Response: {$response_ms}ms</p>"
-                 . "<p>This alert was sent by the CloudScale Uptime Monitor.</p>";
-
-        $alert_email = (string) get_option( 'csdt_uptime_alert_email', get_option( 'admin_email', '' ) );
-        if ( $alert_email ) {
-            add_filter( 'wp_mail_content_type', [ 'CSDT_Login', 'email_content_type_html' ] );
-            wp_mail( $alert_email, $subject, $body );
-            remove_filter( 'wp_mail_content_type', [ 'CSDT_Login', 'email_content_type_html' ] );
-        }
-
-        $ntfy_url = (string) get_option( 'csdt_uptime_ntfy_url', '' );
-        if ( $ntfy_url ) {
-            wp_remote_post( $ntfy_url, [
-                'headers' => [
-                    'Title'    => "Site Down: {$url}",
-                    'Priority' => 'urgent',
-                    'Tags'     => 'rotating_light',
-                ],
-                'body'    => "Status: " . ( $status_code ?: 'Timeout' ) . " — {$response_ms}ms",
-                'timeout' => 10,
-            ] );
-        }
-    }
-
-    private static function uptime_send_recovery_alert( int $response_ms, int $outage_seconds = 0 ): void {
-        $site         = get_bloginfo( 'name' );
-        $url          = get_site_url();
-        $duration_str = '';
-        if ( $outage_seconds > 0 ) {
-            $mins = (int) floor( $outage_seconds / 60 );
-            $secs = $outage_seconds % 60;
-            $duration_str = $mins > 0
-                ? " — was down for <strong>{$mins}m {$secs}s</strong>"
-                : " — was down for <strong>{$secs}s</strong>";
-        }
-        $subject = "[{$site}] Site is back ONLINE";
-        $body    = "<p>Your site <strong>{$url}</strong> has recovered and is responding normally{$duration_str}.</p>"
-                 . "<p>Response time: <strong>{$response_ms}ms</strong></p>"
-                 . "<p>This alert was sent by the CloudScale Uptime Monitor.</p>";
-
-        $alert_email = (string) get_option( 'csdt_uptime_alert_email', get_option( 'admin_email', '' ) );
-        if ( $alert_email ) {
-            add_filter( 'wp_mail_content_type', [ 'CSDT_Login', 'email_content_type_html' ] );
-            wp_mail( $alert_email, $subject, $body );
-            remove_filter( 'wp_mail_content_type', [ 'CSDT_Login', 'email_content_type_html' ] );
-        }
-
-        $ntfy_url = (string) get_option( 'csdt_uptime_ntfy_url', '' );
-        if ( $ntfy_url ) {
-            wp_remote_post( $ntfy_url, [
-                'headers' => [
-                    'Title'    => "Site Recovered: {$url}",
-                    'Priority' => 'default',
-                    'Tags'     => 'white_check_mark',
-                ],
-                'body'    => 'Back online — ' . $response_ms . 'ms' . ( $outage_seconds > 0 ? ' — down for ' . ( $outage_seconds >= 60 ? floor( $outage_seconds / 60 ) . 'm ' . ( $outage_seconds % 60 ) . 's' : $outage_seconds . 's' ) : '' ),
-                'timeout' => 10,
-            ] );
-        }
-    }
-
     private static function resolve_worker_url(): string {
         $zone_id  = (string) get_option( 'csdt_devtools_cf_zone_id', '' );
         $cf_token = (string) get_option( 'csdt_devtools_cf_api_token', '' );
@@ -656,68 +641,47 @@ class CSDT_Uptime {
 
     private static function uptime_worker_js(): string {
         return <<<'JS'
-// CloudScale Uptime Monitor — readiness probe
-// HTTP POST / with Authorization: Bearer <PING_TOKEN> triggers a manual probe (used by WP Admin Test button)
-async function runProbe(env, ctx) {
-  const start = Date.now();
-  let statusCode = 0, responseMs = 0, isUp = false;
-  try {
-    const res = await fetch(env.READY_URL, {
-      method: 'GET',
-      headers: {
-        'Authorization': 'Bearer ' + env.PING_TOKEN,
-        'User-Agent': 'CloudScale-Uptime/1.0',
-        'Cache-Control': 'no-store',
-      },
-      signal: AbortSignal.timeout(15000),
-    });
-    statusCode = res.status;
-    responseMs = Date.now() - start;
-    isUp = statusCode === 200;
-  } catch(e) { responseMs = Date.now() - start; }
-
-  if (!isUp && env.NTFY_URL) {
-    ctx.waitUntil(fetch(env.NTFY_URL, {
-      method: 'POST',
-      headers: {'Title': 'Site Down: ' + env.SITE_URL, 'Priority': 'urgent', 'Tags': 'rotating_light'},
-      body: 'Readiness probe: ' + (statusCode ? 'HTTP ' + statusCode : 'timeout') + ' — ' + responseMs + 'ms',
-    }).catch(() => {}));
+// CloudScale Uptime Monitor — heartbeat watchdog
+// WordPress pushes a POST heartbeat every minute via WP-Cron.
+// If no heartbeat arrives for >2 minutes, the site is treated as down.
+const STALE_MS=2*60*1000,ALERT_COOL=5*60*1000;
+async function watchdog(env,ctx){
+  const now=Date.now();
+  const[hbStr,dsStr,laStr]=await Promise.all([env.STATE.get('hb'),env.STATE.get('ds'),env.STATE.get('la')]);
+  const lastHb=hbStr?parseInt(hbStr,10):0,downSince=dsStr?parseInt(dsStr,10):0,lastAlert=laStr?parseInt(laStr,10):0;
+  const stale=!lastHb||(now-lastHb)>STALE_MS;
+  if(stale){
+    const since=downSince||now,ops=[];
+    if(!downSince)ops.push(env.STATE.put('ds',String(now)));
+    if(now-lastAlert>ALERT_COOL){ops.push(notify(env,false,Math.round((now-since)/1000)));ops.push(env.STATE.put('la',String(now)));}
+    ctx.waitUntil(Promise.all(ops));
+  } else if(downSince){
+    ctx.waitUntil(Promise.all([notify(env,true,Math.round((now-downSince)/1000)),env.STATE.delete('ds'),env.STATE.put('la','0')]));
   }
-
-  ctx.waitUntil(fetch(env.PING_URL, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: 'action=csdt_uptime_ping&token=' + encodeURIComponent(env.PING_TOKEN) + '&status_code=' + statusCode + '&response_ms=' + responseMs,
-    signal: AbortSignal.timeout(10000),
-  }).catch(() => {}));
-
-  return { statusCode, responseMs, isUp };
+  return{stale,lastHb,downSince};
 }
-
-export default {
-  async scheduled(event, env, ctx) {
-    ctx.waitUntil(runProbe(env, ctx));
-  },
-
-  async fetch(request, env, ctx) {
-    if (request.method !== 'POST') {
-      return new Response('Method Not Allowed', { status: 405 });
-    }
-    const auth = request.headers.get('Authorization') || '';
-    if (auth !== 'Bearer ' + env.PING_TOKEN) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-    const result = await runProbe(env, ctx);
-    return new Response(JSON.stringify({ ok: result.isUp, status_code: result.statusCode, response_ms: result.responseMs, triggered: true }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+async function notify(env,recovered,downSecs){
+  if(!env.NTFY_URL)return;
+  const dur=downSecs>0?fmtSecs(downSecs):null;
+  return fetch(env.NTFY_URL,{method:'POST',headers:{Title:(recovered?'Site Recovered: ':'Site Down: ')+env.SITE_URL,Priority:recovered?'default':'urgent',Tags:recovered?'white_check_mark':'rotating_light'},body:recovered?'Back online'+(dur?' — was down '+dur:''):'No heartbeat received for '+(dur||'2m+')}).catch(()=>{});
+}
+function fmtSecs(s){const m=Math.floor(s/60);return m>0?m+'m '+(s%60)+'s':s+'s';}
+export default{
+  async scheduled(event,env,ctx){ctx.waitUntil(watchdog(env,ctx));},
+  async fetch(request,env,ctx){
+    if(request.method!=='POST')return new Response('Method Not Allowed',{status:405});
+    if((request.headers.get('Authorization')||'')!=='Bearer '+env.PING_TOKEN)return new Response('Unauthorized',{status:401});
+    const params=new URLSearchParams(await request.text());
+    if(params.get('action')==='csdt_heartbeat'){await env.STATE.put('hb',String(Date.now()));return new Response(JSON.stringify({ok:true}),{headers:{'Content-Type':'application/json'}});}
+    const state=await watchdog(env,ctx);
+    return new Response(JSON.stringify({ok:!state.stale,...state,triggered:true}),{headers:{'Content-Type':'application/json'}});
   },
 };
 JS;
     }
 
-    private static function uptime_wrangler_toml( string $site_url, string $ping_url, string $ready_url, string $token, string $ntfy_url ): string {
-        return "name = \"cloudscale-uptime\"\nmain = \"worker.js\"\ncompatibility_date = \"2024-11-01\"\n\n[vars]\nSITE_URL = \"{$site_url}\"\nPING_URL = \"{$ping_url}\"\nREADY_URL = \"{$ready_url}\"\nPING_TOKEN = \"{$token}\"\nNTFY_URL = \"{$ntfy_url}\"\n\n[[triggers.crons]]\ncrons = [\"* * * * *\"]\n";
+    private static function uptime_wrangler_toml( string $site_url, string $token, string $ntfy_url ): string {
+        return "name = \"cloudscale-uptime\"\nmain = \"worker.js\"\ncompatibility_date = \"2024-11-01\"\n\n[vars]\nSITE_URL = \"{$site_url}\"\nPING_TOKEN = \"{$token}\"\nNTFY_URL = \"{$ntfy_url}\"\n\n# STATE KV namespace must be created first:\n# wrangler kv:namespace create csdt-uptime-state\n# Then add to wrangler.toml:\n# [[kv_namespaces]]\n# binding = \"STATE\"\n# id = \"<namespace_id>\"\n\n[[triggers.crons]]\ncrons = [\"* * * * *\"]\n";
     }
 
 }

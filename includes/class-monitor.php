@@ -655,6 +655,63 @@ class CSDT_Monitor {
         ] );
     }
 
+    // ── OPcache ──────────────────────────────────────────────────────────────
+
+    public static function ajax_opcache_stats(): void {
+        check_ajax_referer( CloudScale_DevTools::FPM_NONCE, 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) { wp_send_json_error( 'Unauthorized', 403 ); }
+        wp_send_json_success( self::get_opcache_stats() );
+    }
+
+    public static function ajax_opcache_flush(): void {
+        // Accepts either a logged-in admin with nonce OR the stored deploy token (for deploy script).
+        $token  = sanitize_text_field( (string) ( $_POST['token'] ?? '' ) );
+        $stored = get_option( 'csdt_opcache_token', '' );
+
+        $by_token = $stored && $token && hash_equals( $stored, $token );
+        if ( ! $by_token ) {
+            check_ajax_referer( CloudScale_DevTools::FPM_NONCE, 'nonce' );
+            if ( ! current_user_can( 'manage_options' ) ) { wp_send_json_error( 'Unauthorized', 403 ); }
+        }
+
+        $ok = function_exists( 'opcache_reset' ) && opcache_reset();
+        update_option( 'csdt_opcache_last_flush', time(), false );
+
+        wp_send_json_success( [
+            'flushed'    => $ok,
+            'stats'      => self::get_opcache_stats(),
+            'flushed_at' => human_time_diff( time() ) . ' ago',
+        ] );
+    }
+
+    private static function get_opcache_stats(): array {
+        if ( ! function_exists( 'opcache_get_status' ) ) {
+            return [ 'available' => false ];
+        }
+        $s = opcache_get_status( false );
+        if ( ! $s ) {
+            return [ 'available' => false ];
+        }
+        $mem   = $s['memory_usage'];
+        $total = $mem['used_memory'] + $mem['free_memory'] + $mem['wasted_memory'];
+        $stats = $s['opcache_statistics'];
+        $last  = (int) get_option( 'csdt_opcache_last_flush', 0 );
+        return [
+            'available'      => true,
+            'enabled'        => $s['opcache_enabled'],
+            'mem_used'       => $mem['used_memory'],
+            'mem_free'       => $mem['free_memory'],
+            'mem_wasted'     => $mem['wasted_memory'],
+            'mem_total'      => $total,
+            'cached_scripts' => $stats['num_cached_scripts'],
+            'hits'           => $stats['hits'],
+            'misses'         => $stats['misses'],
+            'hit_rate'       => $total > 0 ? round( $stats['hits'] / max( 1, $stats['hits'] + $stats['misses'] ) * 100, 1 ) : 0,
+            'last_flush'     => $last ? human_time_diff( $last ) . ' ago' : 'never',
+            'last_flush_ts'  => $last,
+        ];
+    }
+
     public static function register_fpm_report_route(): void {
         register_rest_route( 'csdt/v1', '/fpm-report', [
             'methods'             => 'POST',

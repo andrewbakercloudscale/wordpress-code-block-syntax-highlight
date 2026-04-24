@@ -72,8 +72,8 @@
                 var recent = errors.slice( -60 );
                 logLines.innerHTML = recent.map( function ( line ) {
                     return '<div class="csdt-debug-line" data-line="' + esc( line ) + '" '
-                         + 'style="padding:6px 12px;border-bottom:1px solid #1e293b;cursor:pointer;'
-                         + 'font-size:.78em;font-family:monospace;color:#f87171;white-space:nowrap;'
+                         + 'style="padding:6px 12px;border-bottom:1px solid #e2e8f0;cursor:pointer;'
+                         + 'font-size:.78em;font-family:monospace;color:#dc2626;white-space:nowrap;'
                          + 'overflow:hidden;text-overflow:ellipsis;" title="' + esc( line ) + '">'
                          + esc( line )
                          + '</div>';
@@ -107,9 +107,9 @@
         if ( ! text ) { return '<p style="color:#94a3b8;">No analysis returned.</p>'; }
 
         var sections = [
-            { key: 'Root Cause',     icon: '&#x1F534;', color: '#fca5a5' },
-            { key: 'Why It Happens', icon: '&#x1F7E1;', color: '#fde68a' },
-            { key: 'How to Fix It',  icon: '&#x1F7E2;', color: '#86efac' },
+            { key: 'Root Cause',     icon: '&#x1F534;', color: '#dc2626' },
+            { key: 'Why It Happens', icon: '&#x1F7E1;', color: '#d97706' },
+            { key: 'How to Fix It',  icon: '&#x1F7E2;', color: '#16a34a' },
         ];
 
         var html = text;
@@ -124,7 +124,7 @@
         } );
 
         // Inline code
-        html = html.replace( /`([^`\n]+)`/g, '<code style="background:#1e293b;padding:1px 5px;border-radius:3px;font-size:.9em;">$1</code>' );
+        html = html.replace( /`([^`\n]+)`/g, '<code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;font-size:.9em;color:#1e293b;">$1</code>' );
         // Bold
         html = html.replace( /\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>' );
         // Numbered list items
@@ -133,7 +133,7 @@
         html = html.replace( /\n{2,}/g, '</p><p style="margin:8px 0;">' );
         html = html.replace( /\n/g, '<br>' );
 
-        return '<div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:22px 26px;color:#e2e8f0;font-size:.9em;line-height:1.75;">'
+        return '<div style="background:#f8fafc;border:1px solid #d1d5db;border-radius:8px;padding:22px 26px;color:#1e293b;font-size:.9em;line-height:1.75;">'
              + '<p style="margin:0 0 8px;">' + html + '</p>'
              + '</div>';
     }
@@ -236,11 +236,11 @@
 
     function stateColour( state ) {
         state = ( state || '' ).toLowerCase();
-        if ( state === 'idle' )                     return '#86efac';
-        if ( state === 'running' )                  return '#f87171';
-        if ( state.indexOf( 'reading' ) !== -1 )    return '#fbbf24';
-        if ( state.indexOf( 'sending' ) !== -1 )    return '#60a5fa';
-        return '#94a3b8';
+        if ( state === 'idle' )                     return '#16a34a';
+        if ( state === 'running' )                  return '#dc2626';
+        if ( state.indexOf( 'reading' ) !== -1 )    return '#d97706';
+        if ( state.indexOf( 'sending' ) !== -1 )    return '#2563eb';
+        return '#64748b';
     }
 
     function loadFpmDetail() {
@@ -274,21 +274,21 @@
                     var stateClr = stateColour( w.state );
                     var uriText  = w.uri || '—';
                     if ( uriText.length > 80 ) { uriText = uriText.slice( 0, 77 ) + '\u2026'; }
-                    var rowBg    = w.state && w.state.toLowerCase() !== 'idle' ? 'background:#12213a;' : '';
+                    var rowBg    = w.state && w.state.toLowerCase() !== 'idle' ? 'background:#fff7ed;' : '';
                     var cpuVal   = parseFloat( w.cpu || 0 );
                     var cpuDisp  = cpuVal === 0 ? '—' : cpuVal.toFixed( 1 );
-                    var cpuClr   = cpuVal > 50 ? '#fbbf24' : '#e2e8f0';
-                    return '<tr style="border-top:1px solid #1e293b;' + rowBg + '">'
-                        + '<td style="padding:4px 8px;font-family:monospace;color:#e2e8f0;">' + esc( String( w.pid ) ) + '</td>'
+                    var cpuClr   = cpuVal > 50 ? '#d97706' : '#374151';
+                    return '<tr style="border-top:1px solid #e2e8f0;' + rowBg + '">'
+                        + '<td style="padding:4px 8px;font-family:monospace;color:#374151;">' + esc( String( w.pid ) ) + '</td>'
                         + '<td style="padding:4px 8px;font-weight:600;color:' + stateClr + ';white-space:nowrap;">' + esc( w.state || '—' ) + '</td>'
-                        + '<td style="padding:4px 8px;text-align:right;color:#e2e8f0;">' + esc( String( w.reqs ) ) + '</td>'
-                        + '<td style="padding:4px 8px;white-space:nowrap;color:#e2e8f0;">' + esc( fmtSince( w.since ) ) + '</td>'
+                        + '<td style="padding:4px 8px;text-align:right;color:#374151;">' + esc( String( w.reqs ) ) + '</td>'
+                        + '<td style="padding:4px 8px;white-space:nowrap;color:#374151;">' + esc( fmtSince( w.since ) ) + '</td>'
                         + '<td style="padding:4px 8px;font-family:monospace;font-size:.9em;max-width:480px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc( ( w.method ? w.method + ' ' : '' ) + ( w.uri || '' ) ) + '">'
                         + ( w.method ? '<span style="color:#94a3b8;">' + esc( w.method ) + '</span> ' : '' )
-                        + '<span style="color:#e2e8f0;">' + esc( uriText ) + '</span></td>'
-                        + '<td style="padding:4px 8px;font-family:monospace;font-size:.9em;color:#e2e8f0;white-space:nowrap;" title="' + esc( w.script || '' ) + '">' + esc( w.script || '—' ) + '</td>'
+                        + '<span style="color:#374151;">' + esc( uriText ) + '</span></td>'
+                        + '<td style="padding:4px 8px;font-family:monospace;font-size:.9em;color:#374151;white-space:nowrap;" title="' + esc( w.script || '' ) + '">' + esc( w.script || '—' ) + '</td>'
                         + '<td style="padding:4px 8px;text-align:right;color:' + cpuClr + ';">' + esc( cpuDisp ) + '</td>'
-                        + '<td style="padding:4px 8px;text-align:right;white-space:nowrap;color:#e2e8f0;">' + esc( fmtBytes( w.mem ) ) + '</td>'
+                        + '<td style="padding:4px 8px;text-align:right;white-space:nowrap;color:#374151;">' + esc( fmtBytes( w.mem ) ) + '</td>'
                         + '</tr>';
                 } ).join( '' );
 
@@ -296,9 +296,9 @@
                 var totalBytes = workers.reduce( function ( s, w ) { return s + ( parseInt( w.mem, 10 ) || 0 ); }, 0 );
                 var totalMemStr = fmtBytes( totalBytes );
                 if ( fpmDetailTfoot ) {
-                    fpmDetailTfoot.innerHTML = '<tr style="border-top:2px solid #334155;">'
-                        + '<td colspan="7" style="padding:4px 8px;text-align:right;color:#94a3b8;font-size:.85em;">Total memory</td>'
-                        + '<td style="padding:4px 8px;text-align:right;white-space:nowrap;color:#e2e8f0;font-weight:700;">' + esc( totalMemStr ) + '</td>'
+                    fpmDetailTfoot.innerHTML = '<tr style="border-top:2px solid #d1d5db;">'
+                        + '<td colspan="7" style="padding:4px 8px;text-align:right;color:#64748b;font-size:.85em;">Total memory</td>'
+                        + '<td style="padding:4px 8px;text-align:right;white-space:nowrap;color:#1e293b;font-weight:700;">' + esc( totalMemStr ) + '</td>'
                         + '</tr>';
                 }
                 var memHeader = document.getElementById( 'csdt-fpm-w-mem' );
@@ -350,18 +350,18 @@
             } );
             document.querySelectorAll( '.csdt-fpm-step' ).forEach( function ( el ) {
                 var s = parseInt( el.dataset.step, 10 );
-                el.style.borderBottomColor = s === n ? '#3b82f6' : s < n ? '#22c55e' : '#1e293b';
-                el.style.color = s === n ? '#60a5fa' : s < n ? '#86efac' : '#475569';
+                el.style.borderBottomColor = s === n ? '#3b82f6' : s < n ? '#22c55e' : '#d1d5db';
+                el.style.color = s === n ? '#2563eb' : s < n ? '#16a34a' : '#475569';
             } );
         }
 
         function statusRow( ok, label, value ) {
-            var colour = ok ? '#86efac' : '#f87171';
+            var colour = ok ? '#16a34a' : '#dc2626';
             var icon   = ok ? '✓' : '✗';
-            return '<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #1e293b;font-size:12px;">'
+            return '<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #e2e8f0;font-size:12px;">'
                  + '<span style="color:' + colour + ';font-weight:700;width:14px;">' + icon + '</span>'
-                 + '<span style="color:#94a3b8;flex:1;">' + esc( label ) + '</span>'
-                 + '<span style="color:#e2e8f0;font-family:monospace;">' + esc( value ) + '</span>'
+                 + '<span style="color:#64748b;flex:1;">' + esc( label ) + '</span>'
+                 + '<span style="color:#1e293b;font-family:monospace;">' + esc( value ) + '</span>'
                  + '</div>';
         }
 
@@ -414,7 +414,7 @@
 
                         if ( d.fpm_status_works ) {
                             if ( detectRes ) {
-                                detectRes.innerHTML += '<div style="margin-top:12px;padding:10px;background:#052e16;border:1px solid #22c55e;border-radius:6px;color:#86efac;font-size:12px;">✅ /fpm-status is already working! Closing in 3s…</div>';
+                                detectRes.innerHTML += '<div style="margin-top:12px;padding:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;color:#16a34a;font-size:12px;">✅ /fpm-status is already working! Closing in 3s…</div>';
                             }
                             setTimeout( function () {
                                 modal.style.display = 'none';
@@ -447,7 +447,7 @@
             step2El.addEventListener( 'csdt:show', function () {
                 if ( patchInfo ) {
                     patchInfo.innerHTML = detected.www_conf
-                        ? '<span style="color:#94a3b8;">Found: <code style="color:#86efac;">' + esc( detected.www_conf ) + '</code>'
+                        ? '<span style="color:#374151;">Found: <code style="color:#16a34a;">' + esc( detected.www_conf ) + '</code>'
                           + ( detected.www_conf_writable ? '' : ' <span style="color:#f87171;">(not writable — may fail)</span>' ) + '</span>'
                         : '<span style="color:#f87171;">www.conf not found at standard paths. You may need to patch manually.</span>';
                 }
@@ -655,6 +655,103 @@
                 } )
                 .catch( function () { saveBtn.disabled = false; } );
         } );
+    } )();
+
+    // ── OPcache panel ────────────────────────────────────────────────────────
+    ( function () {
+        var flushBtn   = document.getElementById( 'csdt-opcache-flush-btn' );
+        var refreshBtn = document.getElementById( 'csdt-opcache-refresh-btn' );
+        var statsWrap  = document.getElementById( 'csdt-opcache-stats' );
+        var statusEl   = document.getElementById( 'csdt-opcache-status' );
+        var lastFlush  = document.getElementById( 'csdt-opcache-last-flush' );
+        var revealBtn  = document.getElementById( 'csdt-opcache-token-reveal' );
+        var copyBtn    = document.getElementById( 'csdt-opcache-token-copy' );
+        var tokenEl    = document.getElementById( 'csdt-opcache-token-display' );
+        var copyStatus = document.getElementById( 'csdt-opcache-copy-status' );
+
+        if ( ! flushBtn ) { return; }
+
+        function fmtBytes( b ) {
+            if ( b >= 1048576 ) { return ( b / 1048576 ).toFixed( 1 ) + ' MB'; }
+            return ( b / 1024 ).toFixed( 0 ) + ' KB';
+        }
+
+        function renderStats( d ) {
+            if ( ! d || ! d.available ) {
+                statsWrap.innerHTML = '<span style="color:#f87171;">OPcache not available on this server.</span>';
+                return;
+            }
+            var pct  = Math.round( d.mem_used / d.mem_total * 100 );
+            var bar  = '<div style="height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;width:140px;display:inline-block;vertical-align:middle;margin:0 6px;">' +
+                       '<div style="height:100%;width:' + pct + '%;background:' + ( pct > 85 ? '#dc2626' : '#16a34a' ) + ';border-radius:3px;"></div></div>';
+            statsWrap.innerHTML =
+                '<div style="display:flex;flex-wrap:wrap;gap:16px;font-size:.82em;color:#64748b;">' +
+                '<span>Memory: <strong style="color:#1e293b;">' + fmtBytes( d.mem_used ) + ' / ' + fmtBytes( d.mem_total ) + '</strong>' + bar + pct + '%</span>' +
+                '<span>Cached scripts: <strong style="color:#1e293b;">' + d.cached_scripts + '</strong></span>' +
+                '<span>Hit rate: <strong style="color:' + ( d.hit_rate >= 95 ? '#16a34a' : d.hit_rate >= 70 ? '#d97706' : '#dc2626' ) + ';">' + d.hit_rate + '%</strong></span>' +
+                '<span>Wasted: <strong style="color:#1e293b;">' + fmtBytes( d.mem_wasted ) + '</strong></span>' +
+                '</div>';
+            if ( lastFlush ) { lastFlush.textContent = d.last_flush; }
+        }
+
+        function loadStats() {
+            if ( statsWrap ) { statsWrap.innerHTML = '<span style="color:#64748b;">Loading…</span>'; }
+            var fd = new FormData();
+            fd.append( 'action', 'csdt_opcache_stats' );
+            fd.append( 'nonce',  cfg.fpmNonce );
+            fetch( cfg.ajaxUrl, { method: 'POST', body: fd } )
+                .then( function ( r ) { return r.json(); } )
+                .then( function ( resp ) { if ( resp.success ) { renderStats( resp.data ); } } )
+                .catch( function () { if ( statsWrap ) { statsWrap.innerHTML = '<span style="color:#f87171;">Failed to load.</span>'; } } );
+        }
+
+        loadStats();
+
+        refreshBtn.addEventListener( 'click', loadStats );
+
+        flushBtn.addEventListener( 'click', function () {
+            flushBtn.disabled = true;
+            flushBtn.textContent = 'Flushing…';
+            if ( statusEl ) { statusEl.textContent = ''; }
+            var fd = new FormData();
+            fd.append( 'action', 'csdt_opcache_flush' );
+            fd.append( 'nonce',  cfg.fpmNonce );
+            fetch( cfg.ajaxUrl, { method: 'POST', body: fd } )
+                .then( function ( r ) { return r.json(); } )
+                .then( function ( resp ) {
+                    flushBtn.disabled = false;
+                    flushBtn.textContent = '⚡ Flush OPcache';
+                    if ( resp.success ) {
+                        renderStats( resp.data.stats );
+                        if ( statusEl ) {
+                            statusEl.textContent = resp.data.flushed ? '✓ Flushed' : 'Not available';
+                            setTimeout( function () { statusEl.textContent = ''; }, 3000 );
+                        }
+                    }
+                } )
+                .catch( function () {
+                    flushBtn.disabled = false;
+                    flushBtn.textContent = '⚡ Flush OPcache';
+                } );
+        } );
+
+        if ( revealBtn && copyBtn && tokenEl ) {
+            var revealed = false;
+            var fullToken = copyBtn.dataset.token || '';
+            revealBtn.addEventListener( 'click', function () {
+                revealed = ! revealed;
+                tokenEl.textContent = revealed ? fullToken : ( fullToken.substring( 0, 8 ) + '•'.repeat( 16 ) );
+                revealBtn.textContent = revealed ? 'Hide' : 'Reveal';
+            } );
+            copyBtn.addEventListener( 'click', function () {
+                navigator.clipboard.writeText( fullToken ).then( function () {
+                    if ( copyStatus ) {
+                        copyStatus.textContent = '✓ Copied';
+                        setTimeout( function () { copyStatus.textContent = ''; }, 2000 );
+                    }
+                } );
+            } );
+        }
     } )();
 
 }() );

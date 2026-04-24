@@ -1263,12 +1263,14 @@
     align-items: flex-end;
     margin-bottom: 16px;
     padding-right: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 .cs-bf-yaxis {
     align-self: flex-start;
     flex-shrink: 0;
-    width: 26px;
-    height: 70px;
+    width: 28px;
+    height: 120px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -1289,28 +1291,28 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-width: 0;
+    min-width: 18px;
 }
 .cs-bf-bar-track {
     width: 100%;
-    height: 70px;
+    height: 120px;
     display: flex;
     align-items: flex-end;
-    border-bottom: 1px solid #e8edf5;
+    border-bottom: 2px solid #d1d5db;
 }
 .cs-bf-bar {
     width: 100%;
-    min-height: 2px;
-    background: #dce3ef;
-    border-radius: 2px 2px 0 0;
+    min-height: 3px;
+    background: #94a3b8;
+    border-radius: 3px 3px 0 0;
     transition: height .3s;
     cursor: default;
 }
-.cs-bf-bar-mid  { background: #f0a500; }
+.cs-bf-bar-mid  { background: #f59e0b; }
 .cs-bf-bar-high { background: #e53e3e; }
 .cs-bf-day-label {
-    font-size: 8px;
-    color: #aaa;
+    font-size: 9px;
+    color: #888;
     margin-top: 4px;
     text-align: center;
     white-space: nowrap;

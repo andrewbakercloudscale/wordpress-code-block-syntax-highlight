@@ -1,68 +1,96 @@
-// CloudScale Uptime Monitor — readiness probe
-// Deployed via: Deploy Worker to Cloudflare button in WP Admin → Tools → CloudScale DevTools → Optimizer tab
+// CloudScale Uptime Monitor — heartbeat watchdog
+// WordPress pushes a POST heartbeat every minute via WP-Cron.
+// If no heartbeat arrives for >2 minutes, the site is treated as down.
 //
-// Required environment bindings (set in Cloudflare Worker → Settings → Variables):
-//   SITE_URL   — your WordPress site URL (e.g. https://your-wordpress-site.example.com)
-//   PING_URL   — WordPress admin-ajax.php URL (receives ping data)
-//   READY_URL  — readiness endpoint URL (e.g. https://your-wordpress-site.example.com/wp-json/csdt/v1/ready/abc123)
-//   PING_TOKEN — shared secret token (generated in WP Admin)
-//   NTFY_URL   — ntfy.sh topic URL for down alerts (e.g. https://ntfy.sh/yourtopic)
+// Required environment bindings:
+//   SITE_URL   — WordPress site URL (for alert messages)
+//   PING_TOKEN — shared secret (WordPress uses this to auth heartbeat pushes)
+//   NTFY_URL   — ntfy.sh topic URL for down/recovery alerts
+//   STATE      — KV namespace (stores last heartbeat ts + alert state)
 //
-// Cron trigger: * * * * *  (every minute)
-// HTTP trigger: POST / with Authorization: Bearer <PING_TOKEN> — for manual test from WP Admin
+// Cron trigger: * * * * *  (every minute — checks for stale heartbeat)
+// HTTP POST / with Authorization: Bearer <PING_TOKEN>:
+//   action=csdt_heartbeat — record a heartbeat from WordPress (WP-Cron calls this)
+//   (no action)           — manual test, returns current watchdog state
 
-async function runProbe(env, ctx) {
-  const start = Date.now();
-  let statusCode = 0, responseMs = 0, isUp = false;
-  try {
-    const res = await fetch(env.READY_URL, {
-      method: 'GET',
-      headers: {
-        'Authorization': 'Bearer ' + env.PING_TOKEN,
-        'User-Agent': 'CloudScale-Uptime/1.0',
-        'Cache-Control': 'no-store',
-      },
-      signal: AbortSignal.timeout(15000),
-    });
-    statusCode = res.status;
-    responseMs = Date.now() - start;
-    isUp = statusCode === 200;
-  } catch(e) { responseMs = Date.now() - start; }
+const STALE_MS   = 3 * 60 * 1000;  // 3 min without heartbeat = site down
+const ALERT_COOL = 30 * 60 * 1000; // cooldown between repeat down-alerts
 
-  if (!isUp && env.NTFY_URL) {
-    ctx.waitUntil(fetch(env.NTFY_URL, {
-      method: 'POST',
-      headers: {'Title': 'Site Down: ' + env.SITE_URL, 'Priority': 'urgent', 'Tags': 'rotating_light'},
-      body: 'Readiness probe: ' + (statusCode ? 'HTTP ' + statusCode : 'timeout') + ' — ' + responseMs + 'ms',
-    }).catch(() => {}));
+async function watchdog(env, ctx) {
+  const now = Date.now();
+  const [hbStr, dsStr, laStr] = await Promise.all([
+    env.STATE.get('hb'),
+    env.STATE.get('ds'),
+    env.STATE.get('la'),
+  ]);
+  const lastHb    = hbStr ? parseInt(hbStr, 10) : 0;
+  const downSince = dsStr ? parseInt(dsStr, 10) : 0;
+  const lastAlert = laStr ? parseInt(laStr, 10) : 0;
+  const stale     = !lastHb || (now - lastHb) > STALE_MS;
+
+  if (stale) {
+    const since = downSince || now;
+    const ops = [];
+    if (!downSince) ops.push(env.STATE.put('ds', String(now)));
+    if (now - lastAlert > ALERT_COOL) {
+      ops.push(notify(env, false, Math.round((now - since) / 1000)));
+      ops.push(env.STATE.put('la', String(now)));
+    }
+    ctx.waitUntil(Promise.all(ops));
+  } else if (downSince) {
+    const downSecs = Math.round((now - downSince) / 1000);
+    ctx.waitUntil(Promise.all([
+      notify(env, true, downSecs),
+      env.STATE.delete('ds'),
+      env.STATE.put('la', '0'),
+    ]));
   }
 
-  ctx.waitUntil(fetch(env.PING_URL, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: 'action=csdt_uptime_ping&token=' + encodeURIComponent(env.PING_TOKEN) + '&status_code=' + statusCode + '&response_ms=' + responseMs,
-    signal: AbortSignal.timeout(10000),
-  }).catch(() => {}));
+  return { stale, lastHb, downSince };
+}
 
-  return { statusCode, responseMs, isUp };
+async function notify(env, recovered, downSecs) {
+  if (!env.NTFY_URL) return;
+  const dur = downSecs > 0 ? fmtSecs(downSecs) : null;
+  return fetch(env.NTFY_URL, {
+    method: 'POST',
+    headers: {
+      Title:    (recovered ? 'Site Recovered: ' : 'Site Down: ') + env.SITE_URL,
+      Priority: recovered ? 'default' : 'urgent',
+      Tags:     recovered ? 'white_check_mark' : 'rotating_light',
+    },
+    body: recovered
+      ? 'Back online' + (dur ? ' — was down ' + dur : '')
+      : 'No heartbeat received for ' + (dur || '2m+'),
+  }).catch(() => {});
+}
+
+function fmtSecs(s) {
+  const m = Math.floor(s / 60);
+  return m > 0 ? m + 'm ' + (s % 60) + 's' : s + 's';
 }
 
 export default {
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(runProbe(env, ctx));
+    ctx.waitUntil(watchdog(env, ctx));
   },
 
   async fetch(request, env, ctx) {
-    // Only accept POST with valid Bearer token — used by WP Admin "Test Endpoint" button
-    if (request.method !== 'POST') {
-      return new Response('Method Not Allowed', { status: 405 });
-    }
+    if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
     const auth = request.headers.get('Authorization') || '';
-    if (auth !== 'Bearer ' + env.PING_TOKEN) {
-      return new Response('Unauthorized', { status: 401 });
+    if (auth !== 'Bearer ' + env.PING_TOKEN) return new Response('Unauthorized', { status: 401 });
+
+    const text   = await request.text();
+    const params = new URLSearchParams(text);
+
+    if (params.get('action') === 'csdt_heartbeat') {
+      await env.STATE.put('hb', String(Date.now()));
+      return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
     }
-    const result = await runProbe(env, ctx);
-    return new Response(JSON.stringify({ ok: result.isUp, status_code: result.statusCode, response_ms: result.responseMs, triggered: true }), {
+
+    // Manual test — run watchdog and return current state
+    const state = await watchdog(env, ctx);
+    return new Response(JSON.stringify({ ok: !state.stale, ...state, triggered: true }), {
       headers: { 'Content-Type': 'application/json' },
     });
   },

@@ -31,7 +31,7 @@
         var escaped = escHtml(text);
         // Code spans
         escaped = escaped.replace(/`([^`\n]+)`/g,
-            '<code style="background:#1e293b;color:#e2e8f0;padding:1px 6px;border-radius:3px;font-family:\'SF Mono\',Consolas,monospace;font-size:.88em;">$1</code>');
+            '<code style="background:#f1f5f9;color:#1e293b;padding:1px 6px;border-radius:3px;font-family:\'SF Mono\',Consolas,monospace;font-size:.88em;">$1</code>');
         // Bold **text**
         escaped = escaped.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
         // Numbered steps: "1. ", "2. " etc at line start
@@ -193,34 +193,77 @@
     var uptimeDeployBtn   = document.getElementById('csdt-uptime-deploy-btn');
     var uptimeDeploying   = document.getElementById('csdt-uptime-deploying');
     var uptimeDeployRes   = document.getElementById('csdt-uptime-deploy-result');
-    var uptimeGenBtn      = document.getElementById('csdt-uptime-generate-token-btn');
-    var uptimeTokenWrap   = document.getElementById('csdt-uptime-token-wrap');
-    var uptimeTokenDisplay= document.getElementById('csdt-uptime-token-display');
     var uptimeManualWrap  = document.getElementById('csdt-uptime-manual-wrap');
     var uptimeNtfyInput   = document.getElementById('csdt-uptime-ntfy-url');
-    var uptimeSlugInput   = document.getElementById('csdt-uptime-ready-slug');
-    var uptimeUrlDisplay  = document.getElementById('csdt-ready-url-display');
     var uptimeRefreshBtn  = document.getElementById('csdt-uptime-refresh-btn');
+    var uptimePushStatus  = document.getElementById('csdt-uptime-push-status');
     var uptimeSaveBtn     = document.getElementById('csdt-uptime-save-btn');
     var uptimeSaveStatus  = document.getElementById('csdt-uptime-save-status');
-    var uptimeTestBtn     = document.getElementById('csdt-uptime-test-btn');
+    var uptimeTestBtn       = document.getElementById('csdt-uptime-test-btn');
+    var uptimePauseBtn      = document.getElementById('csdt-uptime-pause-btn');
+    var uptimeCancelPauseBtn = document.getElementById('csdt-uptime-cancel-pause-btn');
+    var uptimePauseCountdown = null; // interval handle
 
-    if (uptimeGenBtn) {
-        uptimeGenBtn.addEventListener('click', function () {
-            uptimeGenBtn.disabled = true;
-            uptimeGenBtn.textContent = '⏳ Generating…';
-            post('csdt_uptime_setup').then(function (res) {
-                uptimeGenBtn.disabled = false;
-                uptimeGenBtn.textContent = '🔄 Regenerate Token';
-                if (!res.success) return;
-                var d = res.data;
-                if (uptimeTokenWrap)   { uptimeTokenWrap.style.display = 'flex'; }
-                if (uptimeTokenDisplay){ uptimeTokenDisplay.value = d.token; }
-                renderManualDeploy(d.worker_js, d.wrangler_toml);
-            }).catch(function () {
-                uptimeGenBtn.disabled = false;
-                uptimeGenBtn.textContent = '🔑 Generate Token';
-            });
+    function startPauseCountdown(pauseUntil) {
+        if (uptimePauseCountdown) { clearInterval(uptimePauseCountdown); }
+        if (uptimePauseBtn)      uptimePauseBtn.style.display      = 'none';
+        if (uptimeCancelPauseBtn) uptimeCancelPauseBtn.style.display = '';
+
+        function tick() {
+            var remaining = Math.max(0, Math.round((pauseUntil * 1000 - Date.now()) / 1000));
+            if (uptimePushStatus) {
+                var m = Math.floor(remaining / 60);
+                var s = remaining % 60;
+                uptimePushStatus.style.display = '';
+                uptimePushStatus.style.color   = '#d97706';
+                uptimePushStatus.textContent   = remaining > 0
+                    ? '⏸ Paused — CF Worker will alert in ~' + (m > 0 ? m + 'm ' : '') + s + 's'
+                    : '▶ Resumed';
+            }
+            if (remaining <= 0) {
+                clearInterval(uptimePauseCountdown);
+                uptimePauseCountdown = null;
+                if (uptimePauseBtn)       uptimePauseBtn.style.display       = '';
+                if (uptimeCancelPauseBtn) uptimeCancelPauseBtn.style.display = 'none';
+                setTimeout(function () {
+                    if (uptimePushStatus) uptimePushStatus.style.display = 'none';
+                }, 3000);
+                loadUptimeHistory();
+            }
+        }
+        tick();
+        uptimePauseCountdown = setInterval(tick, 1000);
+    }
+
+    function clearPauseState() {
+        if (uptimePauseCountdown) { clearInterval(uptimePauseCountdown); uptimePauseCountdown = null; }
+        if (uptimePauseBtn)       uptimePauseBtn.style.display       = '';
+        if (uptimeCancelPauseBtn) uptimeCancelPauseBtn.style.display = 'none';
+        if (uptimePushStatus)     uptimePushStatus.style.display     = 'none';
+    }
+
+    if (uptimePauseBtn) {
+        uptimePauseBtn.addEventListener('click', function () {
+            uptimePauseBtn.disabled = true;
+            post('csdt_uptime_pause_heartbeat').then(function (res) {
+                uptimePauseBtn.disabled = false;
+                if (res.success && res.data && res.data.pause_until) {
+                    startPauseCountdown(res.data.pause_until);
+                }
+            }).catch(function () { uptimePauseBtn.disabled = false; });
+        });
+    }
+
+    if (uptimeCancelPauseBtn) {
+        uptimeCancelPauseBtn.addEventListener('click', function () {
+            uptimeCancelPauseBtn.disabled = true;
+            post('csdt_uptime_pause_heartbeat', { cancel: 1 }).then(function (res) {
+                uptimeCancelPauseBtn.disabled = false;
+                if (res.success) {
+                    clearPauseState();
+                    loadUptimeHistory(true);
+                }
+            }).catch(function () { uptimeCancelPauseBtn.disabled = false; });
         });
     }
 
@@ -228,42 +271,23 @@
         if (!uptimeManualWrap) return;
         uptimeManualWrap.innerHTML =
             '<p style="font-size:.85em;color:#374151;margin:0 0 10px;">1. Go to <a href="https://dash.cloudflare.com/?to=/:account/workers-and-pages/create" target="_blank" rel="noopener" style="color:#6366f1;">dash.cloudflare.com → Workers → Create</a>. Choose "Hello World" then replace the entire script with the code below.</p>' +
-            '<p style="font-size:.85em;color:#374151;margin:0 0 6px;">2. Click <strong>Deploy</strong>, then go to <strong>Settings → Variables</strong> and add: <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">SITE_URL</code>, <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">PING_URL</code>, <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">READY_URL</code>, <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">PING_TOKEN</code>, <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">NTFY_URL</code> from the wrangler.toml below.</p>' +
-            '<p style="font-size:.85em;color:#374151;margin:0 0 6px;">3. Go to <strong>Triggers → Cron Triggers → Add Cron</strong> and enter <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">* * * * *</code> (every minute).</p>' +
+            '<p style="font-size:.85em;color:#374151;margin:0 0 6px;">2. Create a KV namespace named <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">csdt-uptime-state</code> and bind it as <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">STATE</code> in Settings → KV Namespace Bindings.</p>' +
+            '<p style="font-size:.85em;color:#374151;margin:0 0 6px;">3. Add variables: <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">SITE_URL</code>, <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">PING_TOKEN</code>, <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">NTFY_URL</code>.</p>' +
+            '<p style="font-size:.85em;color:#374151;margin:0 0 6px;">4. Go to <strong>Triggers → Cron Triggers → Add Cron</strong> and enter <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">* * * * *</code>.</p>' +
             '<p style="font-size:.85em;font-weight:700;color:#374151;margin:8px 0 4px;">worker.js</p>' +
             '<textarea readonly style="width:100%;height:160px;font-family:monospace;font-size:.78em;border:1px solid #e5e7eb;border-radius:6px;padding:10px;resize:vertical;background:#f8fafc;">' + escHtml(workerJs) + '</textarea>' +
             '<p style="font-size:.85em;font-weight:700;color:#374151;margin:10px 0 4px;">wrangler.toml (CLI users)</p>' +
             '<textarea readonly style="width:100%;height:120px;font-family:monospace;font-size:.78em;border:1px solid #e5e7eb;border-radius:6px;padding:10px;resize:vertical;background:#f8fafc;">' + escHtml(wranglerToml) + '</textarea>';
     }
 
-    if (uptimeSlugInput && uptimeUrlDisplay) {
-        uptimeSlugInput.addEventListener('input', function () {
-            var slug = uptimeSlugInput.value.trim();
-            var base = uptimeUrlDisplay.textContent.replace(/\/cf-callback\/.*$/, '/cf-callback/');
-            uptimeUrlDisplay.textContent = base + ( slug || 'ready' );
-        });
-        uptimeSlugInput.addEventListener('change', function () {
-            var ntfy = uptimeNtfyInput ? uptimeNtfyInput.value.trim() : '';
-            post('csdt_uptime_save_settings', { ntfy_url: ntfy, ready_slug: uptimeSlugInput.value.trim() }).then(function (res) {
-                if (res.success && res.data.ready_url && uptimeUrlDisplay) {
-                    uptimeUrlDisplay.textContent = res.data.ready_url;
-                }
-            });
-        });
-    }
-
     if (uptimeDeployBtn) {
         uptimeDeployBtn.addEventListener('click', function () {
             var ntfy = uptimeNtfyInput ? uptimeNtfyInput.value.trim() : '';
-            var slug = uptimeSlugInput ? uptimeSlugInput.value.trim() : '';
             uptimeDeployBtn.disabled = true;
             uptimeDeployBtn.textContent = '⏳ Deploying…';
             if (uptimeDeploying) uptimeDeploying.style.display = '';
             if (uptimeDeployRes) uptimeDeployRes.innerHTML = '';
 
-            // Save slug before deploy so the worker gets the correct READY_URL
-            var saveFirst = slug ? post('csdt_uptime_save_settings', { ntfy_url: ntfy, ready_slug: slug }) : Promise.resolve();
-            saveFirst.then(function () {
             post('csdt_uptime_deploy_worker', { ntfy_url: ntfy }).then(function (res) {
                 uptimeDeployBtn.disabled = false;
                 uptimeDeployBtn.textContent = '🚀 Deploy Worker to Cloudflare';
@@ -274,7 +298,6 @@
                         uptimeDeployRes.innerHTML = '<div style="background:#fef2f2;border-left:3px solid #dc2626;padding:10px 14px;border-radius:0 6px 6px 0;font-size:.87em;color:#7f1d1d;">' +
                             '⚠ ' + escHtml((res.data && res.data.message) || 'Deploy failed') + '</div>';
                     }
-                    // Show manual fallback
                     post('csdt_uptime_setup').then(function (sr) {
                         if (sr.success) renderManualDeploy(sr.data.worker_js, sr.data.wrangler_toml);
                     });
@@ -286,11 +309,10 @@
                     uptimeDeployRes.innerHTML =
                         '<div style="background:#f0fdf4;border-left:3px solid #16a34a;padding:10px 14px;border-radius:0 6px 6px 0;font-size:.87em;color:#166534;">' +
                         '✅ ' + escHtml(d.message) +
-                        (d.worker_url ? ' <a href="' + escHtml(d.worker_url) + '" target="_blank" rel="noopener" style="color:#16a34a;font-weight:600;">View Worker →</a>' : '') +
+                        (d.cf_worker_url ? ' <a href="' + escHtml(d.cf_worker_url) + '" target="_blank" rel="noopener" style="color:#16a34a;font-weight:600;">View Worker →</a>' : '') +
                         (!d.cron_ok ? '<br><span style="color:#ca8a04;">⚠ Cron trigger could not be set automatically — go to the Worker dashboard → Triggers → Add Cron → <code>* * * * *</code></span>' : '') +
                         '</div>';
                 }
-                if (uptimeTokenDisplay && res.data && res.data.token) { uptimeTokenDisplay.value = res.data.token; if (uptimeTokenWrap) uptimeTokenWrap.style.display = 'flex'; }
                 loadUptimeHistory();
             }).catch(function () {
                 uptimeDeployBtn.disabled = false;
@@ -298,32 +320,21 @@
                 if (uptimeDeploying) uptimeDeploying.style.display = 'none';
                 if (uptimeDeployRes) uptimeDeployRes.innerHTML = '<p style="color:#dc2626;font-size:.9em;">Request failed — please reload.</p>';
             });
-            }); // saveFirst
         });
     }
 
     if (uptimeSaveBtn) {
         uptimeSaveBtn.addEventListener('click', function () {
             var ntfy = uptimeNtfyInput ? uptimeNtfyInput.value.trim() : '';
-            var slug = uptimeSlugInput ? uptimeSlugInput.value.trim() : '';
             uptimeSaveBtn.disabled = true;
-            post('csdt_uptime_save_settings', { ntfy_url: ntfy, ready_slug: slug }).then(function (res) {
+            post('csdt_uptime_save_settings', { ntfy_url: ntfy }).then(function (res) {
                 uptimeSaveBtn.disabled = false;
                 if (!uptimeSaveStatus) return;
-                if (res.success) {
-                    if (res.data.ready_url && uptimeUrlDisplay) uptimeUrlDisplay.textContent = res.data.ready_url;
-                    uptimeSaveStatus.style.display = '';
-                    uptimeSaveStatus.style.color = '#16a34a';
-                    uptimeSaveStatus.textContent = '✓ Saved';
-                    setTimeout(function () { uptimeSaveStatus.style.display = 'none'; }, 2500);
-                } else {
-                    uptimeSaveStatus.style.display = '';
-                    uptimeSaveStatus.style.color = '#dc2626';
-                    uptimeSaveStatus.textContent = '✗ Save failed';
-                }
-            }).catch(function () {
-                uptimeSaveBtn.disabled = false;
-            });
+                uptimeSaveStatus.style.display = '';
+                uptimeSaveStatus.style.color = res.success ? '#16a34a' : '#dc2626';
+                uptimeSaveStatus.textContent = res.success ? '✓ Saved' : '✗ Save failed';
+                setTimeout(function () { uptimeSaveStatus.style.display = 'none'; }, 2500);
+            }).catch(function () { uptimeSaveBtn.disabled = false; });
         });
     }
 
@@ -335,37 +346,27 @@
             post('csdt_uptime_test_endpoint').then(function (res) {
                 uptimeTestBtn.disabled = false;
                 uptimeTestBtn.textContent = '🧪 Test Endpoint';
-                if (!uptimeDeployRes) return;
                 if (!res.success) {
-                    uptimeDeployRes.innerHTML = '<div style="background:#fef2f2;border-left:3px solid #dc2626;padding:10px 14px;border-radius:0 6px 6px 0;font-size:.87em;color:#7f1d1d;">⚠ ' + escHtml((res.data && res.data.message) || 'Test failed') + '</div>';
+                    if (uptimeDeployRes) {
+                        uptimeDeployRes.innerHTML = '<div style="background:#fef2f2;border-left:3px solid #dc2626;padding:10px 14px;border-radius:0 6px 6px 0;font-size:.87em;color:#7f1d1d;">⚠ ' + escHtml((res.data && res.data.message) || 'Test failed') + '</div>';
+                    }
                     return;
                 }
                 var d = res.data;
                 var ok = d.ok;
-                var col = ok ? '#166534' : '#7f1d1d';
-                var bg  = ok ? '#f0fdf4' : '#fef2f2';
-                var brd = ok ? '#16a34a' : '#dc2626';
-                var via = d.via === 'cf_worker'
-                    ? '<span style="font-size:.8em;background:rgba(0,0,0,.08);padding:1px 6px;border-radius:3px;margin-left:6px;">via CF Worker</span>'
-                    : '<span style="font-size:.8em;background:rgba(0,0,0,.08);padding:1px 6px;border-radius:3px;margin-left:6px;">direct (redeploy to enable CF route)</span>';
-                var checksHtml = '';
-                if (d.checks) {
-                    checksHtml = '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">';
-                    ['db','fpm','wp'].forEach(function(k) {
-                        var c = d.checks[k] || {};
-                        var icon = c.ok !== false ? '✅' : '❌';
-                        checksHtml += '<span style="font-size:.82em;background:rgba(0,0,0,.05);padding:2px 8px;border-radius:4px;">' + icon + ' ' + k.toUpperCase() + '</span>';
-                    });
-                    checksHtml += '</div>';
+                var staleNote = d.stale === true ? ' — Worker stale (site was down)' :
+                                d.stale === false ? ' — Worker fresh' : '';
+                // Show result right below the Test Endpoint button (always visible, no scroll needed)
+                if (uptimeDeployRes) {
+                    uptimeDeployRes.innerHTML = '<div style="background:' + (ok?'#f0fdf4':'#fef2f2') + ';border-left:3px solid ' + (ok?'#16a34a':'#dc2626') + ';padding:10px 14px;border-radius:0 6px 6px 0;font-size:.87em;color:' + (ok?'#166534':'#7f1d1d') + ';">' +
+                        (ok ? '✅ Heartbeat accepted — ' + d.ms + 'ms' : '🔴 Worker returned HTTP ' + d.status_code + ' — ' + d.ms + 'ms') + staleNote + '</div>';
+                    setTimeout(function () { if (uptimeDeployRes) uptimeDeployRes.innerHTML = ''; }, 8000);
                 }
-                uptimeDeployRes.innerHTML = '<div style="background:' + bg + ';border-left:3px solid ' + brd + ';padding:10px 14px;border-radius:0 6px 6px 0;font-size:.87em;color:' + col + ';">' +
-                    (ok ? '✅ Endpoint healthy' : '🔴 Endpoint returned HTTP ' + d.status_code) +
-                    ' — <strong>' + d.ms + 'ms</strong>' + via +
-                    checksHtml + '</div>';
                 loadUptimeHistory();
             }).catch(function () {
                 uptimeTestBtn.disabled = false;
                 uptimeTestBtn.textContent = '🧪 Test Endpoint';
+                if (uptimeDeployRes) uptimeDeployRes.innerHTML = '<div style="background:#fef2f2;border-left:3px solid #dc2626;padding:10px 14px;border-radius:0 6px 6px 0;font-size:.87em;color:#7f1d1d;">⚠ Request failed — check network</div>';
             });
         });
     }
@@ -373,19 +374,27 @@
     if (uptimeRefreshBtn) {
         uptimeRefreshBtn.addEventListener('click', function () {
             uptimeRefreshBtn.disabled = true;
-            uptimeRefreshBtn.textContent = '⏳ Loading…';
-            loadUptimeHistory().then(function () {
+            uptimeRefreshBtn.textContent = '⏳ Pushing heartbeat…';
+            loadUptimeHistory(true).then(function (data) {
                 uptimeRefreshBtn.disabled = false;
-                uptimeRefreshBtn.textContent = '↻ Refresh';
+                // Flash the success state on the button itself so it's impossible to miss
+                uptimeRefreshBtn.textContent = '✓ Heartbeat sent!';
+                uptimeRefreshBtn.style.color = '#16a34a';
+                setTimeout(function () {
+                    uptimeRefreshBtn.textContent = '↻ Push Heartbeat + Refresh';
+                    uptimeRefreshBtn.style.color = '';
+                }, 3000);
+                if (uptimePushStatus) uptimePushStatus.style.display = 'none';
             });
         });
     }
 
-    function loadUptimeHistory() {
-        return post('csdt_uptime_history').then(function (res) {
+    function loadUptimeHistory(push) {
+        return post('csdt_uptime_history', push ? { push: 1 } : null).then(function (res) {
             if (!res.success || !uptimeStatusInner) return;
             renderUptimeStatus(res.data);
             if (uptimeStatusWrap) uptimeStatusWrap.style.display = '';
+            return res.data;
         }).catch(function () {});
     }
 
@@ -419,45 +428,11 @@
 
         // Last-ping age
         if (lp) {
-            html += '<p style="font-size:.82em;color:#6b7280;margin:0 0 14px;">Last ping: ' + escHtml(ageStr) + '</p>';
+            var staleness = age != null && age > 120
+                ? ' <span style="font-size:.8em;background:#fef2f2;color:#dc2626;padding:1px 6px;border-radius:3px;margin-left:4px;">⚠ stale — WP-Cron may not be firing</span>'
+                : '';
+            html += '<p style="font-size:.82em;color:#6b7280;margin:0 0 14px;">Last heartbeat to Worker: <strong style="color:#374151;">' + escHtml(ageStr) + '</strong>' + staleness + '</p>';
         }
-
-        // Readiness probe status
-        html += '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:14px 16px;margin-bottom:18px;">';
-        html += '<p style="font-size:.82em;font-weight:700;color:#374151;margin:0 0 10px;">Readiness Probe</p>';
-
-        var checks = d.readiness_checks;
-        if (checks) {
-            html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">';
-            ['db','fpm','wp'].forEach(function(key) {
-                var c    = checks[key] || {};
-                var ok   = c.ok !== false;
-                var col  = ok ? '#16a34a' : '#dc2626';
-                var icon = ok ? '✅' : '❌';
-                var sub  = key === 'fpm' && c.saturation_pct != null
-                    ? c.active + '/' + c.total + ' workers (' + c.saturation_pct + '%)'
-                    : key === 'db' ? (c.message || '') : key === 'wp' && c.version ? 'WP ' + c.version : '';
-                html += '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:8px 10px;text-align:center;">';
-                html += '<div style="font-size:1em;font-weight:700;color:' + col + ';">' + icon + ' ' + key.toUpperCase() + '</div>';
-                if (sub) html += '<div style="font-size:.72em;color:#6b7280;margin-top:2px;">' + escHtml(sub) + '</div>';
-                html += '</div>';
-            });
-            html += '</div>';
-        } else {
-            html += '<p style="font-size:.82em;color:#9ca3af;margin:0 0 8px;">Not yet probed — deploy the Worker to begin.</p>';
-        }
-
-        var lastProbed = fmtAgo(d.readiness_last);
-        var lastBad    = fmtAgo(d.readiness_bad);
-        html += '<div style="display:flex;flex-direction:column;gap:4px;">';
-        html += '<p style="font-size:.78em;color:#6b7280;margin:0;">Last queried: <strong style="color:#374151;">' + escHtml(lastProbed || 'Never') + '</strong></p>';
-        if (lastBad) {
-            html += '<p style="font-size:.78em;color:#dc2626;margin:0;">Last failed query (bad token): <strong>' + escHtml(lastBad) + '</strong></p>';
-        }
-        if (d.ready_url) {
-            html += '<p style="font-size:.75em;color:#9ca3af;margin:4px 0 0;word-break:break-all;">Endpoint: ' + escHtml(d.ready_url) + '</p>';
-        }
-        html += '</div></div>';
 
         // Response-time chart (raw — last 60 pings, show once enough data exists)
         var raw = d.raw || [];
@@ -493,6 +468,11 @@
             if (!res.success) return;
             renderUptimeStatus(res.data);
             if (uptimeStatusWrap) uptimeStatusWrap.style.display = '';
+            // Restore countdown if a pause is already active (e.g. page reload during pause)
+            var pu = res.data.pause_until;
+            if (pu && pu * 1000 > Date.now()) {
+                startPauseCountdown(pu);
+            }
         }).catch(function () {});
     }());
 

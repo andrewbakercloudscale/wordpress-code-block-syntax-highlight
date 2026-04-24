@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Free AI penetration testing, brute-force protection, 2FA, passkeys, AI site audit, AI debugging, performance monitor, SMTP, SQL tool, server logs, vulnerability scanner, and Cloudflare uptime monitor. No subscription, no cloud dependency.
- * Version: 1.9.403
+ * Version: 1.9.411
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -54,7 +54,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.403';
+    const VERSION      = '1.9.420';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -389,6 +389,9 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_fpm_setup_detect',             [ 'CSDT_Monitor', 'ajax_fpm_setup_detect' ] );
         add_action( 'wp_ajax_csdt_fpm_setup_patch',              [ 'CSDT_Monitor', 'ajax_fpm_setup_patch' ] );
         add_action( 'wp_ajax_csdt_fpm_worker_detail',            [ 'CSDT_Monitor', 'ajax_fpm_worker_detail' ] );
+        add_action( 'wp_ajax_csdt_opcache_stats',                 [ 'CSDT_Monitor', 'ajax_opcache_stats' ] );
+        add_action( 'wp_ajax_csdt_opcache_flush',                 [ 'CSDT_Monitor', 'ajax_opcache_flush' ] );
+        add_action( 'wp_ajax_nopriv_csdt_opcache_flush',          [ 'CSDT_Monitor', 'ajax_opcache_flush' ] );
         add_action( 'wp_ajax_csdt_sql_http_fix',                  [ __CLASS__, 'ajax_sql_http_fix' ] );
         // FPM report uses the REST endpoint csdt/v1/fpm-report (CSDT_Monitor::rest_fpm_report).
         add_action( 'csdt_threat_monitor',                      [ 'CSDT_Threat_Monitor', 'monitor_threats' ] );
@@ -411,6 +414,15 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_uptime_deploy_worker',        [ 'CSDT_Uptime', 'ajax_uptime_deploy_worker' ] );
         add_action( 'wp_ajax_csdt_uptime_save_settings',        [ 'CSDT_Uptime', 'ajax_uptime_save_settings' ] );
         add_action( 'wp_ajax_csdt_uptime_test_endpoint',        [ 'CSDT_Uptime', 'ajax_uptime_test_endpoint' ] );
+        add_action( 'wp_ajax_csdt_uptime_pause_heartbeat',      [ 'CSDT_Uptime', 'ajax_uptime_pause_heartbeat' ] );
+        add_action( 'csdt_uptime_heartbeat',                    [ 'CSDT_Uptime', 'push_heartbeat' ] );
+        add_filter( 'cron_schedules',                           [ 'CSDT_Uptime', 'add_cron_schedules' ] );
+        // Ensure heartbeat cron is scheduled whenever uptime is enabled
+        if ( get_option( 'csdt_uptime_enabled', '0' ) === '1'
+             && get_option( 'csdt_uptime_worker_url', '' ) !== ''
+             && ! wp_next_scheduled( 'csdt_uptime_heartbeat' ) ) {
+            wp_schedule_event( time() + 5, 'csdt_minutely', 'csdt_uptime_heartbeat' );
+        }
         add_action( 'admin_bar_menu',                           [ 'CSDT_Uptime', 'render_admin_bar_badge' ], 100 );
         add_action( 'admin_enqueue_scripts',                    [ 'CSDT_Uptime', 'admin_bar_badge_styles' ] );
         add_action( 'wp_enqueue_scripts',                       [ 'CSDT_Uptime', 'admin_bar_badge_styles' ] );
@@ -739,7 +751,7 @@ class CloudScale_DevTools {
                '#csdt_security_summary .cs-dw-lbl{color:#94a3b8;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}' .
                '#csdt_security_summary .cs-dw-section{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;padding:12px 0 6px;border-bottom:2px solid #e5e7eb;margin-bottom:4px}' .
                '#csdt_security_summary .cs-dw-actions{margin-top:14px;display:flex}' .
-               '#csdt_security_summary .cs-dw-actions a{flex:1;text-align:center;padding:8px 10px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;transition:opacity .15s}' .
+               '#csdt_security_summary .cs-dw-actions a{flex:1;text-align:center;padding:13px 10px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;transition:opacity .15s}' .
                '#csdt_security_summary .cs-dw-btn-pri{background:linear-gradient(135deg,#1a3a8f,#1e6fd9);color:#fff!important}' .
                '#csdt_security_summary .cs-dw-btn-pri:hover{opacity:.88}';
     }
@@ -1980,8 +1992,8 @@ class CloudScale_DevTools {
                     </div>
                 <?php endif; ?>
 
-                <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0e1628 100%);border-radius:10px;padding:24px 28px;margin-bottom:28px;color:#e2e8f0;">
-                    <p style="margin:0 0 10px;font-size:1.1em;font-weight:700;color:#a78bfa;"><?php esc_html_e( 'Your site broke. Find out why in seconds.', 'cloudscale-devtools' ); ?></p>
+                <div style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 60%,#e0e7ff 100%);border-radius:10px;padding:24px 28px;margin-bottom:28px;color:#1e3a5f;border:1px solid #bfdbfe;">
+                    <p style="margin:0 0 10px;font-size:1.1em;font-weight:700;color:#4f46e5;"><?php esc_html_e( 'Your site broke. Find out why in seconds.', 'cloudscale-devtools' ); ?></p>
                     <p style="margin:0;opacity:.85;font-size:.95em;line-height:1.6;"><?php esc_html_e( 'Paste a PHP error, stack trace, or problem description. Or click Load Errors to pull recent error lines directly from your server logs. The AI identifies the exact root cause, explains the mechanism, and gives you numbered steps to fix it — no Stack Overflow required.', 'cloudscale-devtools' ); ?></p>
                 </div>
 
@@ -1993,10 +2005,10 @@ class CloudScale_DevTools {
                     <span id="csdt-debug-load-status" style="font-size:.85em;color:#94a3b8;"></span>
                 </div>
 
-                <div id="csdt-debug-log-lines" style="display:none;margin-bottom:16px;max-height:220px;overflow-y:auto;border:1px solid #334155;border-radius:6px;background:#0f172a;"></div>
+                <div id="csdt-debug-log-lines" style="display:none;margin-bottom:16px;max-height:220px;overflow-y:auto;border:1px solid #d1d5db;border-radius:6px;background:#f8fafc;"></div>
 
                 <div style="margin-bottom:16px;">
-                    <textarea id="csdt-debug-input" rows="7" style="width:100%;box-sizing:border-box;background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:12px;font-family:monospace;font-size:.85em;resize:vertical;" placeholder="<?php esc_attr_e( 'Paste an error message, stack trace, wp-cron failure, SMTP error, JavaScript console error, or describe what is broken...', 'cloudscale-devtools' ); ?>"></textarea>
+                    <textarea id="csdt-debug-input" rows="7" style="width:100%;box-sizing:border-box;background:#f8fafc;color:#1e293b;border:1px solid #d1d5db;border-radius:6px;padding:12px;font-family:monospace;font-size:.85em;resize:vertical;" placeholder="<?php esc_attr_e( 'Paste an error message, stack trace, wp-cron failure, SMTP error, JavaScript console error, or describe what is broken...', 'cloudscale-devtools' ); ?>"></textarea>
                 </div>
 
                 <div style="margin-bottom:24px;display:flex;align-items:center;gap:12px;">
@@ -2008,7 +2020,7 @@ class CloudScale_DevTools {
 
                 <div id="csdt-debug-result" style="display:none;"></div>
 
-                <hr style="border:none;border-top:1px solid #1e293b;margin:28px 0;">
+                <hr style="border:none;border-top:1px solid #e2e8f0;margin:28px 0;">
 
                 <!-- PHP Error Alerting settings -->
                 <?php
@@ -2018,10 +2030,10 @@ class CloudScale_DevTools {
                 $ntfy_set      = ! empty( get_option( 'csdt_scan_schedule_ntfy_url', '' ) );
                 $last_pos      = get_option( 'csdt_php_error_last_pos', [] );
                 ?>
-                <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:20px 24px;">
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 24px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
                         <div>
-                            <strong style="color:#e2e8f0;">🔔 <?php esc_html_e( 'PHP Error Alerting', 'cloudscale-devtools' ); ?></strong>
+                            <strong style="color:#1e293b;">🔔 <?php esc_html_e( 'PHP Error Alerting', 'cloudscale-devtools' ); ?></strong>
                             <span style="display:block;font-size:.82em;color:#64748b;margin-top:2px;"><?php esc_html_e( 'Polls PHP + WP debug logs every 5 min — alerts via email and ntfy.sh when new fatals appear', 'cloudscale-devtools' ); ?></span>
                         </div>
                         <div style="display:flex;align-items:center;gap:10px;">
@@ -2043,7 +2055,7 @@ class CloudScale_DevTools {
                     <div style="display:flex;flex-direction:column;gap:8px;font-size:.82em;color:#64748b;">
                         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                             <span style="white-space:nowrap;"><?php esc_html_e( 'Alert after', 'cloudscale-devtools' ); ?></span>
-                            <input type="number" id="csdt-errmon-threshold" min="1" max="50" value="<?php echo esc_attr( $mon_threshold ); ?>" style="width:52px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:2px 6px;font-size:1em;text-align:center;">
+                            <input type="number" id="csdt-errmon-threshold" min="1" max="50" value="<?php echo esc_attr( $mon_threshold ); ?>" style="width:52px;background:#fff;color:#1e293b;border:1px solid #d1d5db;border-radius:4px;padding:2px 6px;font-size:1em;text-align:center;">
                             <span style="white-space:nowrap;"><?php esc_html_e( 'new error(s) per check', 'cloudscale-devtools' ); ?></span>
                             <span style="color:#94a3b8;font-size:.9em;"><?php esc_html_e( '(fatals always alert)', 'cloudscale-devtools' ); ?></span>
                         </div>
@@ -2081,7 +2093,7 @@ class CloudScale_DevTools {
                     </div>
                 </div>
 
-                <hr style="border:none;border-top:1px solid #1e293b;margin:28px 0;">
+                <hr style="border:none;border-top:1px solid #e2e8f0;margin:28px 0;">
 
                 <!-- PHP-FPM Saturation Monitor -->
                 <?php
@@ -2115,12 +2127,12 @@ class CloudScale_DevTools {
                     . "FPM_CALLBACK_URL={$fpm_report_url}\n"
                     . "FPM_CALLBACK_TOKEN={$fpm_token}";
                 ?>
-                <div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:20px 24px;">
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 24px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
                         <div>
                             <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
-                                <strong style="color:#e2e8f0;">🖥️ <?php esc_html_e( 'PHP-FPM Saturation Monitor', 'cloudscale-devtools' ); ?></strong>
-                                <span style="display:inline-flex;align-items:center;padding:1px 8px;background:#1e3a5f;border-radius:10px;font-size:.72em;color:#60a5fa;">HOST CRON</span>
+                                <strong style="color:#1e293b;">🖥️ <?php esc_html_e( 'PHP-FPM Saturation Monitor', 'cloudscale-devtools' ); ?></strong>
+                                <span style="display:inline-flex;align-items:center;padding:1px 8px;background:#dbeafe;border-radius:10px;font-size:.72em;color:#1d4ed8;">HOST CRON</span>
                                 <?php self::render_explain_btn( 'fpm_monitor', 'PHP-FPM Saturation Monitor', [
                                     [ 'name' => 'What is PHP-FPM saturation?', 'rec' => 'Info', 'html' => 'PHP-FPM (FastCGI Process Manager) maintains a pool of worker processes that handle requests. When all workers are busy (e.g. a traffic spike, a slow DB query holding workers open, or a runaway loop), new requests queue up and the site appears frozen or times out. This is called saturation.' ],
                                     [ 'name' => 'Why a host cron, not WP-Cron?', 'rec' => 'Critical', 'html' => 'WP-Cron runs inside PHP-FPM. If PHP-FPM is fully saturated, WP-Cron can\'t execute — so a WordPress-based monitor would be silenced exactly when you need it most. This monitor runs as a shell script on the host OS (outside Docker), so it fires even when every PHP worker is consumed.' ],
@@ -2143,36 +2155,36 @@ class CloudScale_DevTools {
                     </div>
 
                     <!-- Workers live status -->
-                    <div style="background:#0a1628;border:1px solid #1e293b;border-radius:6px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                    <div style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
                         <span style="font-size:.8em;color:#64748b;font-weight:600;"><?php esc_html_e( 'Current workers', 'cloudscale-devtools' ); ?></span>
-                        <span id="csdt-fpm-workers-active" style="font-size:.82em;color:#e2e8f0;">
+                        <span id="csdt-fpm-workers-active" style="font-size:.82em;color:#1e293b;">
                             <span style="color:#64748b;"><?php esc_html_e( 'Active:', 'cloudscale-devtools' ); ?></span>
-                            <span id="csdt-fpm-w-active" style="color:#f87171;font-weight:700;">—</span>
+                            <span id="csdt-fpm-w-active" style="color:#dc2626;font-weight:700;">—</span>
                         </span>
-                        <span style="font-size:.82em;color:#e2e8f0;">
+                        <span style="font-size:.82em;color:#1e293b;">
                             <span style="color:#64748b;"><?php esc_html_e( 'Idle:', 'cloudscale-devtools' ); ?></span>
-                            <span id="csdt-fpm-w-idle" style="color:#86efac;font-weight:700;">—</span>
+                            <span id="csdt-fpm-w-idle" style="color:#16a34a;font-weight:700;">—</span>
                         </span>
-                        <span style="font-size:.82em;color:#e2e8f0;">
+                        <span style="font-size:.82em;color:#1e293b;">
                             <span style="color:#64748b;"><?php esc_html_e( 'Total:', 'cloudscale-devtools' ); ?></span>
-                            <span id="csdt-fpm-w-total" style="color:#94a3b8;font-weight:700;">—</span>
+                            <span id="csdt-fpm-w-total" style="color:#374151;font-weight:700;">—</span>
                         </span>
-                        <span style="font-size:.82em;color:#e2e8f0;">
+                        <span style="font-size:.82em;color:#1e293b;">
                             <span style="color:#64748b;"><?php esc_html_e( 'Mem:', 'cloudscale-devtools' ); ?></span>
-                            <span id="csdt-fpm-w-mem" style="color:#e2e8f0;font-weight:700;" title="Total memory across all workers">—</span>
+                            <span id="csdt-fpm-w-mem" style="color:#1e293b;font-weight:700;" title="Total memory across all workers">—</span>
                         </span>
                         <button type="button" id="csdt-fpm-workers-refresh" class="cs-btn-sm cs-btn-secondary" style="padding:5px 12px;font-size:.78em;line-height:1.4;">↻ <?php esc_html_e( 'Refresh', 'cloudscale-devtools' ); ?></button>
                         <button type="button" id="csdt-fpm-detail-toggle" class="cs-btn-sm cs-btn-secondary" style="padding:5px 12px;font-size:.78em;line-height:1.4;">▼ <?php esc_html_e( 'Workers', 'cloudscale-devtools' ); ?></button>
-                        <button type="button" id="csdt-fpm-setup-btn" class="cs-btn-sm cs-btn-secondary" style="padding:5px 12px;font-size:.78em;line-height:1.4;background:#1e3a5f;color:#60a5fa;border-color:#2563eb;">⚙ <?php esc_html_e( 'Setup Status Page', 'cloudscale-devtools' ); ?></button>
+                        <button type="button" id="csdt-fpm-setup-btn" class="cs-btn-sm cs-btn-secondary" style="padding:5px 12px;font-size:.78em;line-height:1.4;background:#dbeafe;color:#1d4ed8;border-color:#93c5fd;">⚙ <?php esc_html_e( 'Setup Status Page', 'cloudscale-devtools' ); ?></button>
                         <span id="csdt-fpm-workers-status" style="font-size:.78em;color:#64748b;"></span>
                     </div>
 
                     <!-- Per-worker detail table -->
                     <div id="csdt-fpm-detail-panel" style="display:none;margin-bottom:14px;">
                         <div style="overflow-x:auto;">
-                            <table id="csdt-fpm-detail-table" style="width:100%;border-collapse:collapse;font-size:.76em;color:#e2e8f0;">
+                            <table id="csdt-fpm-detail-table" style="width:100%;border-collapse:collapse;font-size:.76em;color:#1e293b;">
                                 <thead>
-                                    <tr style="border-bottom:1px solid #334155;color:#94a3b8;text-align:left;">
+                                    <tr style="border-bottom:1px solid #e2e8f0;color:#64748b;text-align:left;">
                                         <th style="padding:5px 8px;white-space:nowrap;">PID</th>
                                         <th style="padding:5px 8px;white-space:nowrap;">State</th>
                                         <th style="padding:5px 8px;white-space:nowrap;">Reqs</th>
@@ -2196,27 +2208,27 @@ class CloudScale_DevTools {
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px;">
                         <div>
                             <label style="display:block;font-size:.78em;color:#64748b;margin-bottom:4px;"><?php esc_html_e( 'Saturation threshold (consecutive checks)', 'cloudscale-devtools' ); ?></label>
-                            <input type="number" id="csdt-fpm-threshold" min="1" max="30" value="<?php echo esc_attr( $fpm_threshold ); ?>" style="width:80px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:3px 8px;font-size:.9em;">
+                            <input type="number" id="csdt-fpm-threshold" min="1" max="30" value="<?php echo esc_attr( $fpm_threshold ); ?>" style="width:80px;background:#fff;color:#1e293b;border:1px solid #d1d5db;border-radius:4px;padding:3px 8px;font-size:.9em;">
                         </div>
                         <div>
                             <label style="display:block;font-size:.78em;color:#64748b;margin-bottom:4px;"><?php esc_html_e( 'Alert cooldown (seconds)', 'cloudscale-devtools' ); ?></label>
-                            <input type="number" id="csdt-fpm-cooldown" min="60" max="86400" value="<?php echo esc_attr( $fpm_cooldown ); ?>" style="width:100px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:3px 8px;font-size:.9em;">
+                            <input type="number" id="csdt-fpm-cooldown" min="60" max="86400" value="<?php echo esc_attr( $fpm_cooldown ); ?>" style="width:100px;background:#fff;color:#1e293b;border:1px solid #d1d5db;border-radius:4px;padding:3px 8px;font-size:.9em;">
                         </div>
                         <div>
                             <label style="display:block;font-size:.78em;color:#64748b;margin-bottom:4px;"><?php esc_html_e( 'HTTP probe URL', 'cloudscale-devtools' ); ?></label>
-                            <input type="text" id="csdt-fpm-probe-url" value="<?php echo esc_attr( $fpm_probe_url ); ?>" style="width:100%;box-sizing:border-box;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:3px 8px;font-size:.9em;">
+                            <input type="text" id="csdt-fpm-probe-url" value="<?php echo esc_attr( $fpm_probe_url ); ?>" style="width:100%;box-sizing:border-box;background:#fff;color:#1e293b;border:1px solid #d1d5db;border-radius:4px;padding:3px 8px;font-size:.9em;">
                         </div>
                         <div>
                             <label style="display:block;font-size:.78em;color:#64748b;margin-bottom:4px;"><?php esc_html_e( 'Probe timeout (seconds)', 'cloudscale-devtools' ); ?></label>
-                            <input type="number" id="csdt-fpm-probe-timeout" min="1" max="30" value="<?php echo esc_attr( $fpm_timeout ); ?>" style="width:80px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:3px 8px;font-size:.9em;">
+                            <input type="number" id="csdt-fpm-probe-timeout" min="1" max="30" value="<?php echo esc_attr( $fpm_timeout ); ?>" style="width:80px;background:#fff;color:#1e293b;border:1px solid #d1d5db;border-radius:4px;padding:3px 8px;font-size:.9em;">
                         </div>
                         <div>
                             <label style="display:block;font-size:.78em;color:#64748b;margin-bottom:4px;"><?php esc_html_e( 'WordPress container name', 'cloudscale-devtools' ); ?></label>
-                            <input type="text" id="csdt-fpm-wp-container" value="<?php echo esc_attr( $fpm_wp_ctr ); ?>" style="width:100%;box-sizing:border-box;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:3px 8px;font-size:.9em;">
+                            <input type="text" id="csdt-fpm-wp-container" value="<?php echo esc_attr( $fpm_wp_ctr ); ?>" style="width:100%;box-sizing:border-box;background:#fff;color:#1e293b;border:1px solid #d1d5db;border-radius:4px;padding:3px 8px;font-size:.9em;">
                         </div>
                         <div>
                             <label style="display:block;font-size:.78em;color:#64748b;margin-bottom:4px;"><?php esc_html_e( 'MariaDB container name', 'cloudscale-devtools' ); ?></label>
-                            <input type="text" id="csdt-fpm-db-container" value="<?php echo esc_attr( $fpm_db_ctr ); ?>" style="width:100%;box-sizing:border-box;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:3px 8px;font-size:.9em;">
+                            <input type="text" id="csdt-fpm-db-container" value="<?php echo esc_attr( $fpm_db_ctr ); ?>" style="width:100%;box-sizing:border-box;background:#fff;color:#1e293b;border:1px solid #d1d5db;border-radius:4px;padding:3px 8px;font-size:.9em;">
                         </div>
                         <div>
                             <label style="display:block;font-size:.78em;color:#64748b;margin-bottom:4px;"><?php esc_html_e( 'Auto-restart on saturation', 'cloudscale-devtools' ); ?></label>
@@ -2227,19 +2239,19 @@ class CloudScale_DevTools {
                         </div>
                         <div>
                             <label style="display:block;font-size:.78em;color:#64748b;margin-bottom:4px;"><?php esc_html_e( 'Restart cooldown (seconds)', 'cloudscale-devtools' ); ?></label>
-                            <input type="number" id="csdt-fpm-restart-cooldown" min="60" max="86400" value="<?php echo esc_attr( $fpm_restart_cooldown ); ?>" style="width:100px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:3px 8px;font-size:.9em;">
+                            <input type="number" id="csdt-fpm-restart-cooldown" min="60" max="86400" value="<?php echo esc_attr( $fpm_restart_cooldown ); ?>" style="width:100px;background:#fff;color:#1e293b;border:1px solid #d1d5db;border-radius:4px;padding:3px 8px;font-size:.9em;">
                             <span style="font-size:.75em;color:#475569;margin-left:6px;"><?php echo esc_html( sprintf( __( '%d min', 'cloudscale-devtools' ), (int) round( $fpm_restart_cooldown / 60 ) ) ); ?></span>
                         </div>
                     </div>
 
-                    <div style="background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;padding:14px 16px;margin-bottom:16px;">
-                        <div style="font-size:.82em;color:#60a5fa;font-weight:600;margin-bottom:10px;">📋 <?php esc_html_e( 'Host Cron Setup', 'cloudscale-devtools' ); ?></div>
+                    <div style="background:#f1f5f9;border:1px solid #d1d5db;border-radius:6px;padding:14px 16px;margin-bottom:16px;">
+                        <div style="font-size:.82em;color:#2563eb;font-weight:600;margin-bottom:10px;">📋 <?php esc_html_e( 'Host Cron Setup', 'cloudscale-devtools' ); ?></div>
                         <div style="font-size:.78em;color:#64748b;margin-bottom:4px;"><?php esc_html_e( 'Add to crontab on your Pi host (crontab -e):', 'cloudscale-devtools' ); ?></div>
-                        <code style="display:block;background:#0f172a;border:1px solid #1e293b;border-radius:4px;padding:8px 12px;font-size:.8em;color:#86efac;white-space:nowrap;overflow-x:auto;margin-bottom:10px;">* * * * * /home/pi/pi2s3/fpm-saturation-monitor.sh 2&gt;/dev/null</code>
+                        <code style="display:block;background:#fff;border:1px solid #d1d5db;border-radius:4px;padding:8px 12px;font-size:.8em;color:#16a34a;white-space:nowrap;overflow-x:auto;margin-bottom:10px;">* * * * * /home/pi/pi2s3/fpm-saturation-monitor.sh 2&gt;/dev/null</code>
                         <div style="font-size:.78em;color:#64748b;margin-bottom:4px;"><?php esc_html_e( 'Add to ~/pi2s3/config.env (includes callback so last event appears above):', 'cloudscale-devtools' ); ?></div>
-                        <code id="csdt-fpm-config-snippet" style="display:block;background:#0f172a;border:1px solid #1e293b;border-radius:4px;padding:8px 12px;font-size:.78em;color:#cbd5e1;white-space:pre;overflow-x:auto;margin-bottom:10px;"><?php echo esc_html( $fpm_config_snippet ); ?></code>
+                        <code id="csdt-fpm-config-snippet" style="display:block;background:#fff;border:1px solid #d1d5db;border-radius:4px;padding:8px 12px;font-size:.78em;color:#374151;white-space:pre;overflow-x:auto;margin-bottom:10px;"><?php echo esc_html( $fpm_config_snippet ); ?></code>
                         <button type="button" id="csdt-fpm-copy-snippet" class="cs-btn-sm cs-btn-secondary"><?php esc_html_e( 'Copy config.env snippet', 'cloudscale-devtools' ); ?></button>
-                        <span id="csdt-fpm-copy-status" style="font-size:.78em;color:#86efac;margin-left:8px;"></span>
+                        <span id="csdt-fpm-copy-status" style="font-size:.78em;color:#16a34a;margin-left:8px;"></span>
                     </div>
 
                     <!-- Event audit trail -->
@@ -2248,10 +2260,10 @@ class CloudScale_DevTools {
                         <div style="font-size:.78em;color:#64748b;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
                             <span><?php printf( esc_html__( 'Last %d events (newest first)', 'cloudscale-devtools' ), count( $fpm_event_log ) ); ?></span>
                         </div>
-                        <div style="max-height:240px;overflow-y:auto;border:1px solid #1e293b;border-radius:6px;">
+                        <div style="max-height:240px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;">
                             <table style="width:100%;border-collapse:collapse;font-size:.78em;">
                                 <thead>
-                                    <tr style="background:#0a1628;position:sticky;top:0;">
+                                    <tr style="background:#f1f5f9;position:sticky;top:0;">
                                         <th style="text-align:left;padding:5px 10px;color:#475569;font-weight:600;white-space:nowrap;"><?php esc_html_e( 'Time', 'cloudscale-devtools' ); ?></th>
                                         <th style="text-align:left;padding:5px 10px;color:#475569;font-weight:600;"><?php esc_html_e( 'Event', 'cloudscale-devtools' ); ?></th>
                                         <th style="text-align:left;padding:5px 10px;color:#475569;font-weight:600;"><?php esc_html_e( 'Detail', 'cloudscale-devtools' ); ?></th>
@@ -2260,9 +2272,9 @@ class CloudScale_DevTools {
                                 <tbody>
                                 <?php foreach ( $fpm_event_log as $i => $ev ) :
                                     $ev_color = match( $ev['type'] ?? '' ) {
-                                        'recovered' => '#86efac',
-                                        'restarted' => '#fbbf24',
-                                        default     => '#f87171',
+                                        'recovered' => '#16a34a',
+                                        'restarted' => '#d97706',
+                                        default     => '#dc2626',
                                     };
                                     $ev_icon = match( $ev['type'] ?? '' ) {
                                         'recovered' => '✓',
@@ -2274,9 +2286,9 @@ class CloudScale_DevTools {
                                         'restarted' => __( 'Auto-restarted', 'cloudscale-devtools' ),
                                         default     => __( 'Saturated', 'cloudscale-devtools' ),
                                     };
-                                    $row_bg = $i % 2 === 0 ? '#0f172a' : '#0a1628';
+                                    $row_bg = $i % 2 === 0 ? '#ffffff' : '#f8fafc';
                                 ?>
-                                    <tr style="background:<?php echo esc_attr( $row_bg ); ?>;border-top:1px solid #1e293b;">
+                                    <tr style="background:<?php echo esc_attr( $row_bg ); ?>;border-top:1px solid #e2e8f0;">
                                         <td style="padding:5px 10px;color:#64748b;white-space:nowrap;" title="<?php echo esc_attr( wp_date( 'Y-m-d H:i:s', (int) $ev['ts'] ) ); ?>">
                                             <?php echo esc_html( human_time_diff( (int) $ev['ts'] ) . ' ago' ); ?>
                                         </td>
@@ -2299,13 +2311,13 @@ class CloudScale_DevTools {
 
                 <!-- PHP-FPM Status Page Setup Modal (inline so it's always in the DOM with the button) -->
                 <div id="csdt-fpm-setup-modal" style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.7);align-items:center;justify-content:center;">
-                    <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;max-width:620px;width:94%;padding:24px;position:relative;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6);">
-                        <button id="csdt-fpm-setup-close" style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;line-height:1;" title="Close">✕</button>
-                        <h3 style="margin:0 0 4px;font-size:15px;font-weight:700;color:#e2e8f0;">⚙ PHP-FPM Status Page Setup</h3>
-                        <p style="font-size:12px;color:#64748b;margin:0 0 18px;">Enables the <code style="background:#1e293b;padding:1px 5px;border-radius:3px;color:#86efac;">/fpm-status</code> endpoint so the Current Workers panel shows live counts.</p>
+                    <div style="background:#fff;border:1px solid #d1d5db;border-radius:10px;max-width:620px;width:94%;padding:24px;position:relative;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);">
+                        <button id="csdt-fpm-setup-close" style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:#64748b;line-height:1;" title="Close">✕</button>
+                        <h3 style="margin:0 0 4px;font-size:15px;font-weight:700;color:#1e293b;">⚙ PHP-FPM Status Page Setup</h3>
+                        <p style="font-size:12px;color:#64748b;margin:0 0 18px;">Enables the <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;color:#16a34a;">/fpm-status</code> endpoint so the Current Workers panel shows live counts.</p>
                         <div id="csdt-fpm-setup-steps" style="display:flex;gap:0;margin-bottom:20px;">
                             <?php foreach ( [ 1 => 'Detect', 2 => 'www.conf', 3 => 'nginx' ] as $n => $lbl ) : ?>
-                            <div class="csdt-fpm-step" data-step="<?php echo $n; ?>" style="flex:1;text-align:center;padding:6px 0;font-size:11px;font-weight:600;border-bottom:2px solid #1e293b;color:#475569;"><?php echo $n; ?>. <?php echo esc_html( $lbl ); ?></div>
+                            <div class="csdt-fpm-step" data-step="<?php echo $n; ?>" style="flex:1;text-align:center;padding:6px 0;font-size:11px;font-weight:600;border-bottom:2px solid #e2e8f0;color:#475569;"><?php echo $n; ?>. <?php echo esc_html( $lbl ); ?></div>
                             <?php endforeach; ?>
                         </div>
                         <div id="csdt-fpm-step-1">
@@ -2323,14 +2335,14 @@ class CloudScale_DevTools {
                             </div>
                         </div>
                         <div id="csdt-fpm-step-3" style="display:none;">
-                            <p style="font-size:13px;color:#94a3b8;margin:0 0 10px;">Add this location block inside your nginx <code style="background:#1e293b;padding:1px 5px;border-radius:3px;color:#86efac;">server {}</code> block, then reload nginx.</p>
-                            <pre id="csdt-fpm-nginx-snippet" style="background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;padding:12px;font-size:.78em;color:#cbd5e1;overflow-x:auto;white-space:pre;margin:0 0 10px;"></pre>
+                            <p style="font-size:13px;color:#475569;margin:0 0 10px;">Add this location block inside your nginx <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;color:#16a34a;">server {}</code> block, then reload nginx.</p>
+                            <pre id="csdt-fpm-nginx-snippet" style="background:#f1f5f9;border:1px solid #d1d5db;border-radius:6px;padding:12px;font-size:.78em;color:#374151;overflow-x:auto;white-space:pre;margin:0 0 10px;"></pre>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                                 <button type="button" id="csdt-fpm-copy-nginx" class="button" style="font-size:12px;">📋 Copy snippet</button>
-                                <span id="csdt-fpm-copy-nginx-status" style="font-size:12px;color:#86efac;"></span>
+                                <span id="csdt-fpm-copy-nginx-status" style="font-size:12px;color:#16a34a;"></span>
                             </div>
                             <p style="font-size:12px;color:#64748b;margin:12px 0 6px;">Then reload nginx:</p>
-                            <code id="csdt-fpm-nginx-reload-cmd" style="display:block;background:#0a1628;border:1px solid #1e293b;border-radius:4px;padding:6px 10px;font-size:.78em;color:#86efac;"></code>
+                            <code id="csdt-fpm-nginx-reload-cmd" style="display:block;background:#f1f5f9;border:1px solid #d1d5db;border-radius:4px;padding:6px 10px;font-size:.78em;color:#16a34a;"></code>
                             <div style="margin-top:14px;display:flex;gap:8px;align-items:center;">
                                 <button type="button" id="csdt-fpm-test-btn" class="button button-primary" style="font-size:12px;">✅ Test &amp; Finish</button>
                                 <span id="csdt-fpm-test-result" style="font-size:12px;color:#94a3b8;"></span>
@@ -2343,9 +2355,66 @@ class CloudScale_DevTools {
         </div>
 
         <?php
+        self::render_opcache_panel();
         self::render_server_logs_panel();
         self::render_sql_panel();
         CSDT_Custom_404::render_404_panel();
+    }
+
+    private static function render_opcache_panel(): void {
+        $opcache_token = get_option( 'csdt_opcache_token', '' );
+        if ( empty( $opcache_token ) ) {
+            $opcache_token = wp_generate_password( 32, false );
+            update_option( 'csdt_opcache_token', $opcache_token, false );
+        }
+        $last_flush = (int) get_option( 'csdt_opcache_last_flush', 0 );
+        ?>
+        <div class="cs-panel" id="cs-panel-opcache">
+            <div class="cs-section-header" style="background:linear-gradient(90deg,#164e63 0%,#0e7490 100%);border-left:3px solid #22d3ee;">
+                <span>⚡ <?php esc_html_e( 'OPcache', 'cloudscale-devtools' ); ?></span>
+                <span class="cs-header-hint"><?php esc_html_e( 'PHP OPcache status, statistics, and flush control', 'cloudscale-devtools' ); ?></span>
+                <?php self::render_explain_btn( 'opcache', 'OPcache', [
+                    [ 'name' => 'What is OPcache?',        'rec' => 'Info',     'html' => 'PHP OPcache compiles PHP scripts to bytecode and caches them in shared memory, so they don\'t need to be parsed and compiled on every request. This typically reduces response time by 30-50% and is enabled by default in PHP 5.5+.' ],
+                    [ 'name' => 'When to flush',           'rec' => 'Info',     'html' => 'OPcache must be flushed after PHP files change on disk, otherwise running workers may serve stale bytecode. This can cause <strong>SIGSEGV crashes</strong> if a worker has an old cached version that conflicts with the new file. The deploy script flushes OPcache automatically via this endpoint after every plugin update.' ],
+                    [ 'name' => 'Deploy script flush',     'rec' => 'Recommended', 'html' => 'The <code>deploy-wordpress.sh</code> script calls this endpoint using the deploy token after syncing plugin files. This ensures PHP-FPM workers reload fresh bytecode without a full container restart. The token is stored in <code>csdt_opcache_token</code> and is separate from other credentials.' ],
+                    [ 'name' => 'Hit rate',                'rec' => 'Info',     'html' => 'A healthy OPcache hit rate is above 95%. Low hit rates (below 70%) indicate the cache is too small for your codebase, or that scripts are being invalidated too frequently. Increase <code>opcache.memory_consumption</code> in <code>php.ini</code> if the cache is frequently full.' ],
+                ] ); ?>
+            </div>
+            <div class="cs-panel-body">
+
+                <div id="csdt-opcache-stats-wrap">
+                    <div id="csdt-opcache-stats" style="font-size:.82em;color:#64748b;"><?php esc_html_e( 'Loading…', 'cloudscale-devtools' ); ?></div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;">
+                    <button type="button" id="csdt-opcache-flush-btn" class="cs-btn-primary">
+                        ⚡ <?php esc_html_e( 'Flush OPcache', 'cloudscale-devtools' ); ?>
+                    </button>
+                    <button type="button" id="csdt-opcache-refresh-btn" class="cs-btn-secondary">
+                        🔄 <?php esc_html_e( 'Refresh Stats', 'cloudscale-devtools' ); ?>
+                    </button>
+                    <span id="csdt-opcache-status" style="font-size:.82em;color:#16a34a;"></span>
+                </div>
+
+                <div style="margin-top:18px;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;">
+                    <div style="font-size:.78em;color:#64748b;margin-bottom:6px;"><?php esc_html_e( 'Deploy token — used by deploy-wordpress.sh to flush OPcache after each deploy', 'cloudscale-devtools' ); ?></div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <code id="csdt-opcache-token-display" style="font-size:.78em;background:#f1f5f9;padding:4px 10px;border-radius:4px;color:#475569;word-break:break-all;"><?php echo esc_html( substr( $opcache_token, 0, 8 ) . str_repeat( '•', 16 ) ); ?></code>
+                        <button type="button" id="csdt-opcache-token-reveal" class="cs-btn-secondary cs-btn-sm"><?php esc_html_e( 'Reveal', 'cloudscale-devtools' ); ?></button>
+                        <button type="button" id="csdt-opcache-token-copy" class="cs-btn-secondary cs-btn-sm" data-token="<?php echo esc_attr( $opcache_token ); ?>"><?php esc_html_e( 'Copy', 'cloudscale-devtools' ); ?></button>
+                        <span id="csdt-opcache-copy-status" style="font-size:.78em;color:#16a34a;"></span>
+                    </div>
+                    <div style="margin-top:10px;font-size:.75em;color:#475569;">
+                        <?php esc_html_e( 'Last flush:', 'cloudscale-devtools' ); ?>
+                        <span id="csdt-opcache-last-flush" style="color:#94a3b8;">
+                            <?php echo $last_flush ? esc_html( human_time_diff( $last_flush ) . ' ago' ) : esc_html__( 'never', 'cloudscale-devtools' ); ?>
+                        </span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <?php
     }
 
     private static function render_server_logs_panel(): void {
@@ -2429,8 +2498,8 @@ class CloudScale_DevTools {
 
                 <!-- Log viewer -->
                 <div id="cs-logs-viewer" style="
-                    background:#0d1117;
-                    border:1px solid rgba(255,255,255,0.08);
+                    background:#f8fafc;
+                    border:1px solid #d1d5db;
                     border-radius:6px;
                     padding:12px;
                     height:520px;
@@ -2438,9 +2507,9 @@ class CloudScale_DevTools {
                     font-family:'SF Mono','Fira Code',monospace;
                     font-size:12px;
                     line-height:1.6;
-                    color:#c9d1d9;
+                    color:#1e293b;
                 ">
-                    <div class="cs-logs-placeholder" style="color:#555;padding:20px;text-align:center;">
+                    <div class="cs-logs-placeholder" style="color:#94a3b8;padding:20px;text-align:center;">
                         <?php esc_html_e( 'Select a log source above to view entries.', 'cloudscale-devtools' ); ?>
                     </div>
                 </div>
@@ -2739,7 +2808,7 @@ class CloudScale_DevTools {
                         <button type="button" id="cs-http-fix-run" class="cs-btn-primary cs-btn-sm" style="background:#d97706;border-color:#d97706;">⚡ <?php esc_html_e( 'Fix It', 'cloudscale-devtools' ); ?></button>
                         <span id="cs-http-fix-status" style="font-size:12px;color:#92400e;"></span>
                     </div>
-                    <pre id="cs-http-fix-output" style="display:none;margin-top:12px;background:#1e293b;color:#e2e8f0;padding:10px 14px;border-radius:6px;font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;"></pre>
+                    <pre id="cs-http-fix-output" style="display:none;margin-top:12px;background:#f1f5f9;color:#1e293b;padding:10px 14px;border-radius:6px;font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;border:1px solid #d1d5db;"></pre>
                 </div>
             </div>
         </div>
@@ -3105,7 +3174,7 @@ class CloudScale_DevTools {
                     </div>
                 </div>
                 <?php if ( ! empty( $ssh_last_check['lines'] ) ) : ?>
-                <div style="margin-top:10px;background:#0f172a;border-radius:6px;padding:10px 14px;font-size:11px;color:#94a3b8;font-family:monospace;max-height:140px;overflow-y:auto;">
+                <div style="margin-top:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;font-size:11px;color:#475569;font-family:monospace;max-height:140px;overflow-y:auto;">
                     <?php foreach ( array_reverse( $ssh_last_check['lines'] ) as $line ) : ?>
                     <div><?php echo esc_html( $line ); ?></div>
                     <?php endforeach; ?>
@@ -4145,7 +4214,7 @@ class CloudScale_DevTools {
                     <textarea id="csdt-debug-input"
                               rows="6"
                               placeholder="<?php esc_attr_e( 'Paste your error message, stack trace, or describe the problem...', 'cloudscale-devtools' ); ?>"
-                              style="width:100%;font-family:'SF Mono','Fira Code',Consolas,monospace;font-size:12px;background:#0d1117;color:#c9d1d9;border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:12px;box-sizing:border-box;resize:vertical;line-height:1.6;"></textarea>
+                              style="width:100%;font-family:'SF Mono','Fira Code',Consolas,monospace;font-size:12px;background:#f8fafc;color:#1e293b;border:1px solid #d1d5db;border-radius:6px;padding:12px;box-sizing:border-box;resize:vertical;line-height:1.6;"></textarea>
 
                     <div style="display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap;">
                         <button id="csdt-debug-analyze-btn" class="cs-btn-primary" <?php echo $has_key ? '' : 'disabled style="opacity:.5;cursor:not-allowed;"'; ?>>
@@ -4196,51 +4265,27 @@ class CloudScale_DevTools {
         <div class="cs-panel">
             <div class="cs-section-header cs-section-header-green">
                 <span>⏱ <?php esc_html_e( 'Uptime Monitor', 'cloudscale-devtools' ); ?></span>
-                <span class="cs-header-hint"><?php esc_html_e( 'Cloudflare Worker probes DB + PHP-FPM + WP every 60 seconds from the edge', 'cloudscale-devtools' ); ?></span>
+                <span class="cs-header-hint"><?php esc_html_e( 'WordPress pushes a heartbeat to a Cloudflare Worker every minute. No heartbeat = site down alert.', 'cloudscale-devtools' ); ?></span>
                 <?php self::render_explain_btn( 'uptime-monitor', 'Uptime Monitor', [
-                    [ 'name' => 'Setup — step by step', 'rec' => 'Required', 'html' => '<ol style="margin:0;padding-left:1.4em;line-height:1.8;"><li><strong>Cloudflare credentials</strong> — Go to the <a href="' . esc_url( admin_url( 'tools.php?page=' . self::TOOLS_SLUG . '&tab=thumbnails' ) ) . '">Thumbnails tab</a> and enter your Cloudflare Zone ID and an API Token with <code>Workers:Edit</code> permission. Create the token at <em>dash.cloudflare.com → My Profile → API Tokens → Create Token → Edit Cloudflare Workers template</em>.</li><li><strong>Generate Token</strong> — Click <em>Generate Token</em> in this panel to create a shared secret between this site and the Worker.</li><li><strong>Endpoint path suffix</strong> (recommended) — Enter a random string (e.g. <code>ajb007</code>) to make the readiness URL unguessable. The plain <code>/ready</code> URL returns 404 when a suffix is set.</li><li><strong>ntfy.sh Alert URL</strong> (optional) — Enter your ntfy.sh topic URL (e.g. <code>https://ntfy.sh/your-topic</code>). You receive a push notification immediately when the site goes down.</li><li><strong>Save Settings</strong> — Click <em>Save Settings</em> to persist the suffix and ntfy URL.</li><li><strong>Deploy Worker</strong> — Click <em>Deploy Worker to Cloudflare</em>. This uploads the Worker script, sets the bindings (token, URLs), and activates the <code>* * * * *</code> cron trigger. Takes about 5 seconds.</li><li><strong>Test</strong> — Click <em>Test Endpoint</em> to trigger the Worker manually and confirm the full route is working. The status panel updates with DB, PHP-FPM, and WP health checks.</li></ol>' ],
-                    [ 'name' => 'How it works',          'rec' => 'Overview',    'html' => 'A Cloudflare Worker runs every 60 seconds from the edge — completely outside your server. It calls your readiness endpoint with a Bearer token. The endpoint checks: DB connectivity (SELECT 1), PHP-FPM worker saturation, and WordPress boot. Returns 200 OK when healthy, 503 when degraded. If the probe fails, the Worker sends an ntfy.sh push notification immediately — even if your server is completely offline.' ],
-                    [ 'name' => 'Dynamic endpoint path', 'rec' => 'Recommended', 'html' => 'Set a random path suffix (e.g. <code>ajb007</code>) to make your readiness URL unguessable. Without a suffix, the <code>/ready</code> endpoint is publicly discoverable. With a suffix configured, the plain <code>/ready</code> route returns 404 — only the exact slugged URL (e.g. <code>/wp-json/csdt/v1/ready/ajb007</code>) returns a real response.' ],
-                    [ 'name' => 'Alert notifications',   'rec' => 'Recommended', 'html' => 'Enter your ntfy.sh topic URL (e.g. <code>https://ntfy.sh/your-topic</code>) to receive instant push notifications when the site goes down. Install the ntfy app on iOS or Android to receive these alerts. Alerts fire from the Cloudflare edge — they arrive even if your server, database, and PHP are all offline.' ],
-                    [ 'name' => 'Last queried / failed', 'rec' => 'Overview',    'html' => 'The status panel shows when the endpoint was last probed successfully (with correct token) and the last time a probe arrived with a bad or missing token. Use <em>Last queried</em> to confirm the Worker is running on schedule. Use <em>Last failed query</em> to detect if someone is probing your endpoint with wrong tokens — a signal that the URL has been discovered and you should change your path suffix.' ],
+                    [ 'name' => 'Setup — step by step', 'rec' => 'Required',    'html' => '<ol style="margin:0;padding-left:1.4em;line-height:1.8;"><li><strong>Cloudflare credentials</strong> — Go to the <a href="' . esc_url( admin_url( 'tools.php?page=' . self::TOOLS_SLUG . '&tab=thumbnails' ) ) . '">Thumbnails tab</a> and enter your Cloudflare Zone ID and an API Token with <code>Workers:Edit</code> and <code>Workers KV Storage:Edit</code> permissions.</li><li><strong>ntfy.sh Alert URL</strong> (optional) — Enter your ntfy.sh topic URL to receive push notifications when the site goes down or recovers.</li><li><strong>Deploy Worker</strong> — Click <em>Deploy Worker to Cloudflare</em>. This creates a KV namespace, uploads the Worker, and schedules the <code>* * * * *</code> cron trigger.</li><li><strong>Host cron</strong> — Run <code>deploy-cf-worker.sh</code> on your server to install a host cron that hits WordPress via localhost every minute (bypasses Cloudflare cache). The cron line is also shown in the Host cron section below.</li><li><strong>Test</strong> — Click <em>Test Endpoint</em> to send a heartbeat to the Worker immediately and confirm the connection.</li></ol>' ],
+                    [ 'name' => 'How it works',          'rec' => 'Overview',    'html' => 'A Pi host cron hits <code>http://127.0.0.1:PORT/wp-cron.php</code> (localhost, bypasses Cloudflare cache) every minute. PHP-FPM processes the request, WP-Cron runs, and WordPress pushes a small heartbeat POST to the Cloudflare Worker. The Worker stores the timestamp in CF KV and its own cron checks every minute: no heartbeat for 3+ minutes = site down, ntfy fires. Recovery alert is sent when heartbeats resume. Localhost is required because Cloudflare caches the public wp-cron.php URL and returns a cached 200 without PHP ever executing.' ],
+                    [ 'name' => 'Down vs recovery',      'rec' => 'Overview',    'html' => 'Down alerts fire after 3 consecutive missed heartbeats (~3 min). Repeat alerts are throttled to once every 5 minutes while the site remains down. Recovery fires as soon as one heartbeat arrives after a down period, with the total outage duration included in the message.' ],
+                    [ 'name' => 'Test Alert (pause 5 min)', 'rec' => 'Testing',  'html' => 'Click <em>Test Alert (pause 5 min)</em> to pause heartbeats for 5 minutes. After about 3 minutes of silence the Cloudflare Worker will treat the site as down and fire your ntfy down alert. When the 5-minute pause ends, heartbeats resume automatically and you should receive a recovery alert. A live countdown is shown while paused. Click <em>Cancel Pause</em> at any time to resume heartbeats immediately (you will still get a recovery alert once the next heartbeat is sent).' ],
+                    [ 'name' => 'Alert notifications',   'rec' => 'Recommended', 'html' => 'Enter your ntfy.sh topic URL (e.g. <code>https://ntfy.sh/your-topic</code>) to receive instant push notifications. Alerts fire from the Cloudflare edge — they arrive even if your PHP, database, and server are all offline, because the down detection happens in the Worker watching for stale heartbeats.' ],
+                    [ 'name' => 'KV storage',            'rec' => 'Info',        'html' => 'A Cloudflare KV namespace (<code>csdt-uptime-state</code>) is created automatically on first deploy. It stores three small values: last heartbeat timestamp, down-since timestamp, and last-alert timestamp. The deploy script and Deploy button both handle KV creation — no manual setup needed.' ],
                 ] ); ?>
             </div>
             <div class="cs-panel-body">
                 <div>
                     <p style="color:#4b5563;margin:0 0 6px;line-height:1.65;font-size:.95em;">
-                        <?php esc_html_e( 'Deploys a Cloudflare Worker that probes your site every 60 seconds from the edge — independent of your server. Each probe calls the built-in readiness endpoint, which checks PHP-FPM saturation, database connectivity, and WordPress boot. If any check fails, the Worker alerts you immediately via ntfy.sh, even if your server is completely offline.', 'cloudscale-devtools' ); ?>
-                    </p>
-                    <p style="color:#9ca3af;margin:0 0 6px;font-size:.88em;">
-                        <?php esc_html_e( 'Requires Cloudflare Zone ID and API Token (saved in Thumbnails tab). The API token needs Workers:Edit permission.', 'cloudscale-devtools' ); ?>
+                        <?php esc_html_e( 'A host cron job hits WordPress locally every minute (bypassing Cloudflare cache), triggering a heartbeat push to the Cloudflare Worker. If no heartbeat arrives for 3 minutes, the Worker fires a down alert via ntfy.sh. When heartbeats resume, a recovery alert is sent automatically with outage duration.', 'cloudscale-devtools' ); ?>
                     </p>
                     <p style="color:#9ca3af;margin:0 0 16px;font-size:.88em;">
-                        <?php esc_html_e( 'Readiness endpoint:', 'cloudscale-devtools' ); ?>
-                        <code id="csdt-ready-url-display" style="background:#f1f5f9;padding:1px 5px;border-radius:3px;font-size:.92em;"><?php echo esc_html( CSDT_Uptime::get_readiness_url() ); ?></code>
+                        <?php esc_html_e( 'Requires Cloudflare Zone ID and API Token (saved in Thumbnails tab) with Workers:Edit and Workers KV Storage:Edit permissions.', 'cloudscale-devtools' ); ?>
                     </p>
                     <div id="csdt-uptime-setup-wrap">
-                        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
-                            <button id="csdt-uptime-generate-token-btn" class="cs-btn-secondary" style="font-size:.88em;">
-                                🔑 <?php esc_html_e( 'Generate Token', 'cloudscale-devtools' ); ?>
-                            </button>
-                            <div id="csdt-uptime-token-wrap" style="display:none;flex:1;max-width:420px;">
-                                <input id="csdt-uptime-token-display" type="text" readonly class="cs-input" style="font-family:monospace;font-size:.82em;" value="">
-                            </div>
-                        </div>
                         <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:16px 20px;margin-bottom:16px;">
-                            <p style="margin:0 0 10px;font-weight:700;color:#0f172a;font-size:.9em;">
-                                <?php esc_html_e( 'Endpoint path suffix', 'cloudscale-devtools' ); ?>
-                                <span style="font-weight:400;color:#6b7280;">(<?php esc_html_e( 'optional — makes the URL unguessable to prevent DDoS targeting', 'cloudscale-devtools' ); ?>)</span>
-                            </p>
-                            <div style="display:flex;align-items:center;gap:8px;max-width:520px;">
-                                <span style="color:#9ca3af;font-size:.88em;white-space:nowrap;"><?php echo esc_html( rest_url( 'csdt/cf-callback/' ) ); ?></span>
-                                <input id="csdt-uptime-ready-slug" type="text" class="cs-input" style="width:160px;font-family:monospace;"
-                                       placeholder="e.g. ajb007"
-                                       value="<?php echo esc_attr( get_option( 'csdt_readiness_slug', '' ) ); ?>">
-                            </div>
-                            <p style="margin:8px 0 0;font-size:.82em;color:#9ca3af;"><?php esc_html_e( 'Set a random string to make the URL unguessable. Defaults to /ready when blank.', 'cloudscale-devtools' ); ?></p>
-                        </div>
-                        <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:16px 20px;margin-bottom:16px;">
-                            <p style="margin:0 0 10px;font-weight:700;color:#0f172a;font-size:.9em;">ntfy.sh Alert URL <span style="font-weight:400;color:#6b7280;">(optional — sent directly from the Worker when your site is down)</span></p>
+                            <p style="margin:0 0 10px;font-weight:700;color:#0f172a;font-size:.9em;">ntfy.sh Alert URL <span style="font-weight:400;color:#6b7280;">(<?php esc_html_e( 'optional — alerts sent from Cloudflare edge when your site is down or recovers', 'cloudscale-devtools' ); ?>)</span></p>
                             <input id="csdt-uptime-ntfy-url" type="text" class="cs-input" style="max-width:420px;"
                                    placeholder="https://ntfy.sh/your-topic"
                                    value="<?php echo esc_attr( get_option( 'csdt_uptime_ntfy_url', get_option( 'csdt_scan_schedule_ntfy_url', '' ) ) ); ?>">
@@ -4265,11 +4310,22 @@ class CloudScale_DevTools {
                             <summary style="cursor:pointer;font-size:.85em;font-weight:600;color:#6366f1;">🛠 Manual deploy (copy-paste Worker script)</summary>
                             <div id="csdt-uptime-manual-wrap" style="margin-top:12px;"></div>
                         </details>
+                        <details style="margin-top:10px;" open>
+                            <summary style="cursor:pointer;font-size:.85em;font-weight:600;color:#374151;">⏱ Host cron — reliable every-minute heartbeats</summary>
+                            <div style="margin-top:10px;background:#f1f5f9;border:1px solid #d1d5db;border-radius:6px;padding:12px 14px;">
+                                <p style="margin:0 0 6px;font-size:.82em;color:#475569;"><?php esc_html_e( 'Must use localhost (not the public URL) — Cloudflare caches wp-cron.php and returns a cached 200 without WordPress ever executing. Hitting nginx directly bypasses CF. Replace PORT with your nginx host port (run', 'cloudscale-devtools' ); ?> <code>docker port pi_nginx 80/tcp</code><?php esc_html_e( '):', 'cloudscale-devtools' ); ?></p>
+                                <code id="csdt-uptime-cron-line" style="display:block;background:#fff;border:1px solid #d1d5db;border-radius:4px;padding:8px 12px;font-size:.8em;color:#16a34a;word-break:break-all;margin-bottom:8px;">* * * * * curl -sf -m 10 -H 'Host: <?php echo esc_html( wp_parse_url( get_site_url(), PHP_URL_HOST ) ); ?>' 'http://127.0.0.1:PORT/wp-cron.php?doing_wp_cron' -o /dev/null 2&gt;/dev/null</code>
+                                <p style="margin:0;font-size:.78em;color:#64748b;"><?php esc_html_e( 'If FPM is down nginx returns 502, curl exits non-zero, WP-Cron does not run, no heartbeat is pushed, and the CF Worker alerts after 3 minutes. deploy-cf-worker.sh detects the port and installs this automatically.', 'cloudscale-devtools' ); ?></p>
+                            </div>
+                        </details>
                     </div>
                     <div id="csdt-uptime-status-wrap" style="display:none;margin-top:4px;">
                         <div id="csdt-uptime-status-inner"></div>
-                        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;">
-                            <button id="csdt-uptime-refresh-btn" class="cs-btn-secondary" style="font-size:.82em;">↻ <?php esc_html_e( 'Refresh', 'cloudscale-devtools' ); ?></button>
+                        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                            <button id="csdt-uptime-refresh-btn" class="cs-btn-secondary" style="font-size:.82em;">↻ <?php esc_html_e( 'Push Heartbeat + Refresh', 'cloudscale-devtools' ); ?></button>
+                            <button id="csdt-uptime-pause-btn" class="cs-btn-secondary" style="font-size:.82em;">🔕 <?php esc_html_e( 'Test Alert (pause 5 min)', 'cloudscale-devtools' ); ?></button>
+                            <button id="csdt-uptime-cancel-pause-btn" class="cs-btn-secondary" style="font-size:.82em;display:none;">✕ <?php esc_html_e( 'Cancel Pause', 'cloudscale-devtools' ); ?></button>
+                            <span id="csdt-uptime-push-status" style="display:none;font-size:.82em;"></span>
                         </div>
                     </div>
                 </div>
