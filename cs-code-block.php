@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Free AI penetration testing, brute-force protection, 2FA, passkeys, AI site audit, AI debugging, performance monitor, SMTP, SQL tool, server logs, vulnerability scanner, and Cloudflare uptime monitor. No subscription, no cloud dependency.
- * Version: 1.9.417
+ * Version: 1.9.418
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -54,7 +54,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.418';
+    const VERSION      = '1.9.419';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -4302,13 +4302,8 @@ class CloudScale_DevTools {
 
         private static function render_security_panel(): void {
         ?>
-        <div class="cs-panel" id="cs-panel-security">
-            <div class="cs-panel-body">
-
-                <div class="cs-tab-intro">
+        <div class="cs-tab-intro" style="margin-bottom:20px;">
                     <p><?php echo wp_kses( __( 'The <strong>AI Cyber Audit</strong> uses frontier AI &#8212; Anthropic Claude or Google Gemini &#8212; to analyse your WordPress installation and produce a prioritised, scored security report in under 60 seconds. Think of it as a security consultant in your admin panel: it doesn&#8217;t just list what&#8217;s wrong, it tells you what to fix first and exactly how to fix it. A Standard scan takes seconds; a Deep Dive goes further with live HTTP probes, DNS checks, TLS quality analysis, and static code scanning of your plugins. You need an API key from one of the two providers &#8212; a free Gemini tier is available with no credit card required. Configure your provider and key on the <a href="' . esc_url( admin_url( 'tools.php?page=' . self::TOOLS_SLUG . '&tab=home' ) ) . '">Home tab</a>, then use the <strong>Quick Fixes</strong> below to resolve common misconfigurations before running a scan.', 'cloudscale-devtools' ), [ 'strong' => [], 'a' => [ 'href' => [] ] ] ); ?></p>
-                </div>
-
                 <!-- ── Threat Monitor ──────────────────────────── -->
                 <?php
                 $tm_enabled       = get_option( 'csdt_threat_monitor_enabled',        '1' ) === '1';
@@ -4420,13 +4415,12 @@ class CloudScale_DevTools {
 
                 <?php CSDT_CSP::render_csp_panel(); ?>
 
-                <div style="margin:32px 0 0;border-top:2px solid #e2e8f0;"></div>
-
-                <div class="cs-section-header" style="margin-top:24px;background:linear-gradient(90deg,#022c22 0%,#065f46 100%);border-left:3px solid #34d399;border-radius:6px 6px 0 0;">
+                <div class="cs-panel" id="cs-panel-ai-cyber-audit">
+                <div class="cs-section-header" style="background:linear-gradient(90deg,#022c22 0%,#065f46 100%);border-left:3px solid #34d399;">
                     <span>🕵️ <?php esc_html_e( 'AI Cyber Audit', 'cloudscale-devtools' ); ?></span>
                     <span class="cs-header-hint"><?php esc_html_e( 'AI-powered WordPress security scanning — standard or deep dive', 'cloudscale-devtools' ); ?></span>
                 </div>
-                <div class="cs-audit-box" style="background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 6px 6px;padding:20px;">
+                <div class="cs-panel-body">
                 <div class="cs-scan-row">
                     <div class="cs-scan-col">
                         <div class="cs-scan-col-header">
@@ -4482,21 +4476,22 @@ class CloudScale_DevTools {
                         <div id="cs-deep-results" class="cs-vuln-results" style="display:none;margin-top:6px"></div>
                     </div>
                 </div>
-                </div><!-- /AI Cyber Audit content box -->
+                </div>
+                </div><!-- /cs-panel-body -->
+                </div><!-- /cs-panel-ai-cyber-audit -->
 
-            </div>
-
-            <!-- Scan History -->
-            <div class="cs-section-header" style="margin-top:24px;background:linear-gradient(90deg,#1e1b4b 0%,#4338ca 100%);border-left:3px solid #818cf8;">
-                <span>📈 <?php esc_html_e( 'Scan History', 'cloudscale-devtools' ); ?></span>
-                <span class="cs-header-hint"><?php esc_html_e( 'Last 50 scans — track your security score over time', 'cloudscale-devtools' ); ?></span>
-                <?php self::render_explain_btn( 'scan-history', 'Scan History', [
-                    [ 'name' => 'What is tracked',   'rec' => 'Overview',    'html' => 'Every Standard Cyber Scan and AI Deep Dive saves a summary entry: scan date, model used, severity counts (critical / high / medium / low), and the full findings list. The last 50 scans are retained.' ],
-                    [ 'name' => 'Score trend chart', 'rec' => 'Info',        'html' => 'The chart plots your critical + high finding count over time. A downward trend means your security posture is improving. Spikes after a plugin update or site change are worth investigating.' ],
-                    [ 'name' => 'Reload a scan',     'rec' => 'Info',        'html' => 'Click any row in the history table to reload that scan\'s full findings report. Useful for comparing before-and-after states when remediating issues, without needing to re-run the scan.' ],
-                ] ); ?>
-            </div>
-            <div id="cs-scan-history-wrap" style="padding:12px 0;">
+                <!-- Scan History -->
+                <div class="cs-panel" id="cs-panel-scan-history">
+                <div class="cs-section-header" style="background:linear-gradient(90deg,#1e1b4b 0%,#4338ca 100%);border-left:3px solid #818cf8;">
+                    <span>📈 <?php esc_html_e( 'Scan History', 'cloudscale-devtools' ); ?></span>
+                    <span class="cs-header-hint"><?php esc_html_e( 'Last 50 scans — track your security score over time', 'cloudscale-devtools' ); ?></span>
+                    <?php self::render_explain_btn( 'scan-history', 'Scan History', [
+                        [ 'name' => 'What is tracked',   'rec' => 'Overview',    'html' => 'Every Standard Cyber Scan and AI Deep Dive saves a summary entry: scan date, model used, severity counts (critical / high / medium / low), and the full findings list. The last 50 scans are retained.' ],
+                        [ 'name' => 'Score trend chart', 'rec' => 'Info',        'html' => 'The chart plots your critical + high finding count over time. A downward trend means your security posture is improving. Spikes after a plugin update or site change are worth investigating.' ],
+                        [ 'name' => 'Reload a scan',     'rec' => 'Info',        'html' => 'Click any row in the history table to reload that scan\'s full findings report. Useful for comparing before-and-after states when remediating issues, without needing to re-run the scan.' ],
+                    ] ); ?>
+                </div>
+                <div class="cs-panel-body" id="cs-scan-history-wrap">
                 <?php
                 $history = get_option( 'csdt_scan_history', [] );
                 if ( ! empty( $history ) ) : ?>
@@ -4553,9 +4548,8 @@ class CloudScale_DevTools {
                     <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
-            </div>
-
-        </div>
+                </div><!-- /cs-panel-body scan-history -->
+                </div><!-- /cs-panel-scan-history -->
         <?php
     }
 
