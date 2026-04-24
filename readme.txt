@@ -85,6 +85,9 @@ highlight.js with auto-detection — 190+ languages including Bash, Python, Java
 
 == Changelog ==
 
+= 1.9.495 =
+* feat: Block Basic Auth toggle — site-wide toggle in Test Account Manager to disable REST API application passwords and HTTP Basic Auth for all users; inline script handler immune to JS load failures; Playwright test covering save and reload persistence
+
 = 1.9.433 =
 * fix: Explain buttons (and all data-cs-modal-open buttons) now work on iOS Safari — added touchend fallback in cs-admin-settings.js to handle overflow:hidden containers swallowing click events
 

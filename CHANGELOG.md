@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.9.495] - 2026-04-24
+
+### Added
+- Test Account Manager: Block Basic Auth toggle — site-wide switch to disable REST API application passwords and HTTP Basic Auth for all users; prevents tools like curl and Postman from authenticating with username/password, without affecting session-based logins or test account flows
+- Inline `<script>` handler for the save button — isolated from external JS so it works even when `cs-test-accounts.js` fails to load (e.g. Cloudflare tunnel hiccup)
+- `ajax_toggle_block_basic_auth` AJAX handler in `CSDT_Test_Accounts` — persists `csdt_block_basic_auth` option; nonce-verified and admin-only
+- `tests/block-basic-auth.spec.js` — Playwright test covering save, reload persistence (unchecked and checked), and safe-default restore
+
+### Changed
+- Removed duplicate Block Basic Auth click handler from `cs-test-accounts.js`; inline script is now the sole handler
+
 ## [1.9.379] - 2026-04-23
 
 ### Changed
