@@ -114,9 +114,17 @@ class CSDT_Login {
      * @return void
      */
     public static function login_force_remember(): void {
-        if ( get_option( 'csdt_devtools_session_duration', 'default' ) !== 'default' ) {
-            $_POST['rememberme'] = 'forever'; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        if ( get_option( 'csdt_devtools_session_duration', 'default' ) === 'default' ) {
+            return;
         }
+        // Only inject on an actual POST — not on GET page loads. Some security
+        // plugins and WP 2FA check !empty($_POST) rather than REQUEST_METHOD to
+        // detect a login attempt; injecting rememberme on GET causes them to
+        // process an empty form and show "username field is empty" on first load.
+        if ( 'POST' !== $_SERVER['REQUEST_METHOD'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            return;
+        }
+        $_POST['rememberme'] = 'forever'; // phpcs:ignore WordPress.Security.NonceVerification.Missing
     }
 
     /**
