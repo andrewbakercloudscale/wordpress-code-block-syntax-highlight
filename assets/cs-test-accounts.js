@@ -2,14 +2,14 @@
 (function () {
     'use strict';
 
-    var cfg = (typeof csdtTestAccounts !== 'undefined') ? csdtTestAccounts : {};
-    var ajaxUrl = cfg.ajaxUrl || '';
-    var nonce   = cfg.nonce   || '';
+    var cfg        = (typeof csdtTestAccounts !== 'undefined') ? csdtTestAccounts : {};
+    var ajaxUrl    = cfg.ajaxUrl    || '';
+    var nonce      = cfg.nonce      || '';
+    var sessionUrl = cfg.sessionUrl || '';
+    var logoutUrl  = cfg.logoutUrl  || '';
+    var secret     = cfg.secret     || '';
+    var secretShown = false;
 
-    /* ── cached last credentials for copy helpers ── */
-    var lastCreds = null;
-
-    /* ── helpers ── */
     function post(action, data, cb) {
         var body = new FormData();
         body.append('action', action);
@@ -23,32 +23,6 @@
 
     function el(id) { return document.getElementById(id); }
 
-    /* ── render accounts list ── */
-    function renderAccounts(accounts) {
-        var list = el('cs-ta-list');
-        if (!list) return;
-
-        if (!accounts || !accounts.length) {
-            list.innerHTML = '<p style="color:#888;font-size:13px;margin:0;">No active test accounts.</p>';
-            return;
-        }
-
-        list.innerHTML = accounts.map(function (a) {
-            var mins = Math.max(0, Math.ceil(a.expires_in / 60));
-            var loginInfo = '';
-            if (a.max_logins > 0) {
-                loginInfo = ' · ' + a.login_count + '/' + a.max_logins + ' logins';
-            }
-            return '<div class="cs-ta-account-row" style="display:flex;align-items:center;gap:12px;padding:8px 12px;margin-bottom:4px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;">' +
-                '<div style="flex:1;font-family:monospace;font-size:13px;">' + escHtml(a.username) + '</div>' +
-                '<div style="font-size:12px;color:#6b7280;">expires in ' + mins + 'm' + escHtml(loginInfo) + '</div>' +
-                '<button type="button" class="cs-btn-secondary cs-btn-sm cs-ta-revoke" data-user-id="' + a.user_id + '" style="color:#dc2626;border-color:#fca5a5;">Revoke</button>' +
-                '</div>';
-        }).join('');
-
-        wireRevoke();
-    }
-
     function escHtml(str) {
         return String(str)
             .replace(/&/g, '&amp;')
@@ -57,18 +31,84 @@
             .replace(/"/g, '&quot;');
     }
 
-    function wireRevoke() {
-        document.querySelectorAll('.cs-ta-revoke').forEach(function (btn) {
+    function timeAgo(ts) {
+        if (!ts) { return ''; }
+        var diff = Math.floor(Date.now() / 1000) - ts;
+        if (diff < 60)    { return 'just now'; }
+        if (diff < 3600)  { return Math.floor(diff / 60) + 'm ago'; }
+        if (diff < 86400) { return Math.floor(diff / 3600) + 'h ago'; }
+        var d = new Date(ts * 1000);
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    }
+
+    function renderUsers(users) {
+        var listEl = el('cs-pwr-users-list');
+        if (!listEl) { return; }
+
+        if (!users || !users.length) {
+            listEl.innerHTML = '<p style="color:#9ca3af;font-size:13px;margin:0;">No test users yet - create one above.</p>';
+            updateSnippet();
+            return;
+        }
+
+        listEl.innerHTML = users.map(function (u) {
+            var sessColor    = u.session_count > 0 ? '#d97706' : '#9ca3af';
+            var sessLabel    = u.session_count === 1 ? '1 session' : u.session_count + ' sessions';
+            var killDisabled = u.session_count === 0 ? ' disabled' : '';
+            var loginStr     = u.last_login ? timeAgo(u.last_login) : '';
+            var loginHtml    = loginStr ? '<span style="font-size:11px;color:#9ca3af;">Last login: ' + escHtml(loginStr) + '</span>' : '';
+            return '<div class="cs-pwr-user-row" style="display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:4px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;flex-wrap:wrap;">' +
+                '<code style="font-size:12px;min-width:120px;">' + escHtml(u.name) + '</code>' +
+                '<span style="font-size:12px;color:#6b7280;">' + escHtml(ucFirst(u.wp_role || 'administrator')) + '</span>' +
+                '<span style="font-size:12px;color:#9ca3af;font-family:monospace;">' + escHtml(u.username) + '</span>' +
+                '<span class="cs-pwr-sess-count" style="font-size:12px;color:' + sessColor + ';">' + escHtml(sessLabel) + '</span>' +
+                loginHtml +
+                '<div style="margin-left:auto;display:flex;gap:6px;flex-shrink:0;">' +
+                '<button type="button" class="cs-btn-secondary cs-btn-sm cs-pwr-kill-sessions" data-name="' + escHtml(u.name) + '"' + killDisabled + '>Kill Sessions</button>' +
+                '<button type="button" class="cs-btn-secondary cs-btn-sm cs-pwr-delete" data-name="' + escHtml(u.name) + '" style="color:#dc2626;border-color:#fca5a5;">Delete User</button>' +
+                '</div>' +
+                '</div>';
+        }).join('');
+
+        wireUserButtons();
+        updateSnippet(users);
+    }
+
+    function ucFirst(str) {
+        if (!str) { return ''; }
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function wireUserButtons() {
+        document.querySelectorAll('.cs-pwr-kill-sessions').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                var userId = btn.getAttribute('data-user-id');
+                var name = btn.dataset.name;
                 btn.disabled = true;
-                btn.textContent = '…';
-                post('csdt_test_account_revoke', { user_id: userId }, function (res) {
+                btn.textContent = '...';
+                post('csdt_kill_test_sessions', { name: name }, function (res) {
                     if (res.success) {
-                        renderAccounts(res.data.accounts);
+                        renderUsers(res.data.users);
                     } else {
                         btn.disabled = false;
-                        btn.textContent = 'Revoke';
+                        btn.textContent = 'Kill Sessions';
+                        alert('Error: ' + (res.data || 'unknown'));
+                    }
+                });
+            });
+        });
+
+        document.querySelectorAll('.cs-pwr-delete').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var name = btn.dataset.name;
+                if (!confirm('Delete test user "' + name + '"? The WordPress user will be permanently removed.')) { return; }
+                btn.disabled = true;
+                btn.textContent = '...';
+                post('csdt_playwright_role_delete', { name: name }, function (res) {
+                    if (res.success) {
+                        renderUsers(res.data.users);
+                    } else {
+                        btn.disabled = false;
+                        btn.textContent = 'Delete User';
                         alert('Error: ' + (res.data || 'unknown'));
                     }
                 });
@@ -76,122 +116,119 @@
         });
     }
 
-    /* ── show credentials box ── */
-    function showCreds(data) {
-        lastCreds = data;
-        var box = el('cs-ta-creds');
-        if (!box) return;
+    function updateSnippet(users) {
+        var snippetEl = el('cs-pwr-snippet');
+        if (!snippetEl) { return; }
 
-        var expires = new Date(data.expires_at * 1000).toLocaleString();
-        el('cs-ta-cred-user').textContent    = data.username;
-        el('cs-ta-cred-pw').textContent      = data.app_password;
-        el('cs-ta-cred-url').textContent     = data.rest_url;
-        el('cs-ta-cred-expires').textContent = expires;
-        box.style.display = 'block';
+        var usersArr = users || (cfg.testUsers || []);
+        var exampleName = usersArr.length ? usersArr[0].name : 'my_playwright';
+        var displaySecret = secretShown ? secret : 'YOUR_CSDT_TEST_SECRET';
+
+        snippetEl.textContent = [
+            '# .env.test',
+            'WP_SITE=' + (cfg.siteUrl || 'https://yoursite.com'),
+            'CSDT_TEST_SECRET=' + displaySecret,
+            'CSDT_TEST_ROLE=' + exampleName,
+            'CSDT_TEST_SESSION_URL=' + sessionUrl,
+            'CSDT_TEST_LOGOUT_URL=' + logoutUrl,
+        ].join('\n');
     }
 
-    /* ── init ── */
     document.addEventListener('DOMContentLoaded', function () {
         var panel = el('cs-panel-test-accounts');
-        if (!panel) return;
+        if (!panel) { return; }
 
-        /* Enable toggle */
-        var chkEnabled = el('cs-ta-enabled');
-        var options    = el('cs-ta-options');
-        if (chkEnabled && options) {
-            chkEnabled.addEventListener('change', function () {
-                options.style.display = chkEnabled.checked ? 'flex' : 'none';
-            });
-        }
+        /* Create user */
+        var createBtn = el('cs-pwr-create');
+        if (createBtn) {
+            createBtn.addEventListener('click', function () {
+                var name   = (el('cs-pwr-name')    || {}).value || '';
+                var wpRole = (el('cs-pwr-wp-role') || {}).value || 'administrator';
+                var msgEl  = el('cs-pwr-msg');
 
-        /* Single-use toggle */
-        var chkSingleUse  = el('cs-ta-single-use');
-        var maxLoginsEl   = el('cs-ta-max-logins');
-        if (chkSingleUse && maxLoginsEl) {
-            chkSingleUse.addEventListener('change', function () {
-                if (chkSingleUse.checked) {
-                    maxLoginsEl.value    = '1';
-                    maxLoginsEl.disabled = true;
-                } else {
-                    maxLoginsEl.disabled = false;
+                if (msgEl) { msgEl.style.display = 'none'; }
+
+                if (!name) {
+                    if (msgEl) { msgEl.style.cssText = 'display:block;color:#dc2626;'; msgEl.textContent = 'Name is required.'; }
+                    return;
                 }
-            });
-        }
 
-        /* Save settings */
-        var btnSave  = el('cs-ta-save');
-        var savedMsg = el('cs-ta-saved');
-        if (btnSave) {
-            btnSave.addEventListener('click', function () {
-                btnSave.disabled = true;
-                var payload = {
-                    enabled:    chkEnabled && chkEnabled.checked ? '1' : '0',
-                    ttl:        (el('cs-ta-ttl') || {}).value || '1800',
-                    single_use: chkSingleUse && chkSingleUse.checked ? '1' : '0',
-                    max_logins: maxLoginsEl ? (parseInt(maxLoginsEl.value, 10) || 0) : 0,
-                };
-                post('csdt_test_account_settings_save', payload, function (res) {
-                    btnSave.disabled = false;
-                    if (res.success && savedMsg) {
-                        savedMsg.classList.add('visible');
-                        setTimeout(function () { savedMsg.classList.remove('visible'); }, 3000);
-                    }
-                });
-            });
-        }
+                createBtn.disabled = true;
+                createBtn.textContent = '...';
 
-        /* Create account */
-        var btnCreate = el('cs-ta-create');
-        if (btnCreate) {
-            btnCreate.addEventListener('click', function () {
-                btnCreate.disabled = true;
-                btnCreate.textContent = '…';
-                post('csdt_test_account_create', {}, function (res) {
-                    btnCreate.disabled = false;
-                    btnCreate.textContent = '+ Create Test Account';
+                post('csdt_playwright_role_create', { name: name, wp_role: wpRole }, function (res) {
+                    createBtn.disabled = false;
+                    createBtn.textContent = '+ Create User';
                     if (res.success) {
-                        showCreds(res.data);
-                        renderAccounts(res.data.accounts);
+                        if (el('cs-pwr-name')) { el('cs-pwr-name').value = ''; }
+                        renderUsers(res.data.users);
+                        if (msgEl) {
+                            msgEl.style.cssText = 'display:block;color:#166534;';
+                            msgEl.textContent = 'User "' + res.data.username + '" created with role ' + ucFirst(res.data.wp_role) + '.';
+                        }
                     } else {
-                        alert('Error: ' + (res.data || 'unknown'));
+                        if (msgEl) { msgEl.style.cssText = 'display:block;color:#dc2626;'; msgEl.textContent = res.data || 'Error creating user.'; }
                     }
                 });
             });
         }
 
-        /* Copy as JSON */
-        var btnJson = el('cs-ta-copy-json');
-        if (btnJson) {
-            btnJson.addEventListener('click', function () {
-                if (!lastCreds) return;
-                var obj = {
-                    username:     lastCreds.username,
-                    app_password: lastCreds.app_password,
-                    rest_url:     lastCreds.rest_url,
-                    expires_at:   lastCreds.expires_at,
-                };
-                navigator.clipboard.writeText(JSON.stringify(obj, null, 2)).then(function () {
-                    btnJson.textContent = '✓ Copied';
-                    setTimeout(function () { btnJson.textContent = '⎘ Copy as JSON'; }, 1500);
+        /* Show/hide secret */
+        var showSecretBtn  = el('cs-pwr-secret-show');
+        var secretDisplay  = el('cs-pwr-secret-display');
+        if (showSecretBtn && secretDisplay) {
+            showSecretBtn.addEventListener('click', function () {
+                secretShown = !secretShown;
+                secretDisplay.textContent = secretShown ? secret : ('•'.repeat(Math.min(20, secret.length)) + secret.slice(-4));
+                showSecretBtn.textContent = secretShown ? '🔒 Hide' : '👁 Show';
+                updateSnippet();
+            });
+        }
+
+        /* Regenerate secret */
+        var regenBtn = el('cs-pwr-secret-regen');
+        if (regenBtn) {
+            regenBtn.addEventListener('click', function () {
+                if (!confirm('Regenerate the shared secret? All .env files using the current secret will need to be updated.')) { return; }
+                post('csdt_regen_test_secret', {}, function (res) {
+                    if (res.success) {
+                        secret = res.data.secret;
+                        secretShown = true;
+                        if (secretDisplay) { secretDisplay.textContent = secret; }
+                        if (showSecretBtn) { showSecretBtn.textContent = '🔒 Hide'; }
+                        updateSnippet();
+                    }
                 });
             });
         }
 
-        /* Copy curl example */
-        var btnCurl = el('cs-ta-copy-curl');
-        if (btnCurl) {
-            btnCurl.addEventListener('click', function () {
-                if (!lastCreds) return;
-                var curl = 'curl -u "' + lastCreds.username + ':' + lastCreds.app_password + '" ' + lastCreds.rest_url;
-                navigator.clipboard.writeText(curl).then(function () {
-                    btnCurl.textContent = '✓ Copied';
-                    setTimeout(function () { btnCurl.textContent = '⎘ Copy curl example'; }, 1500);
+        /* Copy URL buttons */
+        document.querySelectorAll('.cs-copy-url').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var url = btn.dataset.url || '';
+                navigator.clipboard.writeText(url).then(function () {
+                    var orig = btn.textContent;
+                    btn.textContent = '✓ Copied';
+                    setTimeout(function () { btn.textContent = orig; }, 1500);
+                });
+            });
+        });
+
+        /* Copy .env snippet */
+        var copySnippetBtn = el('cs-pwr-copy-snippet');
+        if (copySnippetBtn) {
+            copySnippetBtn.addEventListener('click', function () {
+                var snippetEl = el('cs-pwr-snippet');
+                var text = snippetEl ? snippetEl.textContent : '';
+                navigator.clipboard.writeText(text).then(function () {
+                    copySnippetBtn.textContent = '✓ Copied';
+                    setTimeout(function () { copySnippetBtn.textContent = '⎘ Copy'; }, 1500);
                 });
             });
         }
 
-        /* Render initial list (from PHP-localised data) */
-        renderAccounts(cfg.accounts || []);
-        wireRevoke();
+        /* Wire up initially rendered user rows and snippet */
+        wireUserButtons();
+        updateSnippet();
     });
 }());

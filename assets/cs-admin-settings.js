@@ -98,33 +98,39 @@
 // data-cs-modal-backdrop (backdrop click), and data-cs-copy-from (clipboard copy).
 ( function () {
     'use strict';
-    document.addEventListener( 'click', function ( e ) {
-        var t = e.target;
 
+    function handleModalAction( t, preventDefault ) {
         // Open modal
         var opener = t.closest( '[data-cs-modal-open]' );
         if ( opener ) {
             var m = document.getElementById( opener.dataset.csModalOpen );
-            if ( m ) { m.style.display = 'flex'; }
-            return;
+            if ( m ) { m.style.display = 'flex'; if ( preventDefault ) { preventDefault(); } }
+            return true;
         }
 
         // Close modal via button
         var closer = t.closest( '[data-cs-modal-close]' );
         if ( closer ) {
             var m = document.getElementById( closer.dataset.csModalClose );
-            if ( m ) { m.style.display = 'none'; }
-            return;
+            if ( m ) { m.style.display = 'none'; if ( preventDefault ) { preventDefault(); } }
+            return true;
         }
 
         // Backdrop click — close when the backdrop element itself is clicked
         if ( t.dataset && t.dataset.csModalBackdrop === 'true' ) {
             t.style.display = 'none';
-            return;
+            if ( preventDefault ) { preventDefault(); }
+            return true;
         }
 
+        return false;
+    }
+
+    document.addEventListener( 'click', function ( e ) {
+        if ( handleModalAction( e.target, null ) ) { return; }
+
         // Clipboard copy from a named element
-        var copyBtn = t.closest( '[data-cs-copy-from]' );
+        var copyBtn = e.target.closest( '[data-cs-copy-from]' );
         if ( copyBtn ) {
             var src = document.getElementById( copyBtn.dataset.csCopyFrom );
             if ( ! src ) { return; }
@@ -136,4 +142,20 @@
             } );
         }
     } );
+
+    // iOS Safari: click events can be swallowed inside overflow:hidden containers.
+    // Use touchend as a fallback, detecting taps vs scrolls via movement threshold.
+    var touchStartX = 0, touchStartY = 0;
+    document.addEventListener( 'touchstart', function ( e ) {
+        touchStartX = e.changedTouches[ 0 ].clientX;
+        touchStartY = e.changedTouches[ 0 ].clientY;
+    }, { passive: true } );
+
+    document.addEventListener( 'touchend', function ( e ) {
+        var dx = Math.abs( e.changedTouches[ 0 ].clientX - touchStartX );
+        var dy = Math.abs( e.changedTouches[ 0 ].clientY - touchStartY );
+        if ( dx > 10 || dy > 10 ) { return; } // scroll, not a tap
+        handleModalAction( e.target, function () { e.preventDefault(); } );
+    }, { passive: false } );
+
 } )();

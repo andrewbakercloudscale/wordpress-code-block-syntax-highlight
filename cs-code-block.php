@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Free AI penetration testing, brute-force protection, 2FA, passkeys, AI site audit, AI debugging, performance monitor, SMTP, SQL tool, server logs, vulnerability scanner, and Cloudflare uptime monitor. No subscription, no cloud dependency.
- * Version: 1.9.418
+ * Version: 1.9.433
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -54,7 +54,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.419';
+    const VERSION      = '1.9.433';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -380,6 +380,11 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_test_account_revoke',          [ 'CSDT_Test_Accounts', 'ajax_revoke_test_account' ] );
         add_action( 'wp_ajax_csdt_test_account_settings_save',   [ 'CSDT_Test_Accounts', 'ajax_save_test_account_settings' ] );
         add_action( 'csdt_cleanup_test_accounts',                [ 'CSDT_Test_Accounts', 'cleanup_expired_test_accounts' ] );
+        add_action( 'wp_ajax_csdt_playwright_role_create',       [ 'CSDT_Test_Accounts', 'ajax_create_playwright_role' ] );
+        add_action( 'wp_ajax_csdt_playwright_role_delete',       [ 'CSDT_Test_Accounts', 'ajax_delete_playwright_role' ] );
+        add_action( 'wp_ajax_csdt_kill_test_sessions',           [ 'CSDT_Test_Accounts', 'ajax_kill_test_sessions' ] );
+        add_action( 'wp_ajax_csdt_regen_test_secret',            [ 'CSDT_Test_Accounts', 'ajax_regen_test_secret' ] );
+        add_action( 'rest_api_init',                             [ 'CSDT_Test_Accounts', 'register_rest_routes' ] );
         add_action( 'csdt_scheduled_scan',                      [ 'CSDT_Site_Audit', 'run_scheduled_scan' ] );
         add_action( 'csdt_ssh_monitor',                         [ 'CSDT_Monitor', 'monitor_ssh_failures' ] );
         add_action( 'csdt_php_error_monitor',                   [ 'CSDT_Monitor', 'monitor_php_errors' ] );
@@ -1255,9 +1260,13 @@ class CloudScale_DevTools {
                 true
             );
             wp_localize_script( 'csdt-test-accounts', 'csdtTestAccounts', [
-                'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
-                'nonce'    => wp_create_nonce( 'csdt_devtools_login_nonce' ),
-                'accounts' => CSDT_Test_Accounts::get_active_test_accounts(),
+                'ajaxUrl'    => admin_url( 'admin-ajax.php' ),
+                'nonce'      => wp_create_nonce( 'csdt_devtools_login_nonce' ),
+                'testUsers'  => CSDT_Test_Accounts::get_test_users_with_sessions(),
+                'secret'     => CSDT_Test_Accounts::get_or_create_secret(),
+                'sessionUrl' => rest_url( 'csdt/v1/test-session-' . CSDT_Test_Accounts::get_or_create_path_token() ),
+                'logoutUrl'  => rest_url( 'csdt/v1/test-logout-' . CSDT_Test_Accounts::get_or_create_path_token() ),
+                'siteUrl'    => home_url(),
             ] );
         }
 
@@ -3385,126 +3394,146 @@ class CloudScale_DevTools {
 
         <?php
         /* ── Test Account Manager ─────────────────────────────────────── */
-        $ta_enabled     = get_option( 'csdt_test_accounts_enabled', '0' ) === '1';
-        $ta_ttl         = get_option( 'csdt_test_account_ttl', '1800' );
-        $ta_single_use  = get_option( 'csdt_test_account_single_use', '1' ) === '1';
-        $ta_max_logins  = (int) get_option( 'csdt_test_account_max_logins', '1' );
-        $ta_accounts    = CSDT_Test_Accounts::get_active_test_accounts();
+        $test_secret   = CSDT_Test_Accounts::get_or_create_secret();
+        $path_token    = CSDT_Test_Accounts::get_or_create_path_token();
+        $masked_secret = str_repeat( '•', min( 20, strlen( $test_secret ) ) ) . substr( $test_secret, -4 );
+        $session_url   = rest_url( 'csdt/v1/test-session-' . $path_token );
+        $logout_url    = rest_url( 'csdt/v1/test-logout-' . $path_token );
+        $test_users    = CSDT_Test_Accounts::get_test_users_with_sessions();
         ?>
         <div class="cs-panel" id="cs-panel-test-accounts">
             <div class="cs-section-header" style="background:linear-gradient(135deg,#1e3a8a,#1d4ed8)">
                 <span>🧪 <?php esc_html_e( 'TEST ACCOUNT MANAGER', 'cloudscale-devtools' ); ?></span>
-                <span class="cs-header-hint"><?php esc_html_e( 'Temporary single-use accounts for Playwright / CI pipelines', 'cloudscale-devtools' ); ?></span>
+                <span class="cs-header-hint"><?php esc_html_e( 'Persistent test users for Playwright / CI — bypasses 2FA via server-side cookies', 'cloudscale-devtools' ); ?></span>
                 <?php self::render_explain_btn( 'test-accounts', 'Test Account Manager', [
-                    [ 'name' => 'What is a test account?', 'rec' => 'Overview',     'html' => 'A test account is a temporary <strong>subscriber-level</strong> WordPress user with an Application Password. It bypasses admin 2FA enforcement, making it safe for automated Playwright and CI pipelines to authenticate against the REST API without disabling security for real admin accounts.' ],
-                    [ 'name' => 'TTL / Expiry',           'rec' => 'Recommended',  'html' => 'Accounts expire automatically after the TTL you set (default 30 minutes). A scheduled CRON runs every 15 minutes to delete expired accounts. You can also revoke accounts manually from the active accounts list.' ],
-                    [ 'name' => 'Single-use',             'rec' => 'Optional',     'html' => 'When single-use is enabled, the account is deleted immediately after its first successful REST API authentication. Use this for one-shot CI jobs where you want zero lingering credentials.' ],
-                    [ 'name' => 'CI / Playwright usage',  'rec' => 'Recommended',  'html' => 'Create a test account before your test suite runs and revoke it after. Use the REST API credentials (username + app password) with HTTP Basic Auth — e.g. <code>curl -u "username:app_password" https://yoursite.com/wp-json/wp/v2/posts</code>. Store credentials in environment variables or a <code>.env</code> file and never commit them to git.' ],
+                    [ 'name' => 'How it works',          'rec' => 'Overview',    'html' => 'Create a persistent WordPress user for Playwright. Each test run calls the Session URL to get short-lived auth cookies — this happens server-side and never triggers wp-login.php or 2FA hooks. When the test run finishes, call the Logout URL to destroy the session.' ],
+                    [ 'name' => 'Session URL',           'rec' => 'Required',    'html' => '<code>POST {session_url}</code><br>Body: <code>{ "secret": "...", "role": "your_name", "ttl": 1200 }</code><br>Returns auth cookies to inject into Playwright context. TTL max is 3600 seconds.' ],
+                    [ 'name' => 'Logout URL',            'rec' => 'Recommended', 'html' => '<code>POST {logout_url}</code><br>Body: <code>{ "secret": "...", "role": "your_name" }</code> (or add <code>"session_token": "..."</code> to kill only that session). Call this in afterAll to clean up.' ],
+                    [ 'name' => 'Security',              'rec' => 'Info',        'html' => 'Both the URL path token (32 random chars) and the shared secret are required to obtain a session. After 5 bad secret attempts the API locks for 10 minutes and sends an ntfy alert. Never commit the secret to git.' ],
                 ] ); ?>
             </div>
             <div class="cs-panel-body">
                 <div class="cs-sec-settings">
 
-                    <div class="cs-sec-row">
-                        <span class="cs-sec-label"><?php esc_html_e( 'Enable:', 'cloudscale-devtools' ); ?></span>
+                    <!-- Step 1: Create test user -->
+                    <div class="cs-sec-row" style="align-items:flex-start;">
+                        <span class="cs-sec-label" style="padding-top:4px;"><?php esc_html_e( 'Create test user:', 'cloudscale-devtools' ); ?></span>
                         <div class="cs-sec-control">
-                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                                <input type="checkbox" id="cs-ta-enabled" <?php checked( $ta_enabled ); ?>>
-                                <span><?php esc_html_e( 'Allow temporary test accounts with application passwords', 'cloudscale-devtools' ); ?></span>
-                            </label>
-                            <span class="cs-hint"><?php esc_html_e( 'Creates subscriber-level accounts with app passwords for automated testing. When enabled, app passwords are restricted to test accounts only — all production accounts remain blocked.', 'cloudscale-devtools' ); ?></span>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+                                <div style="display:flex;flex-direction:column;gap:4px;">
+                                    <input type="text" id="cs-pwr-name" placeholder="e.g. my_playwright" maxlength="40" style="width:200px;" class="cs-sec-select">
+                                    <span style="font-size:11px;color:#9ca3af;"><?php esc_html_e( 'Name — use as CSDT_TEST_ROLE in .env', 'cloudscale-devtools' ); ?></span>
+                                </div>
+                                <div style="display:flex;flex-direction:column;gap:4px;">
+                                    <select id="cs-pwr-wp-role" class="cs-sec-select" style="width:auto;">
+                                        <option value="administrator"><?php esc_html_e( 'Administrator', 'cloudscale-devtools' ); ?></option>
+                                        <option value="editor"><?php esc_html_e( 'Editor', 'cloudscale-devtools' ); ?></option>
+                                        <option value="author"><?php esc_html_e( 'Author', 'cloudscale-devtools' ); ?></option>
+                                        <option value="contributor"><?php esc_html_e( 'Contributor', 'cloudscale-devtools' ); ?></option>
+                                        <option value="subscriber"><?php esc_html_e( 'Subscriber', 'cloudscale-devtools' ); ?></option>
+                                    </select>
+                                    <span style="font-size:11px;color:#9ca3af;"><?php esc_html_e( 'WordPress role', 'cloudscale-devtools' ); ?></span>
+                                </div>
+                                <button type="button" id="cs-pwr-create" class="cs-btn-primary" style="align-self:flex-start;">
+                                    + <?php esc_html_e( 'Create User', 'cloudscale-devtools' ); ?>
+                                </button>
+                            </div>
+                            <span class="cs-hint" style="margin-top:6px;"><?php esc_html_e( 'Creates a persistent WP user. Reuse across all test runs — sessions are short-lived, the user account is not.', 'cloudscale-devtools' ); ?></span>
+                            <div id="cs-pwr-msg" style="display:none;margin-top:8px;font-size:13px;"></div>
                         </div>
                     </div>
 
-                    <div id="cs-ta-options" style="<?php echo $ta_enabled ? 'display:flex;' : 'display:none;'; ?>flex-direction:column;gap:16px;">
+                    <hr class="cs-sec-divider" style="margin:8px 0;">
 
-                        <div class="cs-sec-row">
-                            <span class="cs-sec-label"><?php esc_html_e( 'Default TTL:', 'cloudscale-devtools' ); ?></span>
-                            <div class="cs-sec-control">
-                                <select id="cs-ta-ttl" class="cs-sec-select" style="width:auto;">
-                                    <option value="300"   <?php selected( $ta_ttl, '300' );   ?>><?php esc_html_e( '5 minutes',  'cloudscale-devtools' ); ?></option>
-                                    <option value="600"   <?php selected( $ta_ttl, '600' );   ?>><?php esc_html_e( '10 minutes', 'cloudscale-devtools' ); ?></option>
-                                    <option value="1800"  <?php selected( $ta_ttl, '1800' );  ?>><?php esc_html_e( '30 minutes', 'cloudscale-devtools' ); ?></option>
-                                    <option value="3600"  <?php selected( $ta_ttl, '3600' );  ?>><?php esc_html_e( '1 hour',     'cloudscale-devtools' ); ?></option>
-                                    <option value="7200"  <?php selected( $ta_ttl, '7200' );  ?>><?php esc_html_e( '2 hours',    'cloudscale-devtools' ); ?></option>
-                                    <option value="86400" <?php selected( $ta_ttl, '86400' ); ?>><?php esc_html_e( '24 hours',   'cloudscale-devtools' ); ?></option>
-                                </select>
-                                <span class="cs-hint"><?php esc_html_e( 'Accounts are automatically deleted after this time.', 'cloudscale-devtools' ); ?></span>
+                    <!-- Step 2: Shared secret -->
+                    <div class="cs-sec-row">
+                        <span class="cs-sec-label"><?php esc_html_e( 'Shared secret:', 'cloudscale-devtools' ); ?></span>
+                        <div class="cs-sec-control">
+                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <code id="cs-pwr-secret-display" style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:4px 10px;font-size:12px;letter-spacing:0.05em;"><?php echo esc_html( $masked_secret ); ?></code>
+                                <button type="button" id="cs-pwr-secret-show" class="cs-btn-secondary cs-btn-sm">👁 <?php esc_html_e( 'Show', 'cloudscale-devtools' ); ?></button>
+                                <button type="button" id="cs-pwr-secret-regen" class="cs-btn-secondary cs-btn-sm">↺ <?php esc_html_e( 'Regenerate', 'cloudscale-devtools' ); ?></button>
+                            </div>
+                            <span class="cs-hint" style="margin-top:6px;"><?php esc_html_e( 'Store in .env (never commit). Regenerating invalidates all existing .env files.', 'cloudscale-devtools' ); ?></span>
+                        </div>
+                    </div>
+
+                    <!-- Session URL -->
+                    <div class="cs-sec-row" style="margin-top:8px;">
+                        <span class="cs-sec-label"><?php esc_html_e( 'Session URL:', 'cloudscale-devtools' ); ?></span>
+                        <div class="cs-sec-control">
+                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <code style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:4px 10px;font-size:11px;word-break:break-all;"><?php echo esc_html( $session_url ); ?></code>
+                                <button type="button" class="cs-btn-secondary cs-btn-sm cs-copy-url" data-url="<?php echo esc_attr( $session_url ); ?>">⎘ <?php esc_html_e( 'Copy', 'cloudscale-devtools' ); ?></button>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="cs-sec-row">
-                            <span class="cs-sec-label"><?php esc_html_e( 'Single-use:', 'cloudscale-devtools' ); ?></span>
-                            <div class="cs-sec-control">
-                                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                                    <input type="checkbox" id="cs-ta-single-use" <?php checked( $ta_single_use ); ?>>
-                                    <span><?php esc_html_e( 'Delete account on first successful authentication', 'cloudscale-devtools' ); ?></span>
-                                </label>
-                                <span class="cs-hint"><?php esc_html_e( 'Maximum security — each test run gets fresh credentials. When enabled, Max Logins is locked to 1.', 'cloudscale-devtools' ); ?></span>
+                    <!-- Logout URL -->
+                    <div class="cs-sec-row" style="margin-top:8px;">
+                        <span class="cs-sec-label"><?php esc_html_e( 'Logout URL:', 'cloudscale-devtools' ); ?></span>
+                        <div class="cs-sec-control">
+                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <code style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:4px 10px;font-size:11px;word-break:break-all;"><?php echo esc_html( $logout_url ); ?></code>
+                                <button type="button" class="cs-btn-secondary cs-btn-sm cs-copy-url" data-url="<?php echo esc_attr( $logout_url ); ?>">⎘ <?php esc_html_e( 'Copy', 'cloudscale-devtools' ); ?></button>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="cs-sec-row">
-                            <span class="cs-sec-label"><?php esc_html_e( 'Max logins:', 'cloudscale-devtools' ); ?></span>
-                            <div class="cs-sec-control">
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <input type="number" id="cs-ta-max-logins" min="0" step="1" value="<?php echo esc_attr( $ta_max_logins ); ?>" style="width:80px;" class="cs-sec-select" <?php echo $ta_single_use ? 'disabled' : ''; ?>>
-                                    <span style="font-size:13px;color:#6b7280;"><?php esc_html_e( '(0 = unlimited)', 'cloudscale-devtools' ); ?></span>
-                                </div>
-                                <span class="cs-hint"><?php esc_html_e( 'Delete the account after this many successful authentications. 0 = unlimited; higher = allow N logins before deleting.', 'cloudscale-devtools' ); ?></span>
-                            </div>
-                        </div>
+                    <hr class="cs-sec-divider" style="margin:8px 0;">
 
-                        <div class="cs-sec-row">
-                            <span class="cs-sec-label"></span>
-                            <div class="cs-sec-control" style="display:flex;flex-direction:row;align-items:center;gap:10px;">
-                                <button type="button" class="cs-btn-primary" id="cs-ta-save">💾 <?php esc_html_e( 'Save Settings', 'cloudscale-devtools' ); ?></button>
-                                <span class="cs-settings-saved" id="cs-ta-saved">✓ <?php esc_html_e( 'Saved', 'cloudscale-devtools' ); ?></span>
-                            </div>
-                        </div>
-
-                        <hr class="cs-sec-divider" style="margin:0;">
-
-                        <div class="cs-sec-row">
-                            <span class="cs-sec-label"><?php esc_html_e( 'Create account:', 'cloudscale-devtools' ); ?></span>
-                            <div class="cs-sec-control">
-                                <button type="button" class="cs-btn-primary" id="cs-ta-create">+ <?php esc_html_e( 'Create Test Account', 'cloudscale-devtools' ); ?></button>
-                                <span class="cs-hint"><?php esc_html_e( 'Credentials shown once only — copy them immediately.', 'cloudscale-devtools' ); ?></span>
-                            </div>
-                        </div>
-
-                        <div id="cs-ta-creds" style="display:none;margin:0 0 16px 0;padding:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
-                            <div style="font-weight:600;color:#166534;margin-bottom:10px;">✓ <?php esc_html_e( 'Test account created — copy credentials now (shown once)', 'cloudscale-devtools' ); ?></div>
-                            <div style="font-family:monospace;font-size:13px;line-height:1.9;color:#1d2327;">
-                                <div><strong><?php esc_html_e( 'Username:', 'cloudscale-devtools' ); ?></strong> <span id="cs-ta-cred-user"></span></div>
-                                <div><strong><?php esc_html_e( 'App password:', 'cloudscale-devtools' ); ?></strong> <span id="cs-ta-cred-pw"></span></div>
-                                <div><strong><?php esc_html_e( 'REST URL:', 'cloudscale-devtools' ); ?></strong> <span id="cs-ta-cred-url"></span></div>
-                                <div><strong><?php esc_html_e( 'Expires:', 'cloudscale-devtools' ); ?></strong> <span id="cs-ta-cred-expires"></span></div>
-                            </div>
-                            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-                                <button type="button" class="cs-btn-secondary cs-btn-sm" id="cs-ta-copy-json">⎘ <?php esc_html_e( 'Copy as JSON', 'cloudscale-devtools' ); ?></button>
-                                <button type="button" class="cs-btn-secondary cs-btn-sm" id="cs-ta-copy-curl">⎘ <?php esc_html_e( 'Copy curl example', 'cloudscale-devtools' ); ?></button>
-                            </div>
-                        </div>
-
-                        <div style="font-weight:600;font-size:13px;color:#1d2327;margin-bottom:8px;"><?php esc_html_e( 'Active test accounts:', 'cloudscale-devtools' ); ?></div>
-                        <div id="cs-ta-list">
-                            <?php if ( empty( $ta_accounts ) ) : ?>
-                                <p style="color:#888;font-size:13px;margin:0;"><?php esc_html_e( 'No active test accounts.', 'cloudscale-devtools' ); ?></p>
+                    <!-- Step 4: Active test users + sessions -->
+                    <div class="cs-sec-row" style="align-items:flex-start;">
+                        <span class="cs-sec-label" style="padding-top:4px;"><?php esc_html_e( 'Test users:', 'cloudscale-devtools' ); ?></span>
+                        <div class="cs-sec-control" style="flex:1;">
+                            <div id="cs-pwr-users-list">
+                            <?php if ( empty( $test_users ) ) : ?>
+                                <p style="color:#9ca3af;font-size:13px;margin:0;"><?php esc_html_e( 'No test users yet - create one above.', 'cloudscale-devtools' ); ?></p>
                             <?php else : ?>
-                                <?php foreach ( $ta_accounts as $acct ) :
-                                    $mins = max( 0, (int) ceil( ( $acct['expires_at'] - time() ) / 60 ) );
+                                <?php foreach ( $test_users as $u ) :
+                                    $last_login_str = '';
+                                    if ( ! empty( $u['last_login'] ) ) {
+                                        $diff = time() - (int) $u['last_login'];
+                                        if ( $diff < 60 )        { $last_login_str = __( 'just now', 'cloudscale-devtools' ); }
+                                        elseif ( $diff < 3600 )  { $last_login_str = sprintf( __( '%dm ago', 'cloudscale-devtools' ), (int) floor( $diff / 60 ) ); }
+                                        elseif ( $diff < 86400 ) { $last_login_str = sprintf( __( '%dh ago', 'cloudscale-devtools' ), (int) floor( $diff / 3600 ) ); }
+                                        else                     { $last_login_str = wp_date( 'M j', $u['last_login'] ); }
+                                    }
                                 ?>
-                                <div class="cs-ta-account-row" style="display:flex;align-items:center;gap:12px;padding:8px 12px;margin-bottom:4px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;">
-                                    <div style="flex:1;font-family:monospace;font-size:13px;"><?php echo esc_html( $acct['username'] ); ?></div>
-                                    <div style="font-size:12px;color:#6b7280;"><?php printf( esc_html__( 'expires in %dm', 'cloudscale-devtools' ), $mins ); ?></div>
-                                    <button type="button" class="cs-btn-secondary cs-btn-sm cs-ta-revoke" data-user-id="<?php echo esc_attr( $acct['user_id'] ); ?>" style="color:#dc2626;border-color:#fca5a5;"><?php esc_html_e( 'Revoke', 'cloudscale-devtools' ); ?></button>
+                                <div class="cs-pwr-user-row" style="display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:4px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;flex-wrap:wrap;">
+                                    <code style="font-size:12px;min-width:120px;"><?php echo esc_html( $u['name'] ); ?></code>
+                                    <span style="font-size:12px;color:#6b7280;"><?php echo esc_html( ucfirst( $u['wp_role'] ?: 'administrator' ) ); ?></span>
+                                    <span style="font-size:12px;color:#9ca3af;font-family:monospace;"><?php echo esc_html( $u['username'] ); ?></span>
+                                    <span class="cs-pwr-sess-count" style="font-size:12px;color:<?php echo $u['session_count'] > 0 ? '#d97706' : '#9ca3af'; ?>">
+                                        <?php echo esc_html( $u['session_count'] ); ?> <?php echo $u['session_count'] === 1 ? esc_html__( 'session', 'cloudscale-devtools' ) : esc_html__( 'sessions', 'cloudscale-devtools' ); ?>
+                                    </span>
+                                    <?php if ( $last_login_str ) : ?>
+                                    <span style="font-size:11px;color:#9ca3af;"><?php echo esc_html__( 'Last login:', 'cloudscale-devtools' ); ?> <?php echo esc_html( $last_login_str ); ?></span>
+                                    <?php endif; ?>
+                                    <div style="margin-left:auto;display:flex;gap:6px;flex-shrink:0;">
+                                        <button type="button" class="cs-btn-secondary cs-btn-sm cs-pwr-kill-sessions" data-name="<?php echo esc_attr( $u['name'] ); ?>" <?php echo $u['session_count'] === 0 ? 'disabled' : ''; ?>>
+                                            <?php esc_html_e( 'Kill Sessions', 'cloudscale-devtools' ); ?>
+                                        </button>
+                                        <button type="button" class="cs-btn-secondary cs-btn-sm cs-pwr-delete" data-name="<?php echo esc_attr( $u['name'] ); ?>" style="color:#dc2626;border-color:#fca5a5;">
+                                            <?php esc_html_e( 'Delete User', 'cloudscale-devtools' ); ?>
+                                        </button>
+                                    </div>
                                 </div>
                                 <?php endforeach; ?>
                             <?php endif; ?>
-                        </div>
+                            </div>
 
+                            <!-- .env.test snippet -->
+                            <details style="margin-top:16px;" id="cs-pwr-snippet-details">
+                                <summary style="cursor:pointer;font-size:12px;font-weight:600;color:#1e40af;user-select:none;"><?php esc_html_e( 'Show .env.test snippet', 'cloudscale-devtools' ); ?></summary>
+                                <div style="margin-top:8px;">
+                                    <pre id="cs-pwr-snippet" style="margin:0 0 8px;padding:12px;background:#0f172a;color:#e2e8f0;border-radius:6px;font-size:11px;line-height:1.7;overflow-x:auto;white-space:pre;"></pre>
+                                    <button type="button" id="cs-pwr-copy-snippet" class="cs-btn-secondary cs-btn-sm">⎘ <?php esc_html_e( 'Copy', 'cloudscale-devtools' ); ?></button>
+                                </div>
+                            </details>
+                        </div>
                     </div>
+
                 </div>
             </div>
         </div>
