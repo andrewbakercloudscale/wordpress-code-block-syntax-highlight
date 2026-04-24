@@ -32,6 +32,26 @@
         padding: 10px 14px;
         font-size: 12px;
     }
+    /* Nested panels: cancel out the parent padding so they use full width */
+    .cs-panel-body .cs-panel {
+        margin-left: -16px;
+        margin-right: -16px;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+    .cs-panel-body .cs-panel .cs-panel-body {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+    /* AI Cyber Audit content box: remove horizontal padding — parent already has it */
+    .cs-audit-box {
+        padding-left: 0;
+        padding-right: 0;
+        border-left: none;
+        border-right: none;
+        border-radius: 0;
+    }
 }
 
 /* ── Banner ─────────────────────────────────────── */

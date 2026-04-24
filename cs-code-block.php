@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Free AI penetration testing, brute-force protection, 2FA, passkeys, AI site audit, AI debugging, performance monitor, SMTP, SQL tool, server logs, vulnerability scanner, and Cloudflare uptime monitor. No subscription, no cloud dependency.
- * Version: 1.9.414
+ * Version: 1.9.415
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -4426,7 +4426,7 @@ class CloudScale_DevTools {
                     <span>🕵️ <?php esc_html_e( 'AI Cyber Audit', 'cloudscale-devtools' ); ?></span>
                     <span class="cs-header-hint"><?php esc_html_e( 'AI-powered WordPress security scanning — standard or deep dive', 'cloudscale-devtools' ); ?></span>
                 </div>
-                <div style="background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 6px 6px;padding:20px;">
+                <div class="cs-audit-box" style="background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 6px 6px;padding:20px;">
                 <div class="cs-scan-row">
                     <div class="cs-scan-col">
                         <div class="cs-scan-col-header">
