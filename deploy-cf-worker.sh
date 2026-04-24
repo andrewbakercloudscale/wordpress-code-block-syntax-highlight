@@ -38,22 +38,21 @@ trap close_ssh EXIT
 echo "--- Connecting to Pi..."
 pi_ssh "echo 'OK'"
 
-# Read WP options: token, readiness slug, ntfy URL
+# Read WP options: token, ntfy URL, stored KV namespace ID
 echo "--- Reading WordPress options..."
 WP_CONFIG=$(printf '<?php
-$token     = get_option("csdt_uptime_token", "");
-$slug      = get_option("csdt_readiness_slug", "");
-$ntfy      = get_option("csdt_uptime_ntfy_url", get_option("csdt_scan_schedule_ntfy_url", ""));
+$token = get_option("csdt_uptime_token", "");
+$ntfy  = get_option("csdt_uptime_ntfy_url", get_option("csdt_scan_schedule_ntfy_url", ""));
+$kv_id = get_option("csdt_uptime_kv_id", "");
 if ($token === "") {
     $token = bin2hex(random_bytes(24));
     update_option("csdt_uptime_token", $token, false);
     echo "NEW_TOKEN\n";
 }
-$ready = rest_url("csdt/v1/ready" . ($slug ? "/" . $slug : ""));
-echo json_encode(compact("token", "slug", "ntfy", "ready"));
+echo json_encode(compact("token", "ntfy", "kv_id"));
 ' | run_wp_php)
 
-# Extract last JSON line (WP-CLI may output perf logs first)
+# Extract last JSON line
 JSON_LINE=$(echo "$WP_CONFIG" | grep '^{' | tail -1)
 if [[ -z "$JSON_LINE" ]]; then
     echo "ERROR: Could not read WP options."
@@ -62,16 +61,14 @@ if [[ -z "$JSON_LINE" ]]; then
 fi
 
 PING_TOKEN=$(echo "$JSON_LINE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['token'])")
-READY_URL=$(echo "$JSON_LINE"  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['ready'])")
 NTFY_URL=$(echo "$JSON_LINE"   | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['ntfy'])")
+KV_ID=$(echo "$JSON_LINE"      | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('kv_id',''))")
 SITE_URL="${WP_BASE_URL}"
-PING_URL="${WP_BASE_URL}/wp-admin/admin-ajax.php"
 
 echo "  Site URL  : ${SITE_URL}"
-echo "  Ping URL  : ${PING_URL}"
-echo "  Ready URL : ${READY_URL}"
 echo "  Ntfy URL  : ${NTFY_URL:-<none>}"
 echo "  Token     : ${PING_TOKEN:0:8}…"
+echo "  KV ID     : ${KV_ID:-<not yet created>}"
 
 # Resolve CF account ID from zone
 echo ""
@@ -88,6 +85,40 @@ if [[ -z "$CF_ACCOUNT_ID" ]]; then
 fi
 echo "  Account ID: ${CF_ACCOUNT_ID}"
 
+# Create or find the KV namespace used for watchdog state
+echo ""
+echo "--- Setting up KV namespace (csdt-uptime-state)..."
+if [[ -n "$KV_ID" ]]; then
+    echo "  Using stored KV namespace: ${KV_ID:0:8}..."
+else
+    KV_RESP=$(curl -s -X POST \
+        "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces" \
+        -H "X-Auth-Email: ${CF_EMAIL}" \
+        -H "X-Auth-Key: ${CF_KEY}" \
+        -H "Content-Type: application/json" \
+        -d '{"title": "csdt-uptime-state"}')
+    KV_ID=$(echo "$KV_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['result']['id'])" 2>/dev/null || echo "")
+    if [[ -z "$KV_ID" ]]; then
+        # Namespace title may already exist — find it
+        KV_LIST=$(curl -s \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces?per_page=100" \
+            -H "X-Auth-Email: ${CF_EMAIL}" \
+            -H "X-Auth-Key: ${CF_KEY}")
+        KV_ID=$(echo "$KV_LIST" | python3 -c "
+import sys,json
+for ns in json.load(sys.stdin).get('result',[]):
+    if ns.get('title') == 'csdt-uptime-state':
+        print(ns['id']); break
+" 2>/dev/null || echo "")
+    fi
+    if [[ -z "$KV_ID" ]]; then
+        echo "ERROR: Could not create or find KV namespace 'csdt-uptime-state'."
+        exit 1
+    fi
+    echo "  KV namespace created: ${KV_ID:0:8}..."
+    printf '<?php update_option("csdt_uptime_kv_id", "%s", false);' "$KV_ID" | run_wp_php 2>/dev/null || true
+fi
+
 # Build multipart payload to deploy worker
 WORKER_JS="${PLUGIN_DIR}/worker.js"
 [[ -f "$WORKER_JS" ]] || { echo "ERROR: worker.js not found at ${WORKER_JS}"; exit 1; }
@@ -99,11 +130,10 @@ print(json.dumps({
     'main_module': 'worker.js',
     'compatibility_date': '2024-11-01',
     'bindings': [
-        {'type': 'plain_text', 'name': 'SITE_URL',   'text': '${SITE_URL}'},
-        {'type': 'plain_text', 'name': 'PING_URL',   'text': '${PING_URL}'},
-        {'type': 'plain_text', 'name': 'READY_URL',  'text': '${READY_URL}'},
-        {'type': 'plain_text', 'name': 'PING_TOKEN', 'text': '${PING_TOKEN}'},
-        {'type': 'plain_text', 'name': 'NTFY_URL',   'text': '${NTFY_URL}'},
+        {'type': 'plain_text',   'name': 'SITE_URL',   'text': '${SITE_URL}'},
+        {'type': 'plain_text',   'name': 'PING_TOKEN', 'text': '${PING_TOKEN}'},
+        {'type': 'plain_text',   'name': 'NTFY_URL',   'text': '${NTFY_URL}'},
+        {'type': 'kv_namespace', 'name': 'STATE',      'namespace_id': '${KV_ID}'},
     ]
 }))
 ")
@@ -143,10 +173,58 @@ else
     echo "$CRON_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('errors',''))" 2>/dev/null
 fi
 
+# Enable workers.dev subdomain and store worker URL in WP
+echo ""
+echo "--- Enabling workers.dev subdomain..."
+curl -s -X POST \
+    "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/cloudscale-uptime/subdomain" \
+    -H "X-Auth-Email: ${CF_EMAIL}" \
+    -H "X-Auth-Key: ${CF_KEY}" \
+    -H "Content-Type: application/json" \
+    -d '{"enabled": true}' > /dev/null
+
+SUB_RESP=$(curl -s \
+    "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/subdomain" \
+    -H "X-Auth-Email: ${CF_EMAIL}" \
+    -H "X-Auth-Key: ${CF_KEY}")
+SUBDOMAIN=$(echo "$SUB_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['result']['subdomain'])" 2>/dev/null || echo "")
+if [[ -n "$SUBDOMAIN" ]]; then
+    WORKER_URL="https://cloudscale-uptime.${SUBDOMAIN}.workers.dev"
+    echo "  Worker URL: ${WORKER_URL}"
+    printf '<?php update_option("csdt_uptime_worker_url", "%s", false); update_option("csdt_uptime_enabled", "1", false);' "$WORKER_URL" | run_wp_php 2>/dev/null || true
+fi
+
+# Install host cron on Pi — triggers wp-cron.php via localhost every minute.
+# Must bypass Cloudflare: the public URL (https://site/wp-cron.php) is cached by CF
+# and returns a CF cache-HIT 200 without WordPress ever executing. Hitting localhost
+# directly ensures PHP-FPM processes the request and push_heartbeat() runs.
+# FPM health check is preserved: if FPM is down, nginx returns 502, curl exits
+# non-zero, no heartbeat is pushed, and the CF Worker correctly alerts.
+echo ""
+echo "--- Detecting nginx port on Pi..."
+NGINX_PORT=$(pi_ssh "docker port pi_nginx 80/tcp 2>/dev/null | head -1 | cut -d: -f2" || echo "")
+if [[ -z "$NGINX_PORT" ]]; then
+    echo "  WARNING: Could not detect nginx port — defaulting to 8082"
+    NGINX_PORT="8082"
+fi
+echo "  Nginx port: ${NGINX_PORT}"
+
+echo ""
+echo "--- Installing host cron for WP-Cron heartbeat via localhost (every minute)..."
+WP_HOST="${SITE_URL#https://}"
+WP_HOST="${WP_HOST#http://}"
+CRON_LINE="* * * * * curl -sf -m 10 -H 'Host: ${WP_HOST}' 'http://127.0.0.1:${NGINX_PORT}/wp-cron.php?doing_wp_cron' -o /dev/null 2>/dev/null"
+pi_ssh "( crontab -l 2>/dev/null | grep -v 'wp-cron.php'; echo '${CRON_LINE}' ) | crontab -"
+echo "  Cron installed: ${CRON_LINE}"
+
 echo ""
 echo "════════════════════════════════════════════════════════"
-echo " CloudScale Uptime Worker deployed."
-echo " Worker URL: https://cloudscale-uptime.${CF_ACCOUNT_ID:0:8}...workers.dev"
-echo " Probing:    ${READY_URL}"
-echo " Alerting:   ${NTFY_URL:-<none>}"
+echo " CloudScale Uptime Worker deployed (heartbeat watchdog)."
+echo " WordPress pushes heartbeat → ${WORKER_URL:-workers.dev URL}"
+echo " KV state:  ${KV_ID:0:8}... (csdt-uptime-state)"
+echo " Alerting:  ${NTFY_URL:-<none>}"
+echo " Host cron: curl localhost:${NGINX_PORT} (bypasses CF cache) every minute"
+echo "   502 = FPM down = no heartbeat = Worker alerts after 3 min"
+echo ""
+echo " The Worker fires ntfy if no heartbeat for >3 minutes."
 echo "════════════════════════════════════════════════════════"
