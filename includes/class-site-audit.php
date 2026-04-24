@@ -1665,6 +1665,9 @@ PROMPT;
         $bf_last_attempt  = is_array( $bf_log_raw ) && ! empty( $bf_log_raw )
             ? max( array_column( $bf_log_raw, 0 ) )
             : 0;
+        // Human-readable date label for use in cached finding strings — avoids
+        // stale "today" text when the cached result is viewed the following day.
+        $bf_scan_date     = wp_date( 'M j', $today_start );
 
         // ── SSH monitor ──
         $ssh_monitor_on        = get_option( 'csdt_ssh_monitor_enabled', '1' ) === '1';
@@ -1767,6 +1770,7 @@ PROMPT;
             'bf_attempts'         => $bf_attempts,
             'bf_lockout_mins'     => $bf_lockout,
             'bf_today_count'      => $bf_today_count,
+            'bf_scan_date'        => $bf_scan_date,
             'bf_last_attempt'     => $bf_last_attempt,
             'login_hide_on'       => $login_hide_on,
             'twofa_admins'        => $twofa_admins,
@@ -2206,15 +2210,16 @@ PROMPT;
             ];
         }
 
-        // ── Active brute-force attack detected today ──
+        // ── Active brute-force attack detected ──
         if ( ! empty( $d['bf_today_count'] ) && $d['bf_today_count'] >= 30 ) {
+            $bf_date = $d['bf_scan_date'] ?? wp_date( 'M j' );
             $findings[] = [
                 'category'        => 'Security',
                 'severity'        => 'critical',
-                'title'           => "Active brute-force attack in progress — {$d['bf_today_count']} failed login attempts today",
-                'detail'          => "More than 30 failed WordPress login attempts have been recorded today. This indicates an automated credential-stuffing or brute-force campaign is actively targeting this site. Distributed attacks use rotating IPs to evade per-IP blocks.",
+                'title'           => "Active brute-force attack in progress — {$d['bf_today_count']} failed login attempts on {$bf_date}",
+                'detail'          => "More than 30 failed WordPress login attempts were recorded on {$bf_date}. This indicates an automated credential-stuffing or brute-force campaign is actively targeting this site. Distributed attacks use rotating IPs to evade per-IP blocks.",
                 'fix'             => 'Enable 2FA immediately for all administrator accounts — it makes credential guessing irrelevant even if an attacker has your password. Consider adding a Web Application Firewall (WAF) such as Cloudflare to block attacking IPs at the edge.',
-                'affected'        => "{$d['bf_today_count']} attempts today",
+                'affected'        => "{$d['bf_today_count']} attempts on {$bf_date}",
                 'bf_last_attempt' => $d['bf_last_attempt'] ?? 0,
             ];
         }
