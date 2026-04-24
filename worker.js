@@ -1,6 +1,6 @@
 // CloudScale Uptime Monitor — heartbeat watchdog
-// WordPress pushes a POST heartbeat every minute via WP-Cron.
-// If no heartbeat arrives for >2 minutes, the site is treated as down.
+// WordPress pushes a POST heartbeat every 3 minutes via WP-Cron.
+// If no heartbeat arrives for >8 minutes, the site is treated as down.
 //
 // Required environment bindings:
 //   SITE_URL   — WordPress site URL (for alert messages)
@@ -13,7 +13,7 @@
 //   action=csdt_heartbeat — record a heartbeat from WordPress (WP-Cron calls this)
 //   (no action)           — manual test, returns current watchdog state
 
-const STALE_MS   = 3 * 60 * 1000;  // 3 min without heartbeat = site down
+const STALE_MS   = 8 * 60 * 1000;  // 8 min without heartbeat = site down
 const ALERT_COOL = 30 * 60 * 1000; // cooldown between repeat down-alerts
 
 async function watchdog(env, ctx) {
@@ -61,7 +61,7 @@ async function notify(env, recovered, downSecs) {
     },
     body: recovered
       ? 'Back online' + (dur ? ' — was down ' + dur : '')
-      : 'No heartbeat received for ' + (dur || '3m+'),
+      : 'No heartbeat received for ' + (dur || '8m+'),
   }).catch(() => {});
 }
 

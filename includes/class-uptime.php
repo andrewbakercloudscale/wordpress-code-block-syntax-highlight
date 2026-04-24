@@ -215,7 +215,7 @@ class CSDT_Uptime {
 
     public static function add_cron_schedules( array $schedules ): array {
         if ( ! isset( $schedules['csdt_minutely'] ) ) {
-            $schedules['csdt_minutely'] = [ 'interval' => 60, 'display' => 'Every Minute (CloudScale)' ];
+            $schedules['csdt_minutely'] = [ 'interval' => 180, 'display' => 'Every 3 Minutes (CloudScale)' ];
         }
         return $schedules;
     }
@@ -653,9 +653,9 @@ class CSDT_Uptime {
     private static function uptime_worker_js(): string {
         return <<<'JS'
 // CloudScale Uptime Monitor — heartbeat watchdog
-// WordPress pushes a POST heartbeat every minute via WP-Cron.
-// If no heartbeat arrives for >2 minutes, the site is treated as down.
-const STALE_MS=2*60*1000,ALERT_COOL=5*60*1000;
+// WordPress pushes a POST heartbeat every 3 minutes via WP-Cron.
+// If no heartbeat arrives for >8 minutes, the site is treated as down.
+const STALE_MS=8*60*1000,ALERT_COOL=30*60*1000;
 async function watchdog(env,ctx){
   const now=Date.now();
   const[hbStr,dsStr,laStr]=await Promise.all([env.STATE.get('hb'),env.STATE.get('ds'),env.STATE.get('la')]);
@@ -674,7 +674,7 @@ async function watchdog(env,ctx){
 async function notify(env,recovered,downSecs){
   if(!env.NTFY_URL)return;
   const dur=downSecs>0?fmtSecs(downSecs):null;
-  return fetch(env.NTFY_URL,{method:'POST',headers:{Title:(recovered?'Site Recovered: ':'Site Down: ')+env.SITE_URL,Priority:recovered?'default':'urgent',Tags:recovered?'white_check_mark':'rotating_light'},body:recovered?'Back online'+(dur?' — was down '+dur:''):'No heartbeat received for '+(dur||'2m+')}).catch(()=>{});
+  return fetch(env.NTFY_URL,{method:'POST',headers:{Title:(recovered?'Site Recovered: ':'Site Down: ')+env.SITE_URL,Priority:recovered?'default':'urgent',Tags:recovered?'white_check_mark':'rotating_light'},body:recovered?'Back online'+(dur?' — was down '+dur:''):'No heartbeat received for '+(dur||'8m+')}).catch(()=>{});
 }
 function fmtSecs(s){const m=Math.floor(s/60);return m>0?m+'m '+(s%60)+'s':s+'s';}
 export default{

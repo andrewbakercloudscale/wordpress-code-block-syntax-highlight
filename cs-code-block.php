@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Free AI penetration testing, brute-force protection, 2FA, passkeys, AI site audit, AI debugging, performance monitor, SMTP, SQL tool, server logs, vulnerability scanner, and Cloudflare uptime monitor. No subscription, no cloud dependency.
- * Version: 1.9.436
+ * Version: 1.9.450
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -54,7 +54,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.436';
+    const VERSION      = '1.9.450';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -243,6 +243,30 @@ class CloudScale_DevTools {
     }
 
     /**
+     * Registers a WP-Cron action with a Throwable safety wrapper.
+     *
+     * An uncaught exception inside a cron callback causes PHP-FPM to SIGSEGV,
+     * taking the entire worker pool down. This wrapper catches any Throwable,
+     * logs it, and returns cleanly so the worker survives.
+     */
+    private static function cron_action( string $hook, callable $callback ): void {
+        add_action( $hook, static function () use ( $hook, $callback ): void {
+            try {
+                $callback();
+            } catch ( \Throwable $e ) {
+                error_log( sprintf(
+                    '[CSDT] cron "%s" exception (%s): %s in %s line %d',
+                    $hook,
+                    get_class( $e ),
+                    $e->getMessage(),
+                    $e->getFile(),
+                    $e->getLine()
+                ) );
+            }
+        } );
+    }
+
+    /**
      * Registers all plugin hooks.
      *
      * @since  1.0.0
@@ -379,15 +403,15 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_test_account_create',          [ 'CSDT_Test_Accounts', 'ajax_create_test_account' ] );
         add_action( 'wp_ajax_csdt_test_account_revoke',          [ 'CSDT_Test_Accounts', 'ajax_revoke_test_account' ] );
         add_action( 'wp_ajax_csdt_test_account_settings_save',   [ 'CSDT_Test_Accounts', 'ajax_save_test_account_settings' ] );
-        add_action( 'csdt_cleanup_test_accounts',                [ 'CSDT_Test_Accounts', 'cleanup_expired_test_accounts' ] );
+        self::cron_action( 'csdt_cleanup_test_accounts',         [ 'CSDT_Test_Accounts', 'cleanup_expired_test_accounts' ] );
         add_action( 'wp_ajax_csdt_playwright_role_create',       [ 'CSDT_Test_Accounts', 'ajax_create_playwright_role' ] );
         add_action( 'wp_ajax_csdt_playwright_role_delete',       [ 'CSDT_Test_Accounts', 'ajax_delete_playwright_role' ] );
         add_action( 'wp_ajax_csdt_kill_test_sessions',           [ 'CSDT_Test_Accounts', 'ajax_kill_test_sessions' ] );
         add_action( 'wp_ajax_csdt_regen_test_secret',            [ 'CSDT_Test_Accounts', 'ajax_regen_test_secret' ] );
         add_action( 'rest_api_init',                             [ 'CSDT_Test_Accounts', 'register_rest_routes' ] );
-        add_action( 'csdt_scheduled_scan',                      [ 'CSDT_Site_Audit', 'run_scheduled_scan' ] );
-        add_action( 'csdt_ssh_monitor',                         [ 'CSDT_Monitor', 'monitor_ssh_failures' ] );
-        add_action( 'csdt_php_error_monitor',                   [ 'CSDT_Monitor', 'monitor_php_errors' ] );
+        self::cron_action( 'csdt_scheduled_scan',                [ 'CSDT_Site_Audit', 'run_scheduled_scan' ] );
+        self::cron_action( 'csdt_ssh_monitor',                  [ 'CSDT_Monitor', 'monitor_ssh_failures' ] );
+        self::cron_action( 'csdt_php_error_monitor',            [ 'CSDT_Monitor', 'monitor_php_errors' ] );
         add_action( 'wp_ajax_csdt_php_error_monitor_save',      [ 'CSDT_Monitor', 'ajax_php_error_monitor_save' ] );
         add_action( 'wp_ajax_csdt_fpm_monitor_save',             [ 'CSDT_Monitor', 'ajax_fpm_monitor_save' ] );
         add_action( 'wp_ajax_csdt_fpm_worker_status',            [ 'CSDT_Monitor', 'ajax_fpm_worker_status' ] );
@@ -399,7 +423,7 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_nopriv_csdt_opcache_flush',          [ 'CSDT_Monitor', 'ajax_opcache_flush' ] );
         add_action( 'wp_ajax_csdt_sql_http_fix',                  [ __CLASS__, 'ajax_sql_http_fix' ] );
         // FPM report uses the REST endpoint csdt/v1/fpm-report (CSDT_Monitor::rest_fpm_report).
-        add_action( 'csdt_threat_monitor',                      [ 'CSDT_Threat_Monitor', 'monitor_threats' ] );
+        self::cron_action( 'csdt_threat_monitor',               [ 'CSDT_Threat_Monitor', 'monitor_threats' ] );
         add_action( 'wp_ajax_csdt_threat_monitor_save',         [ 'CSDT_Threat_Monitor', 'ajax_threat_monitor_save' ] );
         add_action( 'wp_ajax_csdt_threat_integrity_reset',      [ 'CSDT_Threat_Monitor', 'ajax_threat_integrity_reset' ] );
         add_action( 'user_register',                            [ 'CSDT_Threat_Monitor', 'on_user_registered' ] );
@@ -420,7 +444,7 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_uptime_save_settings',        [ 'CSDT_Uptime', 'ajax_uptime_save_settings' ] );
         add_action( 'wp_ajax_csdt_uptime_test_endpoint',        [ 'CSDT_Uptime', 'ajax_uptime_test_endpoint' ] );
         add_action( 'wp_ajax_csdt_uptime_pause_heartbeat',      [ 'CSDT_Uptime', 'ajax_uptime_pause_heartbeat' ] );
-        add_action( 'csdt_uptime_heartbeat',                    [ 'CSDT_Uptime', 'push_heartbeat' ] );
+        self::cron_action( 'csdt_uptime_heartbeat',             [ 'CSDT_Uptime', 'push_heartbeat' ] );
         add_filter( 'cron_schedules',                           [ 'CSDT_Uptime', 'add_cron_schedules' ] );
         // Ensure heartbeat cron is scheduled whenever uptime is enabled
         if ( get_option( 'csdt_uptime_enabled', '0' ) === '1'
@@ -2985,12 +3009,14 @@ class CloudScale_DevTools {
 
                 <div id="cs-bf-log-wrap" class="cs-bf-log-wrap">
                     <div class="cs-bf-log-header">
-                        <span class="cs-bf-log-title">📊 <?php esc_html_e( 'Failed Login Attempts — Last 14 Days', 'cloudscale-devtools' ); ?></span>
+                        <span class="cs-bf-log-title">📊 <?php esc_html_e( 'Failed Login Attempts - Last 14 Days', 'cloudscale-devtools' ); ?></span>
                         <span id="cs-bf-log-total" class="cs-bf-log-total"></span>
                     </div>
-                    <div id="cs-bf-chart" class="cs-bf-chart"></div>
-                    <div id="cs-bf-table-wrap" class="cs-bf-table-wrap">
-                        <div class="cs-bf-loading"><?php esc_html_e( 'Loading…', 'cloudscale-devtools' ); ?></div>
+                    <div class="cs-bf-layout">
+                        <div id="cs-bf-chart" class="cs-bf-chart"></div>
+                        <div id="cs-bf-table-wrap" class="cs-bf-table-wrap">
+                            <div class="cs-bf-loading"><?php esc_html_e( 'Loading…', 'cloudscale-devtools' ); ?></div>
+                        </div>
                     </div>
                 </div>
 
@@ -4178,12 +4204,12 @@ class CloudScale_DevTools {
         <div class="cs-panel" id="cs-panel-uptime-monitor">
             <div class="cs-section-header cs-section-header-green">
                 <span>⏱ <?php esc_html_e( 'Uptime Monitor', 'cloudscale-devtools' ); ?></span>
-                <span class="cs-header-hint"><?php esc_html_e( 'WordPress pushes a heartbeat to a Cloudflare Worker every minute. No heartbeat = site down alert.', 'cloudscale-devtools' ); ?></span>
+                <span class="cs-header-hint"><?php esc_html_e( 'WordPress pushes a heartbeat to a Cloudflare Worker every 3 minutes. No heartbeat for 8 minutes = site down alert.', 'cloudscale-devtools' ); ?></span>
                 <?php self::render_explain_btn( 'uptime-monitor', 'Uptime Monitor', [
                     [ 'name' => 'Setup — step by step', 'rec' => 'Required',    'html' => '<ol style="margin:0;padding-left:1.4em;line-height:1.8;"><li><strong>Cloudflare credentials</strong> — Enter your Cloudflare Zone ID and an API Token with <code>Workers:Edit</code> and <code>Workers KV Storage:Edit</code> permissions, then click <em>Save Settings</em>.</li><li><strong>ntfy.sh Alert URL</strong> (optional) — Enter your ntfy.sh topic URL to receive push notifications when the site goes down or recovers.</li><li><strong>Deploy Worker</strong> — Click <em>Deploy Worker to Cloudflare</em>. This creates a KV namespace, uploads the Worker, and schedules the <code>* * * * *</code> cron trigger.</li><li><strong>Host cron</strong> — Run <code>deploy-cf-worker.sh</code> on your server to install a host cron that hits WordPress via localhost every minute (bypasses Cloudflare cache). The cron line is also shown in the Host cron section below.</li><li><strong>Test</strong> — Click <em>Test Endpoint</em> to send a heartbeat to the Worker immediately and confirm the connection.</li></ol>' ],
-                    [ 'name' => 'How it works',          'rec' => 'Overview',    'html' => 'A Pi host cron hits <code>http://127.0.0.1:PORT/wp-cron.php</code> (localhost, bypasses Cloudflare cache) every minute. PHP-FPM processes the request, WP-Cron runs, and WordPress pushes a small heartbeat POST to the Cloudflare Worker. The Worker stores the timestamp in CF KV and its own cron checks every minute: no heartbeat for 3+ minutes = site down, ntfy fires. Recovery alert is sent when heartbeats resume. Localhost is required because Cloudflare caches the public wp-cron.php URL and returns a cached 200 without PHP ever executing.' ],
-                    [ 'name' => 'Down vs recovery',      'rec' => 'Overview',    'html' => 'Down alerts fire after 3 consecutive missed heartbeats (~3 min). Repeat alerts are throttled to once every 5 minutes while the site remains down. Recovery fires as soon as one heartbeat arrives after a down period, with the total outage duration included in the message.' ],
-                    [ 'name' => 'Test Alert (pause 5 min)', 'rec' => 'Testing',  'html' => 'Click <em>Test Alert (pause 5 min)</em> to pause heartbeats for 5 minutes. After about 3 minutes of silence the Cloudflare Worker will treat the site as down and fire your ntfy down alert. When the 5-minute pause ends, heartbeats resume automatically and you should receive a recovery alert. A live countdown is shown while paused. Click <em>Cancel Pause</em> at any time to resume heartbeats immediately (you will still get a recovery alert once the next heartbeat is sent).' ],
+                    [ 'name' => 'How it works',          'rec' => 'Overview',    'html' => 'A Pi host cron hits <code>http://127.0.0.1:PORT/wp-cron.php</code> (localhost, bypasses Cloudflare cache) every minute. PHP-FPM processes the request, WP-Cron runs, and WordPress pushes a small heartbeat POST to the Cloudflare Worker every 3 minutes. The Worker stores the timestamp in CF KV and its own cron checks every minute: no heartbeat for 8+ minutes = site down, ntfy fires. Recovery alert is sent when heartbeats resume. Localhost is required because Cloudflare caches the public wp-cron.php URL and returns a cached 200 without PHP ever executing.' ],
+                    [ 'name' => 'Down vs recovery',      'rec' => 'Overview',    'html' => 'Down alerts fire after ~8 minutes of missed heartbeats. Repeat alerts are throttled to once every 30 minutes while the site remains down. Recovery fires as soon as one heartbeat arrives after a down period, with the total outage duration included in the message.' ],
+                    [ 'name' => 'Test Alert (pause 5 min)', 'rec' => 'Testing',  'html' => 'Click <em>Test Alert (pause 5 min)</em> to pause heartbeats for 5 minutes. After about 8 minutes of silence the Cloudflare Worker will treat the site as down and fire your ntfy down alert. When the 5-minute pause ends, heartbeats resume automatically and you should receive a recovery alert. A live countdown is shown while paused. Click <em>Cancel Pause</em> at any time to resume heartbeats immediately (you will still get a recovery alert once the next heartbeat is sent).' ],
                     [ 'name' => 'Alert notifications',   'rec' => 'Recommended', 'html' => 'Enter your ntfy.sh topic URL (e.g. <code>https://ntfy.sh/your-topic</code>) to receive instant push notifications. Alerts fire from the Cloudflare edge — they arrive even if your PHP, database, and server are all offline, because the down detection happens in the Worker watching for stale heartbeats.' ],
                     [ 'name' => 'KV storage',            'rec' => 'Info',        'html' => 'A Cloudflare KV namespace (<code>csdt-uptime-state</code>) is created automatically on first deploy. It stores three small values: last heartbeat timestamp, down-since timestamp, and last-alert timestamp. The deploy script and Deploy button both handle KV creation — no manual setup needed.' ],
                 ] ); ?>
@@ -4191,7 +4217,7 @@ class CloudScale_DevTools {
             <div class="cs-panel-body">
                 <div>
                     <p style="color:#4b5563;margin:0 0 6px;line-height:1.65;font-size:.95em;">
-                        <?php esc_html_e( 'A host cron job hits WordPress locally every minute (bypassing Cloudflare cache), triggering a heartbeat push to the Cloudflare Worker. If no heartbeat arrives for 3 minutes, the Worker fires a down alert via ntfy.sh. When heartbeats resume, a recovery alert is sent automatically with outage duration.', 'cloudscale-devtools' ); ?>
+                        <?php esc_html_e( 'A host cron job hits WordPress locally every minute (bypassing Cloudflare cache), triggering a heartbeat push to the Cloudflare Worker every 3 minutes. If no heartbeat arrives for 8 minutes, the Worker fires a down alert via ntfy.sh. When heartbeats resume, a recovery alert is sent automatically with outage duration.', 'cloudscale-devtools' ); ?>
                     </p>
                     <div id="csdt-uptime-setup-wrap">
                         <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:16px 20px;margin-bottom:12px;">
@@ -4233,11 +4259,11 @@ class CloudScale_DevTools {
                             <div id="csdt-uptime-manual-wrap" style="margin-top:12px;"></div>
                         </details>
                         <details style="margin-top:10px;" open>
-                            <summary style="cursor:pointer;font-size:.85em;font-weight:600;color:#374151;">⏱ Host cron — reliable every-minute heartbeats</summary>
+                            <summary style="cursor:pointer;font-size:.85em;font-weight:600;color:#374151;">⏱ Host cron — reliable every-3-minute heartbeats</summary>
                             <div style="margin-top:10px;background:#f1f5f9;border:1px solid #d1d5db;border-radius:6px;padding:12px 14px;">
                                 <p style="margin:0 0 6px;font-size:.82em;color:#475569;"><?php esc_html_e( 'Must use localhost (not the public URL) — Cloudflare caches wp-cron.php and returns a cached 200 without WordPress ever executing. Hitting nginx directly bypasses CF. Replace PORT with your nginx host port (run', 'cloudscale-devtools' ); ?> <code>docker port pi_nginx 80/tcp</code><?php esc_html_e( '):', 'cloudscale-devtools' ); ?></p>
                                 <code id="csdt-uptime-cron-line" style="display:block;background:#fff;border:1px solid #d1d5db;border-radius:4px;padding:8px 12px;font-size:.8em;color:#16a34a;word-break:break-all;margin-bottom:8px;">* * * * * curl -sf -m 10 -H 'Host: <?php echo esc_html( wp_parse_url( get_site_url(), PHP_URL_HOST ) ); ?>' 'http://127.0.0.1:PORT/wp-cron.php?doing_wp_cron' -o /dev/null 2&gt;/dev/null</code>
-                                <p style="margin:0;font-size:.78em;color:#64748b;"><?php esc_html_e( 'If FPM is down nginx returns 502, curl exits non-zero, WP-Cron does not run, no heartbeat is pushed, and the CF Worker alerts after 3 minutes. deploy-cf-worker.sh detects the port and installs this automatically.', 'cloudscale-devtools' ); ?></p>
+                                <p style="margin:0;font-size:.78em;color:#64748b;"><?php esc_html_e( 'If FPM is down nginx returns 502, curl exits non-zero, WP-Cron does not run, no heartbeat is pushed, and the CF Worker alerts after 8 minutes. deploy-cf-worker.sh detects the port and installs this automatically.', 'cloudscale-devtools' ); ?></p>
                             </div>
                         </details>
                     </div>
