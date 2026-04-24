@@ -8,8 +8,8 @@ helpLib.run({
     restPass:   process.env.WP_REST_PASS,
     docsDir:    process.env.WP_DOCS_DIR,
 
-    pluginName: 'CloudScale Cyber and Devtools — Free WordPress Security, AI Penetration Testing &amp; Developer Toolkit',
-    pluginDesc: 'The only free WordPress plugin that runs a full AI penetration test of your site using Anthropic Claude 4 or Google Gemini 2.5 Pro — the same AI models security consultants charge thousands to access. Combines brute-force login protection, two-factor authentication (TOTP, email &amp; passkeys/WebAuthn), hidden login URL, AI site content audit, AI debugging assistant, live PHP-FPM performance monitor, SMTP mailer, read-only SQL query tool, server log viewer, plugin CVE vulnerability scanner, Cloudflare uptime monitor with deep readiness probe (DB + FPM + WP health), and syntax-highlighted code blocks. Replaces 8+ paid plugins. No subscription, no SaaS, no data leaving your server.',
+    pluginName: 'CloudScale Cyber and Devtools - Free WordPress Security, AI Penetration Testing &amp; Developer Toolkit',
+    pluginDesc: 'The only free WordPress plugin that runs a full AI penetration test of your site using Anthropic Claude 4 or Google Gemini 2.5 Pro - the same AI models security consultants charge thousands to access. Combines brute-force login protection, two-factor authentication (TOTP, email &amp; passkeys/WebAuthn), hidden login URL, AI site content audit, AI debugging assistant, live PHP-FPM performance monitor, SMTP mailer, read-only SQL query tool, server log viewer, plugin CVE vulnerability scanner, Cloudflare uptime monitor with deep readiness probe (DB + FPM + WP health), and syntax-highlighted code blocks. Replaces 8+ paid plugins. No subscription, no SaaS, no data leaving your server.',
     seoTitle:  'CloudScale Cyber & Devtools | Free WordPress AI Security Scanner, 2FA & Developer Toolkit',
     seoDesc:   'Free WordPress security plugin: AI penetration testing with Claude 4 & Gemini, brute-force protection, 2FA, passkeys, AI site audit, AI debugging, PHP-FPM monitor, SMTP, SQL tool, server logs, CVE scanner, Cloudflare uptime. No subscription.',
 
@@ -28,7 +28,7 @@ helpLib.run({
         'isAccessibleForFree': true,
         'license': 'https://www.gnu.org/licenses/gpl-2.0.html',
     },
-    pageTitle:  'CloudScale Cyber & Devtools — Free AI Penetration Testing & WordPress Security Plugin',
+    pageTitle:  'CloudScale Cyber & Devtools - Free AI Penetration Testing & WordPress Security Plugin',
     pageSlug:   'cloudscale-cyber-devtools-help',
     downloadUrl: 'https://your-s3-bucket.s3.af-south-1.amazonaws.com/cloudscale-devtools.zip',
     repoUrl:     'https://github.com/andrewbakercloudscale/cloudscale-cyber-devtools',
@@ -44,7 +44,7 @@ helpLib.run({
 <div style="position:relative;">
 <p style="margin:0 0 8px;font-size:.82em;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#a5b4fc;">Free &amp; Open Source · No Subscription · Your Own API Key</p>
 <h1 style="margin:0 0 16px;font-size:2em;font-weight:900;line-height:1.2;color:#fff;background:transparent!important;padding:0!important;border:none!important;">Stop Paying $300/Year for a Plugin Stack That Doesn't Work Together.</h1>
-<p style="margin:0 0 18px;font-size:1.1em;line-height:1.75;color:#cbd5e1;max-width:700px;">CloudScale replaces your security scanner, 2FA plugin, SMTP mailer, code highlighting plugin, SQL tool, and log viewer. <strong style="color:#fff;">One free, open-source plugin</strong>, running entirely on your own server. No subscriptions, no CDN dependencies, no data leaving your site without your say-so. Powered by <strong style="color:#fff;">Anthropic Claude 4</strong> and <strong style="color:#fff;">Google Gemini 2.5 Pro</strong> — frontier AI sent direct from your server to the provider's API.</p>
+<p style="margin:0 0 18px;font-size:1.1em;line-height:1.75;color:#cbd5e1;max-width:700px;">CloudScale replaces your security scanner, 2FA plugin, SMTP mailer, code highlighting plugin, SQL tool, and log viewer. <strong style="color:#fff;">One free, open-source plugin</strong>, running entirely on your own server. No subscriptions, no CDN dependencies, no data leaving your site without your say-so. Powered by <strong style="color:#fff;">Anthropic Claude 4</strong> and <strong style="color:#fff;">Google Gemini 2.5 Pro</strong> - frontier AI sent direct from your server to the provider's API.</p>
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px;">
 <span style="background:rgba(255,255,255,.15);color:#e2e8f0;font-size:.82em;font-weight:600;padding:5px 14px;border-radius:20px;">✓ Replaces 8+ plugins</span>
 <span style="background:rgba(255,255,255,.15);color:#e2e8f0;font-size:.82em;font-weight:600;padding:5px 14px;border-radius:20px;">✓ Saves $200–$400/year</span>
@@ -79,7 +79,7 @@ helpLib.run({
 <div style="display:grid;grid-template-columns:24px 1fr 1fr;gap:10px;align-items:center;background:#fff;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
 <span style="font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">3</span>
 <span style="color:#dc2626;font-size:.92em;line-height:1.5;">Conflicts between overlapping plugin features</span>
-<span style="color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Built as a system — designed to work together</span>
+<span style="color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Built as a system - designed to work together</span>
 </div>
 <div style="display:grid;grid-template-columns:24px 1fr 1fr;gap:10px;align-items:center;background:#f8fafc;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
 <span style="font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">4</span>
@@ -134,7 +134,7 @@ helpLib.run({
 </table>
 </div>
 
-<p style="font-size:1.05em;color:#374151;margin:0 0 24px;line-height:1.75;">This isn't a feature comparison where CloudScale cuts corners to hit a free price point. It's a full implementation of each category — and the AI security audit isn't a cut-down version of a paid product. It's built on frontier models that outperform the signature-based scanners you're currently paying for.</p>
+<p style="font-size:1.05em;color:#374151;margin:0 0 24px;line-height:1.75;">This isn't a feature comparison where CloudScale cuts corners to hit a free price point. It's a full implementation of each category - and the AI security audit isn't a cut-down version of a paid product. It's built on frontier models that outperform the signature-based scanners you're currently paying for.</p>
 
 <h2 style="font-size:1.5em;font-weight:800;color:#0f172a;margin:0 0 14px;background:transparent!important;padding:0!important;border:none!important;">Why the Existing Security Tools Fall Short</h2>
 
@@ -295,11 +295,11 @@ helpLib.run({
 <h3 style="margin:0 0 10px;font-size:1em;font-weight:700;color:#166534;background:transparent!important;padding:0!important;border:none!important;">Safe to try: what CloudScale does not do</h3>
 <ul style="margin:0;padding-left:20px;color:#374151;font-size:.93em;line-height:1.9;">
 <li>Does not modify any existing plugin settings or post content</li>
-<li>No external CDN or third-party script dependencies — everything runs on your own server</li>
+<li>No external CDN or third-party script dependencies - everything runs on your own server</li>
 <li>Your site data goes direct to the AI provider API you choose; CloudScale never sees it</li>
-<li>Fully open-source — every line of code is on GitHub and auditable by anyone</li>
+<li>Fully open-source - every line of code is on GitHub and auditable by anyone</li>
 <li>Clean uninstall: removes all plugin data from the database on deletion, no pollution</li>
-<li>Does not conflict with existing security plugins — runs alongside Wordfence, iThemes, etc.</li>
+<li>Does not conflict with existing security plugins - runs alongside Wordfence, iThemes, etc.</li>
 </ul>
 </div>
 
@@ -352,9 +352,9 @@ helpLib.run({
 <li><a href="#cs-section-code-block" style="color:#6366f1;">Code Block</a> themes, languages, and usage</li>
 <li><a href="#cs-section-sql-tool" style="color:#6366f1;">SQL Query Tool</a> and built-in queries</li>
 <li><a href="#cs-section-server-logs" style="color:#6366f1;">Server Logs</a> viewer and tail mode</li>
-<li><a href="#cs-section-optimizer" style="color:#6366f1;">Plugin Optimizer</a> — plugin stack scanner and AI debugging</li>
-<li><a href="#cs-section-cs-monitor" style="color:#6366f1;">CS Monitor</a> — per-page performance overlay for admins</li>
-<li><a href="#cs-section-fpm-monitor" style="color:#6366f1;">PHP-FPM Monitor</a> — live worker status and saturation alerting</li>
+<li><a href="#cs-section-optimizer" style="color:#6366f1;">Plugin Optimizer</a> - plugin stack scanner and AI debugging</li>
+<li><a href="#cs-section-cs-monitor" style="color:#6366f1;">CS Monitor</a> - per-page performance overlay for admins</li>
+<li><a href="#cs-section-fpm-monitor" style="color:#6366f1;">PHP-FPM Monitor</a> - live worker status and saturation alerting</li>
 </ul>
 </div>
 </div>
@@ -364,13 +364,13 @@ helpLib.run({
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin:0 0 32px;">
 <div style="background:#f0f9ff;border-top:3px solid #0e6b8f;border-radius:8px;padding:22px 22px;">
 <h3 style="margin:0 0 10px;font-size:1em;font-weight:700;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">For Developers</h3>
-<p style="margin:0 0 12px;color:#374151;font-size:.93em;line-height:1.7;">You manage multiple client sites. You need a SQL query tool, server log viewer, syntax-highlighted code blocks, and SMTP in one place — not six separate plugins to install, configure, and update on every new site.</p>
+<p style="margin:0 0 12px;color:#374151;font-size:.93em;line-height:1.7;">You manage multiple client sites. You need a SQL query tool, server log viewer, syntax-highlighted code blocks, and SMTP in one place - not six separate plugins to install, configure, and update on every new site.</p>
 <p style="margin:0;color:#374151;font-size:.93em;line-height:1.7;">CloudScale gives you the full dev toolkit. The AI audit means every client site gets enterprise-grade security analysis at zero cost to you or them.</p>
 </div>
 <div style="background:#fff7ed;border-top:3px solid #ea580c;border-radius:8px;padding:22px 22px;">
 <h3 style="margin:0 0 10px;font-size:1em;font-weight:700;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">For Site Owners</h3>
 <p style="margin:0 0 12px;color:#374151;font-size:.93em;line-height:1.7;">You run a WooCommerce store or a content site. Security isn't your day job, but getting hacked would be catastrophic. You need protection that works without requiring you to understand every CVE or hardening flag.</p>
-<p style="margin:0;color:#374151;font-size:.93em;line-height:1.7;">Run the AI audit once. Work through Quick Fixes. Enable 2FA. You're done — and better protected than most sites paying $300/year for plugin subscriptions.</p>
+<p style="margin:0;color:#374151;font-size:.93em;line-height:1.7;">Run the AI audit once. Work through Quick Fixes. Enable 2FA. You're done - and better protected than most sites paying $300/year for plugin subscriptions.</p>
 </div>
 <div style="background:#fdf4ff;border-top:3px solid #9333ea;border-radius:8px;padding:22px 22px;">
 <h3 style="margin:0 0 10px;font-size:1em;font-weight:700;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">For Agencies</h3>
@@ -381,8 +381,8 @@ helpLib.run({
 
     sections: [
         { id: 'hide-login', label: 'Hide Login URL',        file: 'panel-hide-login.png',  tabSelector: 'a[href*="tab=login"]',    elementSelector: '#cs-panel-hide-login',
-          intro: 'Moves your WordPress login page from the default <code>/wp-login.php</code> to a secret URL you choose. Bots and automated attack scripts probe the default path thousands of times a day — if they can\'t find the login form, they can\'t attack it.',
-          altText: 'WordPress Hide Login URL settings panel — move wp-login.php to a secret URL to block automated bot attacks',
+          intro: 'Moves your WordPress login page from the default <code>/wp-login.php</code> to a secret URL you choose. Bots and automated attack scripts probe the default path thousands of times a day - if they can\'t find the login form, they can\'t attack it.',
+          altText: 'WordPress Hide Login URL settings panel - move wp-login.php to a secret URL to block automated bot attacks',
           jsBeforeShot: () => {
             var s = document.getElementById('cs-login-slug');
             if (s) s.value = 'your-secret-slug';
@@ -390,13 +390,13 @@ helpLib.run({
             if (u) u.textContent = window.location.origin + '/your-secret-slug/';
           } },
         { id: '2fa',        label: 'Two-Factor Auth',       file: 'panel-2fa.png',         tabSelector: 'a[href*="tab=login"]',    elementSelector: '#cs-panel-2fa',
-          intro: 'Adds a second authentication step after the password so a stolen or leaked password alone is never enough to break in. Supports email OTP, authenticator apps (TOTP), and passkeys — all three methods included free.',
+          intro: 'Adds a second authentication step after the password so a stolen or leaked password alone is never enough to break in. Supports email OTP, authenticator apps (TOTP), and passkeys - all three methods included free.',
           altText: 'WordPress two-factor authentication settings with email OTP, TOTP authenticator app, and passkeys' },
         { id: 'passkeys',   label: 'Passkeys (WebAuthn)',   file: 'panel-passkeys.png',    tabSelector: 'a[href*="tab=login"]',    elementSelector: '#cs-panel-passkeys',
-          intro: 'Replace passwords entirely with biometric login: Face ID, Touch ID, Windows Hello, or a hardware security key. Passkeys are cryptographically bound to your exact domain — unlike TOTP codes, they cannot be phished by a fake login page.',
+          intro: 'Replace passwords entirely with biometric login: Face ID, Touch ID, Windows Hello, or a hardware security key. Passkeys are cryptographically bound to your exact domain - unlike TOTP codes, they cannot be phished by a fake login page.',
           altText: 'WordPress passkeys WebAuthn registration supporting Face ID, Touch ID and hardware security key login' },
         { id: 'security',   label: 'AI Cyber Audit',        file: 'panel-security.png',    tabSelector: 'a[href*="tab=security"]', elementSelector: '#cs-vuln-results',
-          intro: 'Uses frontier AI — Anthropic Claude or Google Gemini — to analyse your entire WordPress installation and return a prioritised, scored security report in under 60 seconds. Unlike signature-based scanners, the AI reasons from first principles: it reads your actual configuration and code, identifies risk combinations no database can match, and gives you specific fix steps for your exact setup.',
+          intro: 'Uses frontier AI - Anthropic Claude or Google Gemini - to analyse your entire WordPress installation and return a prioritised, scored security report in under 60 seconds. Unlike signature-based scanners, the AI reasons from first principles: it reads your actual configuration and code, identifies risk combinations no database can match, and gives you specific fix steps for your exact setup.',
           altText: 'WordPress AI security audit showing a perfect score with Claude 4 and Gemini 2.5 Pro on a free security plugin',
           jsBeforeShot: () => {
             // Inject demo data: score 100, no real findings
@@ -430,7 +430,7 @@ helpLib.run({
                 var wrap = btn.closest('div[style*="flex-shrink"]') || btn.parentElement;
                 if (wrap) wrap.innerHTML = '<span style="font-size:12px;color:#16a34a;font-weight:600;">Fixed \u2713</span>';
             });
-            // Hide AI settings form (scope to security panel — .cs-sec-settings appears in other panels too)
+            // Hide AI settings form (scope to security panel - .cs-sec-settings appears in other panels too)
             var panel = document.getElementById('cs-panel-security');
             if (panel) {
                 var ctrl = panel.querySelector('.cs-sec-settings');
@@ -445,49 +445,71 @@ helpLib.run({
           }
         },
         { id: 'site-audit', label: 'AI Site Auditor',        file: 'panel-site-audit.png',  tabSelector: 'a[href*="tab=site-audit"]', elementSelector: '#cs-panel-site-audit',
-          intro: 'One button scans all your published content and database, then returns a prioritised list of SEO gaps, thin content, missing images, database bloat, and security misconfigurations — each with a specific fix instruction. No external crawlers, no data sent to third parties, no Screaming Frog licence required.',
+          intro: 'One button scans all your published content and database, then returns a prioritised list of SEO gaps, thin content, missing images, database bloat, and security misconfigurations - each with a specific fix instruction. No external crawlers, no data sent to third parties, no Screaming Frog licence required.',
           altText: 'WordPress AI site auditor scanning SEO, content, performance, and database health with prioritised findings' },
         { id: 'code-block', label: 'Code Block',             file: 'panel-code-block.png',  tabSelector: 'a[href*="tab=migrate"]', elementSelector: '#cs-panel-code-settings',
-          intro: 'Syntax-highlighted code blocks powered by highlight.js, running entirely on your own server with zero CDN calls. Supports 190+ languages and 14 professional colour themes — completely free, with no impact on your Core Web Vitals score.',
+          intro: 'Syntax-highlighted code blocks powered by highlight.js, running entirely on your own server with zero CDN calls. Supports 190+ languages and 14 professional colour themes - completely free, with no impact on your Core Web Vitals score.',
           altText: 'WordPress syntax-highlighted code block settings with 190 languages, 14 themes, no CDN, completely free' },
         { id: 'migrator',   label: 'Code Block Migrator',   file: 'panel-migrator.png',    tabSelector: 'a[href*="tab=migrate"]', elementSelector: '#cs-panel-migrator',
-          intro: 'Converts all posts using legacy code block formats — WordPress core blocks, SyntaxHighlighter, Enlighter shortcodes — to CloudScale blocks in a single batch operation. Scan → preview the diff per post → migrate everything in one click, with no manual post editing.',
+          intro: 'Converts all posts using legacy code block formats - WordPress core blocks, SyntaxHighlighter, Enlighter shortcodes - to CloudScale blocks in a single batch operation. Scan → preview the diff per post → migrate everything in one click, with no manual post editing.',
           altText: 'WordPress code block migrator for batch converting from Enlighter, SyntaxHighlighter, and other plugins' },
         { id: 'sql-tool',   label: 'SQL Query Tool',        file: 'panel-sql-tool.png',    tabSelector: 'a[href*="tab=debug"]',   elementSelector: '#cs-panel-sql',
-          intro: 'A read-only SQL query interface inside wp-admin — inspect tables, check row counts, trace slow queries, and find database bloat without phpMyAdmin, SSH access, or exposing your database port. Architecturally impossible to delete or modify data.',
+          intro: 'A read-only SQL query interface inside wp-admin - inspect tables, check row counts, trace slow queries, and find database bloat without phpMyAdmin, SSH access, or exposing your database port. Architecturally impossible to delete or modify data.',
           altText: 'WordPress read-only SQL query tool for safe database inspection inside wp-admin without phpMyAdmin' },
         { id: 'server-logs',label: 'Server Logs',           file: 'panel-server-logs.png', tabSelector: 'a[href*="tab=debug"]',   elementSelector: '#cs-panel-logs',
-          intro: 'Browse your PHP error log, WordPress debug log, and web server logs directly in the dashboard — with live search, severity filtering, and auto-refresh tail mode. No SSH, no cPanel, no asking your hosting provider to email you a file.',
+          intro: 'Browse your PHP error log, WordPress debug log, and web server logs directly in the dashboard - with live search, severity filtering, and auto-refresh tail mode. No SSH, no cPanel, no asking your hosting provider to email you a file.',
           altText: 'WordPress server log viewer for PHP error logs, debug logs, and web server logs without SSH access' },
-        { id: 'optimizer',  label: 'Plugin Optimizer',      file: 'panel-optimizer.png',   tabSelector: 'a[href*="tab=optimizer"]',  elementSelector: '#cs-panel-optimizer',
+        { id: 'optimizer',  label: 'Plugin Optimizer',      file: 'panel-optimizer.png',   tabSelector: 'a[href*="tab=optimizer"]',  elementSelector: '.cs-tab-content.active',
           intro: 'Two tools in one tab: a plugin stack scanner that maps your installed plugins against everything CloudScale already replaces (so you know exactly which ones to remove), and an AI debugging assistant that diagnoses PHP errors, stack traces, and WordPress warnings instantly with step-by-step fix instructions.',
           altText: 'WordPress plugin stack scanner showing which plugins CloudScale replaces with AI debugging assistant' },
         { id: 'cs-monitor', label: 'CS Monitor',             file: 'panel-cs-monitor.png',  tabSelector: 'a[href*="tab=migrate"]', elementSelector: '#cs-panel-code-settings',
-          intro: 'A floating DevTools-style performance panel that appears on every WordPress admin screen and frontend page for logged-in administrators. Surfaces database queries, HTTP calls, hook timings, PHP errors, assets, and template resolution in one overlay — without switching tools or tailing log files.',
+          intro: 'A floating DevTools-style performance panel that appears on every WordPress admin screen and frontend page for logged-in administrators. Surfaces database queries, HTTP calls, hook timings, PHP errors, assets, and template resolution in one overlay - without switching tools or tailing log files.',
           altText: 'CS Monitor floating performance panel showing DB queries, hooks, HTTP calls, and PHP errors on every WordPress page' },
         { id: 'fpm-monitor',label: 'FPM Monitor',            file: 'panel-fpm-monitor.png', tabSelector: 'a[href*="tab=debug"]',   elementSelector: '#cs-panel-debug',
-          intro: 'PHP-FPM (FastCGI Process Manager) is the process pool that serves every WordPress page request. When all workers are occupied — during a traffic spike, a slow database query, or a runaway loop — new requests queue and the site freezes. The FPM Monitor shows live worker counts and memory usage, and alerts you the moment saturation builds — running as a host-level script outside PHP so it fires even when every PHP worker is consumed.',
+          intro: 'PHP-FPM (FastCGI Process Manager) is the process pool that serves every WordPress page request. When all workers are occupied - during a traffic spike, a slow database query, or a runaway loop - new requests queue and the site freezes. The FPM Monitor shows live worker counts and memory usage, and alerts you the moment saturation builds - running as a host-level script outside PHP so it fires even when every PHP worker is consumed.',
           altText: 'PHP-FPM saturation monitor showing live worker counts and memory usage with auto-restart and ntfy alerts',
           jsBeforeShot: () => { const el = document.getElementById('cs-perf'); if (el) el.style.display = 'none'; },
           jsAfterShot:  () => { const el = document.getElementById('cs-perf'); if (el) el.style.display = ''; } },
+        { id: 'test-accounts', label: 'Test Account Manager', file: 'panel-test-accounts.png', tabSelector: 'a[href*="tab=login"]', elementSelector: '#cs-panel-test-accounts',
+          intro: 'Creates dedicated WordPress test users for Playwright and automated testing. Provides a session API that generates temporary admin cookies without triggering 2FA - so your test suite can log in as a real administrator without disabling the two-factor authentication protecting your live site.',
+          altText: 'WordPress Playwright test account manager showing shared secret session API and test user list with active sessions' },
     ],
 
     docs: {
         'hide-login': `
 <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🔐 Stop Bots Before They Even See Your Login Page</h2>
-<p style="margin:0 0 10px;color:#374151;">Every WordPress site on the internet is hammered by bots probing <code>/wp-login.php</code> every hour. These aren't targeted attacks; they're automated scanners running 24/7, trying thousands of password combinations. If they can reach your login page, they will keep trying. Hide Login URL makes your login page invisible to them: bots get a 404 and move on. No login form means no brute-force attack.</p>
-<p style="margin:0;color:#374151;"><strong>Competing plugins charge $49–$99/year</strong> for this feature (iThemes Security Pro, All-in-One Security Premium). CloudScale includes it free, bundled with 2FA and Passkeys in the same plugin, so there's no juggling three separate security plugins.</p>
+<p style="margin:0 0 10px;color:#374151;">Every WordPress site on the internet is probed by bots testing <code>/wp-login.php</code> around the clock. These are not targeted attacks against you specifically - they are automated credential-stuffing scripts running against millions of sites simultaneously, trying breached username and password combinations at scale. If they can reach your login form, they will keep trying indefinitely. Hide Login URL removes the form from the default URL entirely: bots get a 404 and move on to easier targets.</p>
+<p style="margin:0;color:#374151;"><strong>Competing plugins charge $49-$99/year</strong> for this feature (iThemes Security Pro, All-in-One Security Premium). CloudScale includes it free, bundled with 2FA and Passkeys in the same plugin, so there is no juggling three separate security plugins that need to know about each other.</p>
 </div>
-<p>When enabled, a WordPress <code>init</code> hook (priority 1) intercepts requests to your chosen secret slug and serves the login form transparently: no redirect, no URL change, the form just loads. Direct requests to <code>/wp-login.php</code> return a clean 404. All internal WordPress links (password reset emails, logout URLs) automatically update to use your secret URL.</p>
-<p><strong>Setup takes 30 seconds:</strong></p>
+
+<p>The mechanism is simple and reliable. When enabled, a WordPress <code>init</code> hook at priority 1 intercepts any request matching your chosen secret slug and serves the login form for that request. No redirect, no URL change visible in the browser's address bar - the form just loads at your secret path. Direct requests to <code>/wp-login.php</code> return a clean 404. Internal WordPress links - password reset emails, admin bar logout links, plugin redirect-after-login URLs - all automatically reference your secret URL rather than the default. You do not need to configure anything else; the change propagates through WordPress automatically.</p>
+
+<p>Hide Login URL works best in combination with 2FA (also on this tab). Hiding the login URL removes the attack surface for automated bot traffic. 2FA ensures that even if someone discovers your secret URL (through a browser history leak or social engineering), a stolen password alone is still not enough to break in. Together they cover two different threat categories.</p>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Settings</h3>
+<ul>
+<li><strong>Enable Hide Login:</strong> master switch. When enabled, <code>/wp-login.php</code> returns a 404. Your secret slug serves the login form. When disabled, everything reverts to WordPress defaults with no other changes required.</li>
+<li><strong>Login slug:</strong> the path segment after your domain where the login form will live. For example, entering <code>team-portal</code> means your login URL becomes <code>yoursite.com/team-portal/</code>. Avoid predictable words: <code>login</code>, <code>admin</code>, <code>dashboard</code>, <code>wp-admin</code>, and <code>signin</code> are commonly tried by automated scanners and provide little security benefit. A two-word phrase with a number (e.g. <code>launch-control-7</code>) is both memorable and not in any scanner's dictionary.</li>
+</ul>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Setup (30 seconds)</h3>
 <ol>
-<li>Toggle <em>Enable Hide Login</em> on.</li>
-<li>Enter your secret slug (e.g. <code>team-portal</code>). Avoid <code>login</code>, <code>admin</code>, or <code>dashboard</code>; bots know those too.</li>
-<li>Click <em>Save</em> and bookmark the new URL immediately.</li>
-<li>If you ever lose the URL, <code>wp option get csdt_devtools_login_slug</code> via WP-CLI will retrieve it.</li>
+<li>Toggle <strong>Enable Hide Login</strong> on.</li>
+<li>Enter your secret slug in the Login Slug field.</li>
+<li>Click <strong>Save</strong>.</li>
+<li><strong>Bookmark the new URL immediately</strong> before navigating away. The current URL is shown on the settings panel after saving.</li>
 </ol>
-<p><strong>What stays unaffected:</strong> WP-CLI, XML-RPC, REST API, and WP Cron all bypass the login URL check entirely, so nothing breaks.</p>`,
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">What is not affected</h3>
+<p>WP-CLI, XML-RPC, the REST API, and WP-Cron all bypass the login URL check entirely. This means automated processes that authenticate against WordPress continue working without any configuration changes. The hide-login feature targets human browser-based login attempts only.</p>
+
+<div style="background:#fef9c3;border-left:4px solid #ca8a04;border-radius:0 8px 8px 0;padding:18px 22px;margin:20px 0 0;">
+<h3 style="margin:0 0 8px;font-size:1em;font-weight:700;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">If you forget your secret URL</h3>
+<p style="margin:0 0 10px;color:#374151;line-height:1.7;">If you lose track of your custom login URL, retrieve it without logging in via WP-CLI from your server:</p>
+<code style="background:#fff;border:1px solid #e5e7eb;padding:6px 10px;border-radius:4px;font-size:.9em;display:block;margin:8px 0;">wp option get csdt_devtools_login_slug</code>
+<p style="margin:8px 0 0;color:#374151;line-height:1.7;">Or query your database directly: <code>SELECT option_value FROM wp_options WHERE option_name = 'csdt_devtools_login_slug'</code>. If you cannot access the server at all, temporarily disabling the plugin via FTP (rename the plugin folder) will re-enable the default <code>/wp-login.php</code> path.</p>
+</div>`,
 
         '2fa': `
 <div style="background:#fdf4ff;border-left:4px solid #9333ea;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
@@ -495,15 +517,41 @@ helpLib.run({
 <p style="margin:0 0 10px;color:#374151;">Passwords get leaked in data breaches, reused across sites, and phished out of users. Two-factor authentication (2FA) means an attacker who has your password still cannot log in. They also need physical access to your phone, email inbox, or hardware key. For WordPress admins, 2FA is the single most effective account protection you can add.</p>
 <p style="margin:0;color:#374151;"><strong>WP 2FA Pro charges $79/year.</strong> Wordfence Premium (which includes 2FA) charges $119/year. CloudScale gives you email OTP, TOTP authenticator apps, and Passkeys (all three methods) completely free, in the same plugin you use for everything else.</p>
 </div>
-<p><strong>Three methods, one plugin:</strong></p>
+
+<p>The attack scenario that 2FA stops is straightforward. Your WordPress admin password appears in a credential-stuffing database from a breach at an unrelated service. An automated bot tries it against your login page. Without 2FA, that is game over. With 2FA, the attacker also needs to be holding your phone or have access to your email at the same moment - a combination that is effectively impossible in a mass automated attack. Credential stuffing (trying breached username/password pairs at scale) is responsible for the majority of WordPress account compromises, and it is stopped entirely by 2FA.</p>
+
+<p>CloudScale implements all three major 2FA methods in a single plugin. You can start with email OTP (no app required, works immediately for every user) and upgrade to TOTP or Passkeys for higher-security accounts at your own pace. All three methods are available to users simultaneously - each person can configure whichever they prefer, and you can enforce a minimum method for administrators.</p>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Two-Factor Methods</h3>
 <ul>
-<li><strong>Email OTP:</strong> a 6-digit code sent to the user's email after login. No app needed. Code expires in 10 minutes. Best for non-technical users.</li>
-<li><strong>Authenticator app (TOTP):</strong> standard RFC 6238 algorithm. Works with Google Authenticator, Authy, 1Password, Bitwarden, or any TOTP app. Generates a new code every 30 seconds, works offline, immune to email interception.</li>
-<li><strong>Passkey (WebAuthn):</strong> replaces the code prompt with Face ID, Touch ID, Windows Hello, or a hardware security key. The fastest and most phishing-resistant option available. See the Passkeys section below.</li>
+<li><strong>Email OTP:</strong> a 6-digit code sent to the user's WordPress email address after successful password entry. No app or prior setup required by the user. Each code expires after 10 minutes and is single-use. Best for non-technical users or as a fallback for when someone does not have their authenticator app available. Requires working SMTP - configure the SMTP mailer on the Email tab first so codes reliably reach inboxes rather than going to spam.</li>
+<li><strong>Authenticator app (TOTP):</strong> standard RFC 6238 time-based one-time passwords, compatible with Google Authenticator, Authy, 1Password, Bitwarden, and any TOTP app. Generates a new 6-digit code every 30 seconds entirely on the device - no network connection required. More secure than email OTP because it is immune to email interception and works even when your email is down. Users scan a QR code once from their profile to link their account, then they are set up permanently.</li>
+<li><strong>Passkey (WebAuthn):</strong> replaces the second-factor code prompt with a biometric confirmation: Face ID, Touch ID, Windows Hello, or a hardware security key tap. The fastest and most phishing-resistant method available. Unlike TOTP codes, which a fake login page can intercept and replay in real time, passkeys are cryptographically bound to your site's exact domain and cannot be used on any other URL. See the Passkeys section for full setup details.</li>
 </ul>
-<p><strong>Admin enforcement:</strong> Enable <em>Force 2FA for administrators</em> and any admin who hasn't configured their second factor gets blocked at the dashboard until they do. They can't skip it. A configurable grace period lets existing admins set up 2FA before enforcement kicks in.</p>
-<p><strong>Brute-Force Protection</strong> is built into the same tab: lock accounts after N failed attempts (default: 5 attempts, 5-minute lockout). Both thresholds are yours to configure.</p>
-<p><strong>Session Duration</strong> lets you override WordPress's default session length. When set, persistent cookies keep sessions alive across browser closes, which is useful for teams who find constant re-authentication disruptive.</p>`,
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Brute-Force Protection</h3>
+<ul>
+<li><strong>Maximum login attempts:</strong> the number of consecutive failed password attempts before the account is temporarily locked. The default is 5 attempts. Lower this to 3 for high-security sites where you want to be aggressive, or raise it to 10 if legitimate users frequently mistype their passwords and you are receiving lockout support requests. Each failed attempt is recorded with the IP address, timestamp, and username tried.</li>
+<li><strong>Lockout duration:</strong> how long (in minutes) a locked account is blocked from attempting login. The default 5-minute lockout stops most automated credential-stuffing scripts without seriously inconveniencing real users who mistyped their password. For sites with only administrator accounts (no customer-facing logins), a longer lockout (60 minutes or more) adds significantly more friction to automated attacks with no meaningful downside.</li>
+</ul>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Admin Enforcement</h3>
+<ul>
+<li><strong>Force 2FA for administrators:</strong> when enabled, any administrator who has not yet configured a 2FA method is blocked from accessing the WordPress dashboard after login. They see a prompt to configure 2FA and cannot proceed until they do. There is no bypass. This ensures 2FA is never accidentally skipped on high-privilege accounts, which is the most common failure mode: admins know they should set it up, intend to do it later, and never do.</li>
+<li><strong>Grace period:</strong> when you first enable forced 2FA, administrators who haven't configured 2FA yet are given this many days before enforcement kicks in. This prevents locking out an existing admin team the moment you flip the switch. After the grace period expires, unconfigured accounts are blocked at login until 2FA is set up.</li>
+</ul>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Session Duration</h3>
+<ul>
+<li><strong>Custom session length (days):</strong> overrides WordPress's default session timeout (2 days for "Remember Me" sessions, 2 hours otherwise). When set, a persistent cookie keeps the session alive for the specified number of days across browser restarts - useful for admin team members who find constant re-authentication disruptive on a daily-use machine. The session is invalidated immediately when the user logs out. Note: longer sessions extend the window during which a stolen session cookie would be usable. For high-security admin accounts, keep sessions short or leave this at WordPress defaults.</li>
+</ul>
+
+<div style="background:#fef9c3;border-left:4px solid #ca8a04;border-radius:0 8px 8px 0;padding:18px 22px;margin:20px 0 0;">
+<h3 style="margin:0 0 8px;font-size:1em;font-weight:700;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">If you or a user gets locked out</h3>
+<p style="margin:0 0 10px;color:#374151;line-height:1.7;">If brute-force protection has locked a legitimate account and you need to unlock it immediately, run this WP-CLI command from your server (replace the IP address with the locked address):</p>
+<code style="background:#fff;border:1px solid #e5e7eb;padding:6px 10px;border-radius:4px;font-size:.9em;display:block;margin:8px 0;">wp option delete csdt_login_attempts_1.2.3.4</code>
+<p style="margin:8px 0 0;color:#374151;line-height:1.7;">To clear all lockouts at once: <code>DELETE FROM wp_options WHERE option_name LIKE 'csdt_login_attempts_%'</code> via the SQL Query Tool on the Debug tab, or via phpMyAdmin.</p>
+</div>`,
 
         'passkeys': `
 <div style="background:#fff7ed;border-left:4px solid #ea580c;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
@@ -668,119 +716,151 @@ helpLib.run({
 <div style="background:#f1f5f9;border-left:4px solid #6366f1;border-radius:0 8px 8px 0;padding:18px 22px;margin:20px 0 0;">
 <h3 style="margin:0 0 8px;font-size:1em;font-weight:700;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">Server Logs as a Performance and Debugging Tool</h3>
 <p style="margin:0 0 10px;color:#374151;line-height:1.7;">The Server Logs panel is not just for security incidents. It's the fastest way to trace a performance problem to its root cause without SSH access. Load a slow-performing page in one tab, watch the PHP error log update in tail mode in another, and see exactly which hook or database query is generating warnings on that specific page. Reproduce an intermittent 500 error and catch the exception the moment it fires. Find the exact plugin throwing deprecated notices that is degrading your PHP performance score.</p>
-<p style="margin:0;color:#374151;line-height:1.7;">For growth and marketing teams: the auth log source (where SSH brute-force attempts are recorded) gives you a real-time picture of attack traffic against your server — useful context for understanding infrastructure load and the value of the protection CloudScale provides.</p>
+<p style="margin:0;color:#374151;line-height:1.7;">For growth and marketing teams: the auth log source (where SSH brute-force attempts are recorded) gives you a real-time picture of attack traffic against your server - useful context for understanding infrastructure load and the value of the protection CloudScale provides.</p>
 </div>`,
 
         'site-audit': `
 <div style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border-left:4px solid #10b981;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🔍 Your Entire Site Audited in Under 60 Seconds</h2>
-<p style="margin:0 0 10px;color:#374151;">One button. CloudScale scans all your published content and your database, then uses AI to return a prioritised list of issues scored by impact — SEO gaps, thin content, missing images, database bloat, inactive plugins, security misconfigurations. No external crawlers, no data sent to third parties, no Screaming Frog licence required.</p>
-<p style="margin:0;color:#374151;"><strong>Works without an AI key</strong> — rule-based findings run instantly. Add an API key on the Security tab for AI-written summaries, root-cause explanations, and deeper recommendations.</p>
+<p style="margin:0 0 10px;color:#374151;">One button. CloudScale scans all your published content and your database, then uses AI to return a prioritised list of issues scored by impact - SEO gaps, thin content, missing images, database bloat, inactive plugins, security misconfigurations. No external crawlers, no data sent to third parties, no Screaming Frog licence required.</p>
+<p style="margin:0;color:#374151;"><strong>Works without an AI key</strong> - rule-based findings run instantly. Add an API key on the Security tab for AI-written summaries, root-cause explanations, and deeper recommendations.</p>
 </div>
 
-<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">What it checks</h3>
+<p>Most WordPress site owners have no idea what their site actually looks like to Google. Their posts feel complete when written, but from the outside the picture is different: a meta description missing on half the posts so Google writes its own (usually a random sentence pulled from the article body that is rarely anyone's best pitch to a reader), featured images absent on a quarter of posts making social shares look blank, the autoload table quietly growing to 5MB so every admin page loads sluggishly, and post revisions accumulating until they consume 30% of total database storage. None of this is visible when you are reading your own content. The Site Auditor shows you what Google and your database actually see.</p>
+
+<p>The audit runs entirely inside your WordPress installation. No external crawler visits your site, no third party receives your content. The scanner reads your database directly, inspects your published posts, checks your WordPress configuration, and assembles a prioritised findings report in seconds. If you have an AI API key configured, the gathered statistics are sent to the AI for deeper interpretation - but your actual post content is never transmitted, only counts and metadata.</p>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">What the audit checks</h3>
 <ul>
-<li><strong>SEO</strong> — missing meta descriptions, missing SEO title tags, duplicate page titles</li>
-<li><strong>Content</strong> — thin pages under 300 words, missing featured images</li>
-<li><strong>Performance</strong> — autoloaded options bloat (the most common hidden WordPress slowdown), excess active plugins</li>
-<li><strong>Database</strong> — expired transients, post revision accumulation, orphaned post meta rows</li>
-<li><strong>Plugins</strong> — inactive plugins still installed on disk</li>
-<li><strong>Security</strong> — WP_DEBUG enabled in production</li>
+<li><strong>SEO - missing meta descriptions:</strong> posts and pages with no meta description written. Google writes its own for these pages, pulling a random sentence from your content. That sentence is rarely your best pitch to a reader deciding whether to click. Each finding links directly to the affected posts so you can fix them one by one, or use the AI Meta Description Writer (if you have the CloudScale SEO plugin) to fix them in bulk.</li>
+<li><strong>SEO - missing SEO titles:</strong> pages where the title tag defaults to the raw post title with no customisation. A well-written title targets a keyword naturally, includes your brand name where appropriate, and stays under 60 characters. Posts without a custom title are flagged with a link to edit them.</li>
+<li><strong>SEO - duplicate page titles:</strong> multiple posts sharing the same title tag. Google treats these as competing for the same search query, which dilutes ranking signals across both. Usually caused by applying the same template title to similar posts without customising the SEO field per post.</li>
+<li><strong>Content - thin pages:</strong> published posts under 300 words. Thin content pages are unlikely to rank for competitive queries and can dilute your site's overall quality score in Google's assessment. The audit shows each thin post with its word count so you can decide whether to expand it, redirect it to a related page, or mark it noindex.</li>
+<li><strong>Content - missing featured images:</strong> posts with no featured image set. Featured images are used for OpenGraph social previews (what LinkedIn, WhatsApp, Slack show when someone shares your link), related article thumbnails, and Google Discover cards. A missing featured image means blank or placeholder previews everywhere your posts are shared.</li>
+<li><strong>Performance - autoloaded options bloat:</strong> WordPress loads certain plugin settings on every single page request via the <code>wp_options</code> table with <code>autoload=yes</code>. When deactivated plugins leave their data behind, or when plugins store large amounts of data in autoloaded options, the total grows and slows every page. CloudScale flags this when total autoloaded data exceeds 500KB and tells you the exact size so you can measure improvement after cleanup.</li>
+<li><strong>Performance - excess active plugins:</strong> sites with more than 20 active plugins. Each plugin adds PHP execution time, potential database queries, and JavaScript or CSS assets to every page request. This is an informational finding - not every plugin is replaceable - but it prompts a review of whether every installed plugin is genuinely active and necessary.</li>
+<li><strong>Database - expired transients:</strong> WordPress caches temporary data in the <code>wp_options</code> table as transients with an expiry time. Expired transients should be removed automatically by WP-Cron, but on sites with unreliable cron execution they accumulate as dead rows, contributing to autoload bloat and slower queries on a table that WordPress reads on every request.</li>
+<li><strong>Database - post revisions:</strong> every draft save or published-post update creates a revision. With no limit configured, a heavily-edited post can accumulate hundreds of revisions. These rows are safe to remove once a post is live and they represent no SEO value. The audit shows the total revision count and the number of rows that can be safely cleaned.</li>
+<li><strong>Database - orphaned post meta:</strong> when a post is deleted, its corresponding rows in <code>wp_postmeta</code> are not always cleaned up by WordPress or the plugin that created them. Orphaned meta rows accumulate over time and slow queries that join against the meta table.</li>
+<li><strong>Plugins - inactive plugins on disk:</strong> deactivated plugins remain on your server and present an attack surface even when disabled. A plugin with a known CVE is exploitable via direct file access even if it is not active. The audit lists every inactive plugin as a reminder to remove rather than just deactivate plugins you no longer use.</li>
+<li><strong>Security - WP_DEBUG in production:</strong> when <code>WP_DEBUG</code> is enabled on a live site, PHP notices, warnings, and errors are displayed to visitors. This leaks file paths, function names, database structure details, and plugin version information that attackers use to identify and target specific vulnerabilities. WP_DEBUG should only be enabled in local development environments.</li>
 </ul>
 
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Reading the results</h3>
-<p>Findings are sorted by severity — <strong>Critical</strong> → <strong>High</strong> → <strong>Medium</strong> → <strong>Low</strong> → <strong>Info</strong>. The scorecard at the top gives you the count at each level so you know at a glance how much work you have.</p>
-<p>Each finding card shows:</p>
-<ul>
-<li>The <strong>severity badge</strong> and <strong>category</strong> so you can triage quickly</li>
-<li>An <strong>affected count</strong> — how many posts or which tables are involved</li>
-<li>A plain-English <strong>explanation</strong> of why it matters</li>
-<li>A specific <strong>fix instruction</strong> — not vague advice, a concrete next action</li>
-</ul>
-<p>Use the <strong>category filter buttons</strong> to focus on one area at a time — e.g. show only SEO findings, or only Database findings.</p>
+<p>Findings are sorted by severity: <strong>Critical</strong> → <strong>High</strong> → <strong>Medium</strong> → <strong>Low</strong> → <strong>Info</strong>. The scorecard at the top shows the count at each level so you know at a glance how much work you have. Each finding card shows the severity badge and category for quick triage, the affected post count or database metric, a plain-English explanation of why the finding matters, and a specific fix instruction. For content findings, clickable post links open the post editor directly so you can address each one without leaving the audit results.</p>
+<p>Use the <strong>category filter buttons</strong> (SEO, Content, Performance, Database, Security) to focus on one area at a time. Run the audit again after each fix session to see your score improve.</p>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Quick Fix buttons</h3>
+<p>Database findings (expired transients, post revisions, orphaned meta) show a <strong>Fix It</strong> button that runs the cleanup operation server-side and immediately re-checks the finding. Each operation is safe to run on any live WordPress site. The fix shows you the number of rows removed so you can see the before and after impact on your database size.</p>
 
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Privacy and data handling</h3>
-<p>All scanning runs inside your WordPress installation — no content or metadata leaves your server. If you have an AI API key configured, the gathered site statistics (post counts, word counts, database metrics) are sent to the AI provider. Your actual post content is never sent — only aggregated counts and statistics.</p>
+<p>All scanning runs inside your WordPress installation - no content or metadata leaves your server during the rule-based analysis pass. If you have an AI API key configured, aggregated site statistics (post counts, word counts, database metrics) are sent to the AI provider for deeper interpretation. Your actual post content is never transmitted - only counts and aggregate measurements.</p>
 
 <div style="background:#f1f5f9;border-left:4px solid #6366f1;border-radius:0 8px 8px 0;padding:18px 22px;margin:20px 0 0;">
-<h3 style="margin:0 0 8px;font-size:1em;font-weight:700;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">Pro tip: run the audit before and after making changes</h3>
-<p style="margin:0;color:#374151;line-height:1.7;">Run the Site Audit before a major update or plugin change to establish a baseline. After making fixes, run it again. The scorecard comparison tells you exactly what improved. This is especially useful before and after cleaning up database bloat — the autoloaded options KB figure should drop significantly after removing redundant plugin data.</p>
+<h3 style="margin:0 0 8px;font-size:1em;font-weight:700;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">Run the audit before and after making changes</h3>
+<p style="margin:0;color:#374151;line-height:1.7;">Run the Site Audit before a major plugin change or cleanup sprint to establish a baseline. After making fixes, run it again and compare the scorecards. This is especially useful before and after cleaning up database bloat - the autoloaded options KB figure should drop measurably after removing redundant plugin data. Save a screenshot of the findings list before a sprint and compare it to the results afterwards to confirm the improvements are real.</p>
 </div>`,
 
         'optimizer': `
 <div style="background:linear-gradient(135deg,#f0f4ff,#f5f3ff);border-left:4px solid #6366f1;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🔧 Reduce Your Plugin Stack. Fix Errors Faster.</h2>
 <p style="margin:0 0 10px;color:#374151;">The average WordPress site runs 17 active plugins. Each one adds HTTP requests, CSS, JavaScript, and potential conflict vectors to every page load. The Optimizer tab gives you two tools to fight back: a plugin scanner that finds redundancy, and an AI assistant that diagnoses errors instantly.</p>
-<p style="margin:0;color:#374151;"><strong>No other plugin does this.</strong> The Plugin Stack Scanner is the only tool that maps your installed plugins against a known replacement table and tells you which ones to remove — with direct links to the CloudScale features that replace them.</p>
+<p style="margin:0;color:#374151;"><strong>No other plugin does this.</strong> The Plugin Stack Scanner is the only tool that maps your installed plugins against a known replacement table and tells you which ones to remove - with direct links to the CloudScale features that replace them.</p>
 </div>
 
-<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Plugin Stack Scanner</h3>
-<p>Click <strong>Scan My Plugin Stack</strong>. CloudScale reads your list of active plugins and checks each one against a database of 30+ plugin categories it replaces — security scanners, 2FA plugins, SMTP mailers, code block plugins, SQL tools, log viewers, and social preview tools.</p>
+<p>Most WordPress sites accumulate plugins the same way: one plugin gets installed to solve an immediate problem, then another, then another. Each one made sense in isolation. Together they form a stack of 15-20 plugins where nobody is sure which ones are still needed, several are doing overlapping jobs, and the combined page weight and PHP load is measurably slower than it needs to be. The Plugin Stack Scanner makes this visible: it shows you exactly which of your current plugins CloudScale already replaces, what the annual saving is for premium ones, and gives you a direct link to the CloudScale equivalent so you can verify it before deactivating anything.</p>
+
+<p>The AI Debugging Assistant solves a different problem: PHP errors, stack traces, and WordPress warnings that require reading documentation, searching Stack Overflow, or posting in a forum and waiting. Paste the error, get a structured diagnosis with the root cause and numbered fix steps in under 10 seconds. The AI receives your WordPress and PHP version as context so the answer is specific to your environment rather than generic.</p>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Plugin Stack Scanner</h3>
+<p>Click <strong>Scan My Plugin Stack</strong>. CloudScale reads your active and inactive plugin list and checks each against a database of 30+ categories it replaces: security scanners, 2FA plugins, SMTP mailers, code block plugins, SQL tools, log viewers, and social preview tools.</p>
 <p>The results show:</p>
 <ul>
-<li><strong>Plugin name and version</strong> — what you currently have installed</li>
-<li><strong>CloudScale feature that replaces it</strong> — specific feature and which tab to find it on</li>
-<li><strong>Annual license saving</strong> — only shown for premium plugins; free ones show a dash</li>
-<li><strong>Direct link to the tab</strong> — one click to set up the CloudScale equivalent</li>
+<li><strong>Plugin name and version:</strong> what you currently have installed and whether it is active or inactive</li>
+<li><strong>CloudScale replacement:</strong> the specific feature within CloudScale that covers this plugin's function, with the tab name so you can find it immediately</li>
+<li><strong>Annual saving:</strong> the cost of the premium licence for paid plugins. Free plugins show a dash. This figure is useful for quantifying the value of consolidation when making the case to a client or a budget holder</li>
+<li><strong>Go to tab link:</strong> a direct link to the CloudScale equivalent so you can set it up and verify it is working before deactivating the original plugin</li>
 </ul>
-<p><strong>Before deactivating any plugin:</strong> always set up and verify the CloudScale equivalent is working correctly first. Take a backup. The free <a href="https://your-wordpress-site.example.com/wordpress-plugin-help/cloudscale-backup-restore-help/" target="_blank" rel="noopener"><strong>CloudScale Backup and Restore plugin</strong></a> does a one-click full-site snapshot before you make changes.</p>
+<p><strong>Safe process for removing a plugin:</strong></p>
+<ol>
+<li>Click the CloudScale tab link and configure the equivalent feature</li>
+<li>Test the CloudScale version works correctly on your site</li>
+<li>Take a full backup with <a href="https://your-wordpress-site.example.com/wordpress-plugin-help/cloudscale-backup-restore-help/" target="_blank" rel="noopener"><strong>CloudScale Backup and Restore</strong></a></li>
+<li>Deactivate the original plugin</li>
+<li>Verify nothing broke, then delete the plugin entirely rather than leaving it deactivated (inactive plugins still present an attack surface)</li>
+</ol>
 
 <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
 
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">AI Debugging Assistant</h3>
-<p>Paste any PHP error, WordPress warning, stack trace, or plain-language problem description into the text area and click <strong>Diagnose with AI</strong>. The AI returns a structured diagnosis with three sections:</p>
+<p>Paste any PHP error, WordPress warning, stack trace, deprecation notice, or plain-language problem description into the text area. Good inputs to try:</p>
 <ul>
-<li><strong>Root Cause</strong> — what is actually broken, in plain English</li>
-<li><strong>Why It Happens</strong> — the underlying mechanism so you understand it, not just fix it blindly</li>
-<li><strong>How to Fix It</strong> — numbered steps specific to the error you provided</li>
+<li>A PHP fatal error from your server log (copy the full error including file and line number)</li>
+<li>A WordPress admin notice you don't understand</li>
+<li>A plugin conflict description ("when I activate X, Y breaks")</li>
+<li>A 500 server error message</li>
+<li>An unexplained behaviour ("checkout page goes blank after placing an order")</li>
 </ul>
-<p>Works with PHP fatal errors, deprecated notices, plugin conflicts, database connection failures, 500 server errors, missing function errors, and more. The AI receives your WordPress version and PHP version as context for more accurate answers.</p>
-<p><strong>Requires an AI API key.</strong> Add one on the Security tab under AI Settings. Google Gemini's free tier works perfectly for debugging queries.</p>`,
+<p>Click <strong>Diagnose with AI</strong>. The AI returns a structured response with three sections:</p>
+<ul>
+<li><strong>Root Cause:</strong> what is actually broken, in plain English - not the error message itself but what it means</li>
+<li><strong>Why It Happens:</strong> the underlying mechanism so you understand the problem and can prevent it recurring, not just fix it blindly this time</li>
+<li><strong>How to Fix It:</strong> numbered steps specific to the error you provided, tailored to your WordPress and PHP version</li>
+</ul>
+<p>The AI receives your WordPress version, PHP version, and active plugin list as context with every query. This means it can identify that an error is caused by a known incompatibility between two specific plugins you have installed, rather than giving a generic answer that applies to every WordPress site.</p>
+
+<div style="background:#f0f9ff;border-left:4px solid #0e6b8f;border-radius:0 8px 8px 0;padding:18px 22px;margin:20px 0 0;">
+<h3 style="margin:0 0 8px;font-size:1em;font-weight:700;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">Using the AI Debugging Assistant with the CS Monitor</h3>
+<p style="margin:0;color:#374151;line-height:1.7;">The CS Monitor panel (visible on every admin page for logged-in administrators) has a clipboard copy button on every tab. If you see a PHP error in the CS Monitor's Logs tab, click Copy to get the full error text, then paste it directly into the Debugging Assistant. The two tools are designed to work together: CS Monitor catches the error in real time, the Debugging Assistant explains it and tells you how to fix it.</p>
+</div>
+<p style="margin-top:16px;"><strong>Requires an AI API key.</strong> Add one on the Security tab under AI Settings. Google Gemini's free tier works perfectly for debugging queries - a single debugging session uses a fraction of the free daily quota.</p>`,
 
         'cs-monitor': `
 <div style="background:linear-gradient(135deg,#f0f4ff,#fdf4ff);border-left:4px solid #6366f1;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">⚡ A DevTools-Style Performance Panel, Built Into Every WordPress Page</h2>
-<p style="margin:0 0 10px;color:#374151;">Query Monitor shows database queries. Debug Bar surfaces WP_DEBUG output. Neither one shows you everything happening on a single page request — HTTP calls, hook timings, PHP errors, asset inventory, transients, and template resolution — in one panel without switching tools or reading raw logs. CS Monitor does.</p>
+<p style="margin:0 0 10px;color:#374151;">Query Monitor shows database queries. Debug Bar surfaces WP_DEBUG output. Neither one shows you everything happening on a single page request - HTTP calls, hook timings, PHP errors, asset inventory, transients, and template resolution - in one panel without switching tools or reading raw logs. CS Monitor does.</p>
 <p style="margin:0;color:#374151;"><strong>It appears automatically</strong> for logged-in administrators on every wp-admin screen and every frontend page. No configuration required. Toggle it off under <strong>Code Settings → Show the CS Monitor performance panel</strong> if you need a clean view.</p>
 </div>
 
-<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Tabs at a Glance</h3>
+<p>Performance problems on WordPress sites typically involve one of a small number of root causes: too many database queries (especially N+1 query patterns from plugins iterating through posts), slow external HTTP calls blocking page generation, PHP errors generating notices that get logged and cause overhead, or an asset-heavy theme loading scripts on every page whether they are needed or not. The difficulty is that none of these are visible from the outside - your site's pages load slowly and you cannot tell from the browser why. CS Monitor captures all of these simultaneously for every page request and surfaces them in a single overlay so you can pinpoint the cause without SSH access, log file analysis, or installing additional profiling tools.</p>
+
+<p>CS Monitor only activates for logged-in administrators. Regular visitors see no difference and incur no overhead. This means you can leave it enabled on live production sites without any impact on visitor experience or page load times. It is always-on for you, invisible to everyone else.</p>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Panel Tabs</h3>
 <ul>
-<li><strong>Issues</strong> — auto-detected problems ranked by severity: N+1 query loops, slow queries, missing indexes, high load, OPcache off, and more. Each issue links directly to the relevant tab for investigation.</li>
-<li><strong>DB Queries</strong> — every database query with execution time, calling plugin/theme, and call stack. Click any SELECT to run <code>EXPLAIN</code> inline and see the query plan. N+1 patterns are grouped and flagged automatically.</li>
-<li><strong>HTTP / REST</strong> — all outbound <code>wp_remote_get/post</code> calls and internal REST API requests with URLs and response times. Slow external calls that block page generation are immediately visible.</li>
-<li><strong>Logs</strong> — PHP notices, warnings, deprecation notices, and fatal errors captured for the current request with file and line number. No need to tail a log file.</li>
-<li><strong>Assets</strong> — every script and stylesheet enqueued for the current page, including source plugin/theme. Identify asset bloat from inactive features still loading.</li>
-<li><strong>Hooks</strong> — all WordPress actions and filters that fired, with execution time per hook. Find the slow hooks holding up page generation.</li>
-<li><strong>Request</strong> — current request details: method, URL, matched rewrite rule, query vars, and WordPress globals.</li>
-<li><strong>Template</strong> — the full chain of template files WordPress evaluated to produce the current page, in order.</li>
-<li><strong>Transients</strong> — every transient <code>set</code> and <code>delete</code> operation triggered during the request.</li>
-<li><strong>Browser</strong> — JavaScript console errors captured client-side and reported back to the panel. Catch JS exceptions without opening DevTools.</li>
-<li><strong>Summary</strong> — request totals at a glance: query count, total query time, hook count, HTTP calls, memory used, and wall-clock page time.</li>
+<li><strong>Issues:</strong> auto-detected problems ranked by severity - N+1 query loops, slow queries over 100ms, high total query count, OPcache not enabled, missing database indexes on common lookup columns, and high memory usage. Each issue links directly to the relevant tab for investigation. Start here to see if there is anything worth investigating before browsing the raw data.</li>
+<li><strong>DB Queries:</strong> every database query executed during this request, with execution time in milliseconds, the calling plugin or theme, and the PHP call stack. Click any SELECT query to run <code>EXPLAIN</code> inline and see the query execution plan - instantly shows whether a full table scan is occurring. N+1 query patterns (the same query fired repeatedly in a loop) are grouped and flagged automatically, making them easy to spot even if no individual query is slow.</li>
+<li><strong>HTTP / REST:</strong> all outbound HTTP calls made via <code>wp_remote_get</code>, <code>wp_remote_post</code>, and internal REST API requests, with the full URL and response time. Slow external API calls (payment gateways, social embed fetches, external font requests) that block PHP page generation are immediately visible here. If your pages feel fast in the browser but slow to generate server-side, this tab often shows the culprit.</li>
+<li><strong>Logs:</strong> PHP notices, warnings, deprecation notices, and errors captured for the current request, with the originating file and line number. No need to tail a log file or wait for a scheduled scan. If a plugin is generating deprecation warnings on every page load, you will see exactly which plugin and which line is responsible.</li>
+<li><strong>Assets:</strong> every script and stylesheet registered and enqueued for the current page, with its source plugin or theme. Use this to identify asset bloat - plugins loading their full CSS and JS on pages where they have no UI, themes loading icon fonts for icons that don't appear on the current template.</li>
+<li><strong>Hooks:</strong> all WordPress action and filter hooks that fired during the request, with execution time per hook. A hook taking 200ms on every page request is a performance problem regardless of how fast the database queries are. Find the slow hooks and trace them back to the plugin responsible.</li>
+<li><strong>Request:</strong> current request details including HTTP method, full URL, the matched WordPress rewrite rule, active query variables, and key WordPress globals. Useful for debugging routing problems, custom post type URL issues, and template selection.</li>
+<li><strong>Template:</strong> the full chain of template files WordPress evaluated to serve the current page, in the order they were loaded. Use this to understand which theme file is generating the current page and trace layout problems back to the right file without guessing.</li>
+<li><strong>Transients:</strong> every transient read, write, and delete operation triggered during the request, with the transient name and expiry. Shows which plugins are caching data and whether caches are hitting or missing.</li>
+<li><strong>Browser:</strong> JavaScript console errors and unhandled promise rejections captured client-side and reported back to the panel via a small inline script. Catch JS exceptions and React hydration errors without opening browser DevTools. Useful on pages where you cannot easily open DevTools (mobile admin, certain embedded views).</li>
+<li><strong>Summary:</strong> the request totals at a glance - total query count, combined query execution time, hook count, HTTP call count, peak memory usage, and total wall-clock page generation time. Use this for before/after comparison when profiling plugin changes.</li>
 </ul>
 
-<hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Copy and Export</h3>
+<p>Every tab has a <strong>Copy</strong> button that puts the current tab's data on your clipboard as plain text, ready to paste into a bug report, a support ticket, or the AI Debugging Assistant. A full-panel JSON export is available from the Summary tab for sharing complete request profiles with developers or hosting support.</p>
 
-<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Copy and Export</h3>
-<p>Every tab has a <strong>📋 Copy</strong> button that puts the current tab's data onto your clipboard as plain text — ready to paste into a bug report, a Slack message, or the AI Debugging Assistant. A full-panel JSON export is available from the Summary tab for sharing with developers.</p>
-
-<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Performance Impact</h3>
-<p>CS Monitor adds a small overhead to collect data — primarily from hooking into <code>SAVEQUERIES</code> and <code>shutdown</code>. It is <strong>only active for logged-in administrators</strong>. Regular visitors are completely unaffected. Disable it on a per-page basis using the panel's close button, or globally under <strong>Tools → Cyber and Devtools → Code Settings</strong>.</p>`,
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Performance Impact</h3>
+<p>CS Monitor adds a small overhead from hooking into <code>SAVEQUERIES</code> and the WordPress <code>shutdown</code> action to collect data. This overhead is only incurred for logged-in administrators - regular visitors are completely unaffected. The panel can be disabled globally under <strong>Tools → Cyber and Devtools → Code Settings → Show the CS Monitor performance panel</strong>, or closed on a per-page basis using its close button.</p>`,
 
         'fpm-monitor': `
 <div style="background:linear-gradient(135deg,#0f172a,#1e293b);border-left:4px solid #60a5fa;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
-<h2 style="margin:0 0 8px;font-size:1.25em;color:#e2e8f0;background:transparent!important;padding:0!important;border:none!important;">🖥️ Know When Your PHP Workers Are Exhausted — Before Your Site Goes Down</h2>
-<p style="margin:0 0 10px;color:#94a3b8;">PHP-FPM (FastCGI Process Manager) maintains a fixed pool of worker processes. When all workers are busy — during a traffic spike, a slow query holding workers open, or a runaway loop — new requests queue and the site freezes. WP-Cron can't alert you when this happens because WP-Cron itself runs inside PHP-FPM. The FPM Monitor runs as a shell script on the host OS, outside Docker, so it fires even when every PHP worker is consumed.</p>
-<p style="margin:0;color:#94a3b8;"><strong>No other WordPress plugin does this.</strong> External uptime monitors just tell you the site is down after it's already down. The FPM Monitor tells you saturation is building while you can still act — and can restart the container automatically.</p>
+<h2 style="margin:0 0 8px;font-size:1.25em;color:#e2e8f0;background:transparent!important;padding:0!important;border:none!important;">🖥️ Know When Your PHP Workers Are Exhausted - Before Your Site Goes Down</h2>
+<p style="margin:0 0 10px;color:#94a3b8;">PHP-FPM (FastCGI Process Manager) maintains a fixed pool of worker processes. When all workers are busy - during a traffic spike, a slow query holding workers open, or a runaway loop - new requests queue and the site freezes. WP-Cron can't alert you when this happens because WP-Cron itself runs inside PHP-FPM. The FPM Monitor runs as a shell script on the host OS, outside Docker, so it fires even when every PHP worker is consumed.</p>
+<p style="margin:0;color:#94a3b8;"><strong>No other WordPress plugin does this.</strong> External uptime monitors just tell you the site is down after it's already down. The FPM Monitor tells you saturation is building while you can still act - and can restart the container automatically.</p>
 </div>
 
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Live Worker Status</h3>
 <p>The worker bar at the top of the FPM Monitor section shows real-time counts polled from your PHP-FPM status page:</p>
 <ul>
-<li><strong>Active</strong> — workers currently processing a request (shown in red when high)</li>
-<li><strong>Idle</strong> — workers ready to accept a new request (shown in green)</li>
-<li><strong>Total</strong> — pool size: active + idle + any in graceful-finish state</li>
-<li><strong>Mem</strong> — total memory consumed across all workers combined</li>
+<li><strong>Active</strong> - workers currently processing a request (shown in red when high)</li>
+<li><strong>Idle</strong> - workers ready to accept a new request (shown in green)</li>
+<li><strong>Total</strong> - pool size: active + idle + any in graceful-finish state</li>
+<li><strong>Mem</strong> - total memory consumed across all workers combined</li>
 </ul>
 <p>Click <strong>▼ Workers</strong> to expand a per-worker table showing PID, state, request count, running time, last URI, last script, last CPU%, and memory per worker. Running workers show <code>—</code> for CPU% because their current request hasn't completed yet. Click <strong>↻ Refresh</strong> to re-poll at any time.</p>
 
@@ -798,18 +878,64 @@ helpLib.run({
 
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Setup</h3>
 <p>Configure the settings in the panel, then copy the <strong>crontab line</strong> and <strong>config.env snippet</strong> from the Host Cron Setup section. The config includes the callback URL and a secret token that authenticates events back to this panel. Add the crontab line to your host's crontab with <code>crontab -e</code>, and source the config.env from your cron script. The monitor starts detecting saturation immediately.</p>
-<p><strong>Auto-restart:</strong> when enabled, the script issues <code>docker restart {container}</code> after declaring saturation. Use with care on production — a restart drops all in-flight requests. The restart cooldown (default: 20 minutes) prevents the script from restarting more than once per incident.</p>`,
+<p><strong>Auto-restart:</strong> when enabled, the script issues <code>docker restart {container}</code> after declaring saturation. Use with care on production - a restart drops all in-flight requests. The restart cooldown (default: 20 minutes) prevents the script from restarting more than once per incident.</p>`,
+
+        'test-accounts': `
+<div style="background:linear-gradient(135deg,#f0f4ff,#f5f3ff);border-left:4px solid #6366f1;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
+<h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🤖 Playwright Testing on a Live Site Without Disabling 2FA</h2>
+<p style="margin:0 0 10px;color:#374151;">Automated end-to-end testing with Playwright requires logging in as a real WordPress user. But if 2FA is enabled on your admin accounts (which it should be), your test suite cannot log in using a username and password alone. The standard workarounds - disabling 2FA for testing, creating a permanent admin account with weak credentials, or patching the login flow - all introduce real security risks on your production site.</p>
+<p style="margin:0;color:#374151;">The Test Account Manager solves this properly. It creates dedicated test users with real WordPress roles, and provides a session API that generates temporary authenticated cookies without going through the login flow at all. Your 2FA stays active. Your live admin accounts are never touched. Your test suite gets a real session it can use, and the session is invalidated when the test run finishes.</p>
+</div>
+
+<p>The mechanism works through a server-side session API: a secret-protected REST endpoint that accepts a role name and TTL, then returns a set of WordPress authentication cookies issued directly by the server for a designated test user. The cookies are indistinguishable from a real browser session, so Playwright can inject them and access the WordPress admin as a fully authenticated user. No login page, no password, no 2FA prompt. The session expires after the configured TTL and can be explicitly invalidated at the end of a test run via the logout endpoint.</p>
+
+<p>Test users are real WordPress accounts using standard WordPress roles (Administrator, Editor, Author, Subscriber, etc.). They are named with a unique identifier so they are clearly recognisable as test accounts and are never confused with real user accounts. One session API endpoint serves all test users - the caller specifies which role to get a session for in the request body, authenticated by the shared secret.</p>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">The Four-Step Flow</h3>
+<ol>
+<li><strong>Create a test user:</strong> enter a name (e.g. <code>my_playwright</code>), choose the WordPress role the tests need (default: Administrator), and click <strong>+ Create User</strong>. CloudScale creates a WordPress user account named <code>csdt-playwright-my_playwright</code> with a randomly generated password you never need to know. The user appears in your test users list immediately.</li>
+<li><strong>Configure your .env.test file:</strong> copy the pre-filled snippet from the panel. It contains your site URL, the shared secret, the role name, and the session and logout endpoint URLs. Store this file in your project root and load it in your Playwright config with <code>dotenv</code>. Never commit the shared secret to version control.</li>
+<li><strong>Call the session API in your tests:</strong> at the start of your test suite, POST to the session endpoint with the shared secret and role name. The API returns WordPress authentication cookies. Inject them into a Playwright browser context. Your tests now run as a fully authenticated WordPress user. The Playwright helper code is shown in the .env.test snippet section below the user list.</li>
+<li><strong>Log out when done:</strong> at the end of your test suite (in an <code>afterAll</code> hook), POST to the logout endpoint with the same secret and role. The session is invalidated server-side. The test users list shows active session counts so you can verify cleanup worked.</li>
+</ol>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Settings and Controls</h3>
+<ul>
+<li><strong>Name:</strong> a short identifier for this test user (e.g. <code>playwright</code>, <code>e2e_admin</code>, <code>ci_editor</code>). The actual WordPress username will be <code>csdt-playwright-{name}</code> to make test accounts identifiable in the Users list.</li>
+<li><strong>WordPress Role:</strong> the role this test user will have. Choose the minimum role your tests actually need. If you are testing editor-only flows, create an Editor account rather than an Administrator to limit the blast radius if the shared secret is ever leaked.</li>
+<li><strong>Shared Secret:</strong> a randomly generated 32-character secret used to authenticate all API requests. Click <strong>Show / Hide</strong> to reveal it for copying. Click <strong>Regenerate</strong> to issue a new secret - all .env.test files using the old secret will need to be updated. The secret is stored in your WordPress database and is never transmitted in an API response (only used to authenticate incoming requests).</li>
+<li><strong>Session URL:</strong> the POST endpoint for obtaining a session. The URL contains a 32-character random path token so it is not guessable. Each request must also include the shared secret in the POST body. Copy the URL with the copy button.</li>
+<li><strong>Logout URL:</strong> the POST endpoint for invalidating a session. Call this in your test suite's afterAll hook. Accepts the shared secret and role, and optionally a specific session token to invalidate a single session rather than all sessions for that user.</li>
+<li><strong>Active sessions:</strong> each test user row shows the number of currently live sessions, colour-coded amber when non-zero. Click <strong>Kill Sessions</strong> to manually invalidate all sessions for a user without calling the logout endpoint - useful during development when you want to force a fresh session.</li>
+<li><strong>Last Login:</strong> the timestamp of the most recent session creation via the API for that test user. Shows relative time (e.g. "5m ago") for recent activity and the date for older entries.</li>
+<li><strong>Delete User:</strong> permanently removes the WordPress test account. Any active sessions are also invalidated. Cannot be undone.</li>
+</ul>
+
+<h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">The .env.test Snippet</h3>
+<p>The panel generates a ready-to-use <code>.env.test</code> file snippet based on your current configuration. Copy it into a file at the root of your test project:</p>
+<pre style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:6px;padding:12px;font-size:.82em;overflow-x:auto;">WP_SITE=https://yoursite.com
+CSDT_TEST_SECRET=your_secret_here
+CSDT_TEST_ROLE=my_playwright
+CSDT_TEST_SESSION_URL=https://yoursite.com/wp-json/csdt/v1/test-session-{token}
+CSDT_TEST_LOGOUT_URL=https://yoursite.com/wp-json/csdt/v1/test-logout-{token}</pre>
+<p>Load this in your Playwright config with <code>require('dotenv').config({ path: '.env.test' })</code> and access the values as <code>process.env.CSDT_TEST_SECRET</code> etc.</p>
+
+<div style="background:#fff5f5;border-left:4px solid #dc2626;border-radius:0 8px 8px 0;padding:18px 22px;margin:20px 0 0;">
+<h3 style="margin:0 0 8px;font-size:1em;font-weight:700;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">Security: what is and is not protected</h3>
+<p style="margin:0 0 10px;color:#374151;line-height:1.7;">The session endpoint is publicly accessible (no WordPress login required) but requires both the shared secret in the POST body AND the correct path token in the URL. An attacker would need to know both the secret and the path to request a session. Keep the <code>.env.test</code> file out of version control (<code>.gitignore</code> it) and regenerate the shared secret if you suspect it has leaked.</p>
+<p style="margin:0;color:#374151;line-height:1.7;">Test sessions created via the API are real WordPress sessions with full role permissions. Keep TTLs short (1200 seconds is the recommended default for most test runs) and always call the logout endpoint at the end of your suite. The test users list shows active session counts so you can spot stale sessions and kill them manually.</p>
+</div>`,
 
         'uptime-monitor': `
 <div style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border-left:4px solid #16a34a;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
-<h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">⏱ Deep Uptime Monitoring — From the Cloudflare Edge</h2>
-<p style="margin:0 0 10px;color:#374151;">Traditional uptime monitors check whether your site returns a 200 status code. That tells you nothing about whether WordPress is actually healthy — your site can return 200 while the database is failing, PHP-FPM workers are exhausted, or the application is silently broken.</p>
-<p style="margin:0;color:#374151;">The CloudScale Uptime Monitor probes a built-in <strong>readiness endpoint</strong> every 60 seconds from the Cloudflare edge. Each probe checks: database connectivity, PHP-FPM saturation, and WordPress boot. If any check fails, you get an alert immediately — even if your server is completely offline.</p>
+<h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">⏱ Deep Uptime Monitoring - From the Cloudflare Edge</h2>
+<p style="margin:0 0 10px;color:#374151;">Traditional uptime monitors check whether your site returns a 200 status code. That tells you nothing about whether WordPress is actually healthy - your site can return 200 while the database is failing, PHP-FPM workers are exhausted, or the application is silently broken.</p>
+<p style="margin:0;color:#374151;">The CloudScale Uptime Monitor probes a built-in <strong>readiness endpoint</strong> every 60 seconds from the Cloudflare edge. Each probe checks: database connectivity, PHP-FPM saturation, and WordPress boot. If any check fails, you get an alert immediately - even if your server is completely offline.</p>
 </div>
 
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">How It Works</h3>
 <ol>
-<li>A <strong>Cloudflare Worker</strong> runs on a 60-second cron from the Cloudflare edge — completely independent of your server, your hosting provider, and WP-Cron.</li>
+<li>A <strong>Cloudflare Worker</strong> runs on a 60-second cron from the Cloudflare edge - completely independent of your server, your hosting provider, and WP-Cron.</li>
 <li>Every minute, the Worker sends a <code>GET</code> request to your site's <strong>readiness endpoint</strong> (<code>/wp-json/csdt/v1/ready</code>) with a secret Bearer token in the Authorization header.</li>
 <li>The readiness endpoint runs three checks internally and returns <code>HTTP 200</code> if all pass or <code>HTTP 503</code> if any fail.</li>
 <li>The Worker posts the result back to your WordPress site, recording it in the uptime history and triggering alerts if the site is down.</li>
@@ -819,14 +945,14 @@ helpLib.run({
 <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
 
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">The Readiness Endpoint</h3>
-<p>The readiness endpoint is a public REST API route at <code>/wp-json/csdt/v1/ready</code>. It requires a Bearer token — requests without a valid token return <code>401 Unauthorized</code> and the timestamp is logged as "Last Failed Query".</p>
+<p>The readiness endpoint is a public REST API route at <code>/wp-json/csdt/v1/ready</code>. It requires a Bearer token - requests without a valid token return <code>401 Unauthorized</code> and the timestamp is logged as "Last Failed Query".</p>
 <p><strong>Checks performed on each probe:</strong></p>
 <ul>
-<li><strong>Database</strong> — executes <code>SELECT 1</code> against your WordPress database. Fails if the DB is unreachable or returning errors.</li>
-<li><strong>PHP-FPM saturation</strong> — reads the <code>/fpm-status</code> page (if configured) and fails if active workers exceed 90% of total pool size. This catches the scenario where your site is technically reachable but is about to freeze under load.</li>
-<li><strong>WordPress boot</strong> — implicit: if the endpoint responds at all, WordPress initialised successfully.</li>
+<li><strong>Database</strong> - executes <code>SELECT 1</code> against your WordPress database. Fails if the DB is unreachable or returning errors.</li>
+<li><strong>PHP-FPM saturation</strong> - reads the <code>/fpm-status</code> page (if configured) and fails if active workers exceed 90% of total pool size. This catches the scenario where your site is technically reachable but is about to freeze under load.</li>
+<li><strong>WordPress boot</strong> - implicit: if the endpoint responds at all, WordPress initialised successfully.</li>
 </ul>
-<p><strong>Response format (200 — healthy):</strong></p>
+<p><strong>Response format (200 - healthy):</strong></p>
 <pre style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:6px;padding:12px;font-size:.82em;overflow-x:auto;">{
   "ok": true,
   "checks": {
@@ -837,7 +963,7 @@ helpLib.run({
   "site": "https://yoursite.com",
   "checked_at": 1745000000
 }</pre>
-<p><strong>Response format (503 — degraded):</strong></p>
+<p><strong>Response format (503 - degraded):</strong></p>
 <pre style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:6px;padding:12px;font-size:.82em;overflow-x:auto;">{
   "ok": false,
   "checks": {
@@ -853,7 +979,7 @@ helpLib.run({
 <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
 
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">One-Click Setup</h3>
-<p><strong>Prerequisites:</strong> a Cloudflare account with your site's domain proxied through Cloudflare. Enter your Cloudflare Zone ID and API Token in the <strong>Thumbnails tab</strong> — the token needs <strong>Workers:Edit</strong> permission.</p>
+<p><strong>Prerequisites:</strong> a Cloudflare account with your site's domain proxied through Cloudflare. Enter your Cloudflare Zone ID and API Token in the <strong>Thumbnails tab</strong> - the token needs <strong>Workers:Edit</strong> permission.</p>
 <ol>
 <li>Go to <strong>Tools → Cyber and Devtools → Optimizer tab</strong>.</li>
 <li>Scroll to the <strong>Uptime Monitor</strong> section.</li>
@@ -883,16 +1009,16 @@ wrangler deploy</pre>
 
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Alerts and Notifications</h3>
 <ul>
-<li><strong>ntfy.sh push</strong> — sent directly from the Cloudflare Worker when the readiness probe fails. This fires even if your server is completely offline, because the Worker runs on Cloudflare's infrastructure independently.</li>
-<li><strong>Email alert</strong> — sent from WordPress when the ping callback receives a down status. Falls back to the WordPress admin email if no specific alert email is configured.</li>
-<li><strong>Recovery alert</strong> — sent when the site comes back up after a confirmed outage, including how long the site was down.</li>
-<li><strong>5-minute alert cooldown</strong> — prevents notification spam during extended outages.</li>
+<li><strong>ntfy.sh push</strong> - sent directly from the Cloudflare Worker when the readiness probe fails. This fires even if your server is completely offline, because the Worker runs on Cloudflare's infrastructure independently.</li>
+<li><strong>Email alert</strong> - sent from WordPress when the ping callback receives a down status. Falls back to the WordPress admin email if no specific alert email is configured.</li>
+<li><strong>Recovery alert</strong> - sent when the site comes back up after a confirmed outage, including how long the site was down.</li>
+<li><strong>5-minute alert cooldown</strong> - prevents notification spam during extended outages.</li>
 </ul>
 
 <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
 
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:0 0 10px;background:transparent!important;padding:0!important;border:none!important;">Security</h3>
-<p>The readiness endpoint is public (accessible without a WordPress login) but protected by a Bearer token. All token comparisons use <code>hash_equals()</code> to prevent timing attacks. Requests with a missing or incorrect token return <code>401</code> and log the time of the attempt as <strong>Last Failed Query</strong> — visible in the uptime panel. If you see unexpected failed queries, regenerate your token using the <strong>Generate Token</strong> button and re-deploy the Worker.</p>
-<p>The endpoint does not expose sensitive data — it only returns health check pass/fail status and version numbers.</p>`,
+<p>The readiness endpoint is public (accessible without a WordPress login) but protected by a Bearer token. All token comparisons use <code>hash_equals()</code> to prevent timing attacks. Requests with a missing or incorrect token return <code>401</code> and log the time of the attempt as <strong>Last Failed Query</strong> - visible in the uptime panel. If you see unexpected failed queries, regenerate your token using the <strong>Generate Token</strong> button and re-deploy the Worker.</p>
+<p>The endpoint does not expose sensitive data - it only returns health check pass/fail status and version numbers.</p>`,
     },
 }).catch(err => { console.error('ERROR:', err.message); process.exit(1); });

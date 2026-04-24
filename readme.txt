@@ -4,7 +4,7 @@ Tags: security, code block, syntax highlighting, AI security scan, WordPress har
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.9.413
+Stable tag: 1.9.433
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -84,6 +84,9 @@ highlight.js with auto-detection — 190+ languages including Bash, Python, Java
 5. SQL Query Tool with quick queries and paginated results
 
 == Changelog ==
+
+= 1.9.433 =
+* fix: Explain buttons (and all data-cs-modal-open buttons) now work on iOS Safari — added touchend fallback in cs-admin-settings.js to handle overflow:hidden containers swallowing click events
 
 = 1.9.272 =
 * feat: Orphaned Table Cleanup — 🤖 Ask AI button on Unknown plugin rows (uses configured AI provider to identify table owner)
