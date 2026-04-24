@@ -422,47 +422,54 @@
         var statusLabel = !lp ? 'No pings yet' : (isUp ? '✅ UP' : '🔴 DOWN');
         var msLabel     = lp  ? lp.ms + 'ms' : '';
 
-        var html =
-            '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px;">' +
+        var staleness = (lp && age != null && age > 120)
+            ? ' <span style="font-size:.8em;background:#fef2f2;color:#dc2626;padding:1px 6px;border-radius:3px;margin-left:4px;">⚠ stale</span>'
+            : '';
+        var heartbeat = lp
+            ? '<p style="font-size:.78em;color:#6b7280;margin:10px 0 0;">Last heartbeat: <strong style="color:#374151;">' + escHtml(ageStr) + '</strong>' + staleness + '</p>'
+            : '';
+
+        // Left column: 2×2 tile grid + heartbeat
+        var tilesHtml =
+            '<div style="flex-shrink:0;display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
             uptimeStatCard(statusLabel, msLabel, statusColor) +
             (d.uptime_24h != null ? uptimeStatCard(d.uptime_24h + '%', '24h uptime', d.uptime_24h >= 99 ? '#16a34a' : d.uptime_24h >= 95 ? '#ca8a04' : '#dc2626') : '') +
             (d.uptime_7d  != null ? uptimeStatCard(d.uptime_7d  + '%', '7d uptime',  d.uptime_7d  >= 99 ? '#16a34a' : d.uptime_7d  >= 95 ? '#ca8a04' : '#dc2626') : '') +
             (d.avg_ms_24h != null ? uptimeStatCard(d.avg_ms_24h + 'ms', 'avg resp', d.avg_ms_24h < 500 ? '#16a34a' : d.avg_ms_24h < 1500 ? '#ca8a04' : '#dc2626') : '') +
-            '</div>';
+            '</div>' +
+            heartbeat;
 
-        // Last-ping age
-        if (lp) {
-            var staleness = age != null && age > 120
-                ? ' <span style="font-size:.8em;background:#fef2f2;color:#dc2626;padding:1px 6px;border-radius:3px;margin-left:4px;">⚠ stale — WP-Cron may not be firing</span>'
-                : '';
-            html += '<p style="font-size:.82em;color:#6b7280;margin:0 0 14px;">Last heartbeat to Worker: <strong style="color:#374151;">' + escHtml(ageStr) + '</strong>' + staleness + '</p>';
-        }
-
-        // Response-time chart (raw — last 60 pings, show once enough data exists)
+        // Right column: response-time chart
         var raw = d.raw || [];
+        var chartHtml = '';
         if (raw.length >= 5) {
             var recent   = raw.slice(-60);
             var maxMs    = Math.max.apply(null, recent.map(function(r){ return r.ms; })) || 1;
             var fmtMs    = function(v){ return v >= 1000 ? (v/1000).toFixed(1)+'s' : v+'ms'; };
             var midMs    = Math.round(maxMs / 2);
-            html += '<p style="font-size:.82em;font-weight:700;color:#374151;margin:0 0 6px;">Response time — last ' + recent.length + ' pings</p>';
-            html += '<div style="display:flex;align-items:flex-start;gap:4px;">';
-            html += '<div style="height:56px;display:flex;flex-direction:column;justify-content:space-between;padding:4px 0;font-size:10px;color:#9ca3af;text-align:right;line-height:1;min-width:34px;flex-shrink:0;">'
+            chartHtml += '<p style="font-size:.82em;font-weight:700;color:#374151;margin:0 0 6px;">Response time — last ' + recent.length + ' pings</p>';
+            chartHtml += '<div style="display:flex;align-items:flex-start;gap:4px;width:100%;">';
+            chartHtml += '<div style="height:80px;display:flex;flex-direction:column;justify-content:space-between;padding:4px 0;font-size:10px;color:#9ca3af;text-align:right;line-height:1;min-width:36px;flex-shrink:0;">'
                   + '<span>' + fmtMs(maxMs) + '</span>'
                   + '<span>' + fmtMs(midMs) + '</span>'
                   + '<span>0</span>'
                   + '</div>';
-            html += '<div style="flex:1;display:flex;align-items:flex-end;gap:1px;height:56px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:6px;padding:4px 6px;overflow:hidden;">';
+            chartHtml += '<div style="flex:1;min-width:0;display:flex;align-items:flex-end;gap:1px;height:80px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:6px;padding:4px 6px;overflow:hidden;">';
             recent.forEach(function (r) {
-                var h   = Math.max(2, Math.round((r.ms / maxMs) * 48));
+                var h   = Math.max(2, Math.round((r.ms / maxMs) * 72));
                 var col = r.up ? '#34d399' : '#f87171';
-                html += '<div style="width:6px;flex-shrink:0;height:' + h + 'px;background:' + col + ';border-radius:1px;" title="' + (r.up ? 'UP' : 'DOWN') + ' ' + r.ms + 'ms"></div>';
+                chartHtml += '<div style="flex:1;min-width:3px;max-width:14px;height:' + h + 'px;background:' + col + ';border-radius:1px;" title="' + (r.up ? 'UP' : 'DOWN') + ' ' + r.ms + 'ms"></div>';
             });
-            html += '</div></div>';
-            html += '<p style="font-size:.75em;color:#9ca3af;margin:4px 0 0;">Green = up · Red = down · Height = response time</p>';
+            chartHtml += '</div></div>';
+            chartHtml += '<p style="font-size:.75em;color:#9ca3af;margin:4px 0 0;">Green = up · Red = down · Height = response time</p>';
         } else if (raw.length > 0) {
-            html += '<p style="font-size:.78em;color:#9ca3af;margin:0;">Chart appears after 5 pings (' + (5 - raw.length) + ' more needed).</p>';
+            chartHtml = '<p style="font-size:.78em;color:#9ca3af;margin:0;padding-top:8px;">Chart appears after 5 pings (' + (5 - raw.length) + ' more needed).</p>';
         }
+
+        var html = '<div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:16px;">' +
+            '<div>' + tilesHtml + '</div>' +
+            '<div style="flex:1;min-width:0;">' + chartHtml + '</div>' +
+            '</div>';
 
         uptimeStatusInner.innerHTML = html;
     }

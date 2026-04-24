@@ -476,7 +476,16 @@ helpLib.run({
           altText: 'WordPress read-only SQL query tool for safe database inspection inside wp-admin without phpMyAdmin' },
         { id: 'server-logs',label: 'Server Logs',           file: 'panel-server-logs.png', tabSelector: 'a[href*="tab=debug"]',   elementSelector: '#cs-panel-logs',
           intro: 'Browse your PHP error log, WordPress debug log, and web server logs directly in the dashboard - with live search, severity filtering, and auto-refresh tail mode. No SSH, no cPanel, no asking your hosting provider to email you a file.',
-          altText: 'WordPress server log viewer for PHP error logs, debug logs, and web server logs without SSH access' },
+          altText: 'WordPress server log viewer for PHP error logs, debug logs, and web server logs without SSH access',
+          jsBeforeShot: () => {
+            // Trim log output to 3 visible lines so the screenshot stays compact
+            var out = document.getElementById('cs-logs-output');
+            if (out) { var lines = out.querySelectorAll('.cs-log-line'); lines.forEach(function(l,i){ if(i>=3) l.style.display='none'; }); }
+          },
+          jsAfterShot: () => {
+            var out = document.getElementById('cs-logs-output');
+            if (out) { out.querySelectorAll('.cs-log-line').forEach(function(l){ l.style.display=''; }); }
+          } },
         { id: 'optimizer',  label: 'Plugin Optimizer',      file: 'panel-optimizer.png',   tabSelector: 'a[href*="tab=optimizer"]',  elementSelector: '.cs-tab-content.active',
           intro: 'Two tools in one tab: a plugin stack scanner that maps your installed plugins against everything CloudScale already replaces (so you know exactly which ones to remove), and an AI debugging assistant that diagnoses PHP errors, stack traces, and WordPress warnings instantly with step-by-step fix instructions.',
           altText: 'WordPress plugin stack scanner showing which plugins CloudScale replaces with AI debugging assistant' },
@@ -506,7 +515,7 @@ helpLib.run({
         { id: 'smtp',       label: 'SMTP Mailer',            file: 'panel-smtp.png',        tabSelector: 'a[href*="tab=mail"]',    elementSelector: '#cs-panel-smtp',
           intro: 'Replaces WordPress\'s unreliable PHP mail() function with authenticated SMTP delivery. Supports Gmail, Outlook, Amazon SES, Mailgun, and any standard SMTP server. Includes a test-send button and a persistent activity log showing every outgoing message with delivery status.',
           altText: 'WordPress SMTP mailer settings replacing PHP mail with authenticated Gmail Outlook or Mailgun delivery' },
-        { id: 'email-log',  label: 'Email Activity Log',     file: 'panel-email-log.png',   tabSelector: 'a[href*="tab=mail"]',    elementSelector: '#cs-panel-email-log',
+        { id: 'email-log',  label: 'Email Activity Log',     file: 'panel-email-log.png',   tabSelector: 'a[href*="tab=mail"]',    elementSelector: '#cs-panel-email-log', trimRows: true,
           intro: 'Logs every email sent by WordPress - regardless of whether SMTP is enabled - with the subject, recipient, timestamp, and delivery status. Click any row to view the full email body. Invaluable for debugging WooCommerce order notifications, password reset failures, and contact form delivery issues.',
           altText: 'WordPress email activity log showing all sent emails with subject, recipient and delivery status in admin' },
         { id: 'thumbnails', label: 'Thumbnails & Open Graph', file: 'panel-thumbnails.png', tabSelector: 'a[href*="tab=thumbnails"]', elementSelector: '#cs-panel-thumbs-checker',

@@ -58,10 +58,14 @@ class CSDT_Monitor {
             return;
         }
         fseek( $handle, 0, SEEK_END );
-        $size   = ftell( $handle );
-        $read   = min( 262144, $size );
+        $size = ftell( $handle );
+        if ( $size === 0 ) {
+            fclose( $handle );
+            return;
+        }
+        $read  = min( 262144, $size );
         fseek( $handle, $size - $read );
-        $chunk  = fread( $handle, $read );
+        $chunk = fread( $handle, $read );
         fclose( $handle );
 
         if ( ! $chunk ) {

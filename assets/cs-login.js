@@ -427,21 +427,32 @@
             <span class="cs-bf-ytick">${mid}</span>
             <span class="cs-bf-ytick">0</span>
         </div>`;
+
+        // Compute bar width so exactly 7 bars fill the visible area.
+        // 14 bars total → content is ~2× container width → overflow-x scroll activates.
+        const YAXIS_W = 28, GAP = 4, VISIBLE = 7;
+        const chartW  = bfChart.clientWidth || 280;
+        const barW    = Math.max( 24, Math.floor( ( chartW - YAXIS_W - VISIBLE * GAP ) / VISIBLE ) );
+
         const bars = days.map( d => {
             const pct = Math.round( ( d.count / max ) * 100 );
             let cls = d.count === 0 ? '' : d.count >= max * 0.75 ? ' cs-bf-bar-high' : d.count >= max * 0.4 ? ' cs-bf-bar-mid' : '';
-            // In attack mode: force all bars red; today's bar gets extra emphasis
             const extraStyle = isAttack && d.count > 0
                 ? `background:#dc2626!important;${ d.isToday ? 'box-shadow:0 0 8px rgba(220,38,38,.6);' : 'opacity:.7;' }`
                 : '';
-            return `<div class="cs-bf-day">
+            return `<div class="cs-bf-day" style="width:${barW}px;flex-shrink:0;flex-grow:0;">
                 <div class="cs-bf-bar-track">
                     <div class="cs-bf-bar${cls}" style="height:${pct}%;${extraStyle}" title="${d.count} failed attempt${d.count !== 1 ? 's' : ''}"></div>
                 </div>
                 <div class="cs-bf-day-label" style="${isAttack && d.isToday ? 'color:#dc2626;font-weight:700;' : ''}">${d.label}</div>
             </div>`;
         } ).join( '' );
+
         bfChart.innerHTML = yAxis + bars;
+        // Scroll to most-recent (right end). setTimeout gives iOS Safari time to compute scrollWidth.
+        const scrollToEnd = () => { bfChart.scrollLeft = bfChart.scrollWidth; };
+        scrollToEnd();
+        setTimeout( scrollToEnd, 50 );
     }
 
     function renderBfTable( log, now ) {

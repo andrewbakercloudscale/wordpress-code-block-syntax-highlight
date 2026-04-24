@@ -1076,27 +1076,67 @@ bantime  = 86400</pre>
             return;
         }
 
-        // Update option_name keys that carried the old prefix (e.g. wp_user_roles)
+        // Helper: undo table renames (used in rollback closures below).
+        $undo_tables = static function () use ( $wpdb, $renamed ): void {
+            foreach ( $renamed as $pair ) {
+                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+                $wpdb->query( 'RENAME TABLE `' . esc_sql( $pair['to'] ) . '` TO `' . esc_sql( $pair['from'] ) . '`' );
+            }
+        };
+
+        // Update option_name keys that carried the old prefix (e.g. wp_user_roles).
+        // If this fails we undo the table renames so nothing is left half-migrated.
         $options_table = $new_prefix . 'options';
-        $wpdb->query( $wpdb->prepare(
-            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $opts_result = $wpdb->query( $wpdb->prepare(
             'UPDATE `' . esc_sql( $options_table ) . '` SET option_name = REPLACE(option_name, %s, %s) WHERE option_name LIKE %s',
             $current_prefix,
             $new_prefix,
             $wpdb->esc_like( $current_prefix ) . '%'
         ) );
+        if ( $opts_result === false ) {
+            $undo_tables();
+            wp_send_json_error( 'Could not update option_name keys — migration rolled back. DB: ' . $wpdb->last_error );
+            return;
+        }
+        $opts_rows = (int) $wpdb->rows_affected;
 
-        // Update meta_key entries that carried the old prefix (e.g. wp_capabilities)
+        // Update meta_key entries that carried the old prefix (e.g. wp_capabilities).
+        // On failure: undo the options update AND the table renames.
         $usermeta_table = $new_prefix . 'usermeta';
-        $wpdb->query( $wpdb->prepare(
-            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $meta_result = $wpdb->query( $wpdb->prepare(
             'UPDATE `' . esc_sql( $usermeta_table ) . '` SET meta_key = REPLACE(meta_key, %s, %s) WHERE meta_key LIKE %s',
             $current_prefix,
             $new_prefix,
             $wpdb->esc_like( $current_prefix ) . '%'
         ) );
+        if ( $meta_result === false ) {
+            // Undo options update then table renames.
+            $wpdb->query( $wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+                'UPDATE `' . esc_sql( $options_table ) . '` SET option_name = REPLACE(option_name, %s, %s) WHERE option_name LIKE %s',
+                $new_prefix, $current_prefix, $wpdb->esc_like( $new_prefix ) . '%'
+            ) );
+            $undo_tables();
+            wp_send_json_error( 'Could not update meta_key entries — migration rolled back. DB: ' . $wpdb->last_error );
+            return;
+        }
+        $meta_rows = (int) $wpdb->rows_affected;
 
-        // Rewrite $table_prefix in wp-config.php — handles both static and Docker getenv_docker() forms
+        // Rewrite $table_prefix in wp-config.php — handles both static and Docker getenv_docker() forms.
+        // On any failure: undo meta, options, and table renames so the DB is fully restored.
+        $undo_meta_and_tables = static function () use ( $wpdb, $options_table, $usermeta_table, $current_prefix, $new_prefix, $undo_tables ): void {
+            $wpdb->query( $wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+                'UPDATE `' . esc_sql( $usermeta_table ) . '` SET meta_key = REPLACE(meta_key, %s, %s) WHERE meta_key LIKE %s',
+                $new_prefix, $current_prefix, $wpdb->esc_like( $new_prefix ) . '%'
+            ) );
+            $wpdb->query( $wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+                'UPDATE `' . esc_sql( $options_table ) . '` SET option_name = REPLACE(option_name, %s, %s) WHERE option_name LIKE %s',
+                $new_prefix, $current_prefix, $wpdb->esc_like( $new_prefix ) . '%'
+            ) );
+            $undo_tables();
+        };
+
         // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
         $cfg     = file_get_contents( $cfg_file );
         $new_cfg = preg_replace(
@@ -1114,10 +1154,7 @@ bantime  = 86400</pre>
         }
 
         if ( $new_cfg === null || $new_cfg === $cfg ) {
-            foreach ( $renamed as $pair ) {
-                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-                $wpdb->query( 'RENAME TABLE `' . esc_sql( $pair['to'] ) . '` TO `' . esc_sql( $pair['from'] ) . '`' );
-            }
+            $undo_meta_and_tables();
             wp_send_json_error( 'Could not update $table_prefix in wp-config.php. Migration rolled back.' );
             return;
         }
@@ -1125,10 +1162,7 @@ bantime  = 86400</pre>
         // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
         if ( file_put_contents( $cfg_file, $new_cfg ) === false ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_put_contents_file_put_contents
             if ( $needs_chmod ) { @chmod( $cfg_file, $original_perms ); }
-            foreach ( $renamed as $pair ) {
-                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-                $wpdb->query( 'RENAME TABLE `' . esc_sql( $pair['to'] ) . '` TO `' . esc_sql( $pair['from'] ) . '`' );
-            }
+            $undo_meta_and_tables();
             wp_send_json_error( 'Could not write wp-config.php. Migration rolled back.' );
             return;
         }
@@ -1152,9 +1186,11 @@ bantime  = 86400</pre>
         delete_transient( 'csdt_db_prefix_proposed' );
 
         wp_send_json_success( [
-            'new_prefix'     => $new_prefix,
-            'tables_renamed' => count( $renamed ),
-            'message'        => 'Success! Renamed ' . count( $renamed ) . ' core tables to prefix "' . $new_prefix . '" and updated wp-config.php.',
+            'new_prefix'        => $new_prefix,
+            'tables_renamed'    => count( $renamed ),
+            'options_updated'   => $opts_rows,
+            'usermeta_updated'  => $meta_rows,
+            'message'           => 'Success! Renamed ' . count( $renamed ) . ' tables, updated ' . $opts_rows . ' option rows and ' . $meta_rows . ' user meta rows to prefix "' . $new_prefix . '".',
         ] );
     }
 
@@ -1191,23 +1227,51 @@ bantime  = 86400</pre>
             return;
         }
 
-        // Revert option_name and meta_key keys back to old prefix
         $old_prefix     = $info['old_prefix'];
         $new_prefix     = $info['new_prefix'];
         $options_table  = $old_prefix . 'options';
         $usermeta_table = $old_prefix . 'usermeta';
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-        $wpdb->query( $wpdb->prepare(
+
+        // Helper: re-apply the forward migration names so the DB isn't left half-reverted.
+        $undo_rollback_tables = static function () use ( $wpdb, $info ): void {
+            foreach ( $info['tables'] as $pair ) {
+                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+                $wpdb->query( 'RENAME TABLE `' . esc_sql( $pair['from'] ) . '` TO `' . esc_sql( $pair['to'] ) . '`' );
+            }
+        };
+
+        // Revert option_name keys back to old prefix (e.g. csXXX_user_roles → wp_user_roles).
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $opts_result = $wpdb->query( $wpdb->prepare(
             'UPDATE `' . esc_sql( $options_table ) . '` SET option_name = REPLACE(option_name, %s, %s) WHERE option_name LIKE %s',
             $new_prefix, $old_prefix, $wpdb->esc_like( $new_prefix ) . '%'
         ) );
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-        $wpdb->query( $wpdb->prepare(
+        if ( $opts_result === false ) {
+            $undo_rollback_tables();
+            wp_send_json_error( 'Could not revert option_name keys — rollback undone. DB: ' . $wpdb->last_error );
+            return;
+        }
+        $opts_rows = (int) $wpdb->rows_affected;
+
+        // Revert meta_key entries back to old prefix (e.g. csXXX_capabilities → wp_capabilities).
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $meta_result = $wpdb->query( $wpdb->prepare(
             'UPDATE `' . esc_sql( $usermeta_table ) . '` SET meta_key = REPLACE(meta_key, %s, %s) WHERE meta_key LIKE %s',
             $new_prefix, $old_prefix, $wpdb->esc_like( $new_prefix ) . '%'
         ) );
+        if ( $meta_result === false ) {
+            // Undo options revert then re-apply table renames.
+            $wpdb->query( $wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+                'UPDATE `' . esc_sql( $options_table ) . '` SET option_name = REPLACE(option_name, %s, %s) WHERE option_name LIKE %s',
+                $old_prefix, $new_prefix, $wpdb->esc_like( $old_prefix ) . '%'
+            ) );
+            $undo_rollback_tables();
+            wp_send_json_error( 'Could not revert meta_key entries — rollback undone. DB: ' . $wpdb->last_error );
+            return;
+        }
+        $meta_rows = (int) $wpdb->rows_affected;
 
-        // Restore original wp-config.php content
+        // Restore original wp-config.php content.
         $cfg_file = ABSPATH . 'wp-config.php';
         if ( ! empty( $info['cfg_original'] ) ) {
             $original_perms = file_exists( $cfg_file ) ? fileperms( $cfg_file ) : 0644;
@@ -1222,8 +1286,10 @@ bantime  = 86400</pre>
         delete_option( 'csdt_db_prefix_rollback' );
 
         wp_send_json_success( [
-            'reverted' => $reverted,
-            'message'  => 'Rolled back ' . $reverted . ' tables to prefix "' . esc_html( $old_prefix ) . '" and restored wp-config.php.',
+            'reverted'         => $reverted,
+            'options_reverted' => $opts_rows,
+            'usermeta_reverted'=> $meta_rows,
+            'message'          => 'Rolled back ' . $reverted . ' tables, reverted ' . $opts_rows . ' option rows and ' . $meta_rows . ' user meta rows to prefix "' . esc_html( $old_prefix ) . '".',
         ] );
     }
 

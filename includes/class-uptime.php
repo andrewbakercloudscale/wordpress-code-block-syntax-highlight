@@ -369,7 +369,8 @@ class CSDT_Uptime {
         update_option( 'csdt_uptime_ntfy_url', $ntfy_url, false );
 
         $zone_id = sanitize_text_field( wp_unslash( $_POST['cf_zone_id'] ?? '' ) );
-        if ( $zone_id !== '' ) {
+        // Only update if a real value was submitted (not the masked placeholder)
+        if ( $zone_id !== '' && strpos( $zone_id, '•' ) === false ) {
             update_option( 'csdt_devtools_cf_zone_id', $zone_id, false );
         }
         $api_token = sanitize_text_field( wp_unslash( $_POST['cf_api_token'] ?? '' ) );
