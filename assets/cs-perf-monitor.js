@@ -157,10 +157,6 @@
 
         if (!panel) return;
 
-        // Move help panel to body to avoid iOS overflow:hidden clipping; force-hide on every load.
-        var helpPanel = document.getElementById('cs-perf-help');
-        if (helpPanel) { helpPanel.style.display = 'none'; document.body.appendChild(helpPanel); }
-
         computeN1Patterns();
         computeIssues();
         populatePluginFilter();
@@ -3154,6 +3150,7 @@
             if (toggleBtn.contains(e.target) || (exportBtn && exportBtn.contains(e.target))) return;
             togglePanel();
         });
+
         toggleBtn.addEventListener('click', function (e) { e.stopPropagation(); togglePanel(); });
         // iOS Safari fallback: touchend fires reliably even when parent has
         // overflow/fixed positioning quirks that can swallow click events.
@@ -3195,22 +3192,6 @@
         });
         var copyBtn = document.getElementById('cs-perf-copy');
         if (copyBtn) copyBtn.addEventListener('click', function (e) { e.stopPropagation(); copyCurrentTab(); });
-
-        var helpBtn   = document.getElementById('cs-perf-help-btn');
-        var helpClose = document.getElementById('cs-perf-help-close');
-        // Ignore clicks within 600ms of page load — guards against iOS Safari ghost taps.
-        var helpReady = Date.now() + 600;
-        if (helpBtn && helpPanel) {
-            helpBtn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                if (Date.now() < helpReady) return;
-                helpPanel.style.display = helpPanel.style.display === 'none' ? '' : 'none';
-            });
-            if (helpClose) helpClose.addEventListener('click', function (e) {
-                e.stopPropagation();
-                helpPanel.style.display = 'none';
-            });
-        }
 
         tabBtns.forEach(function (btn) {
             btn.addEventListener('click', function (e) {
@@ -3320,10 +3301,6 @@
                 e.preventDefault(); togglePanel();
             }
             if (e.key === 'Escape') {
-                if (helpPanel && helpPanel.style.display !== 'none') {
-                    helpPanel.style.display = 'none';
-                    return;
-                }
                 // Collapse any open EXPLAIN result divs and detail rows
                 var hadOpen = false;
                 Array.prototype.forEach.call(document.querySelectorAll('.cs-explain-result'), function (r) {

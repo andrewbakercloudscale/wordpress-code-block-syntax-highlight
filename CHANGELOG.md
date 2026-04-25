@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.9.508] - 2026-04-25
+
+### Removed
+- CS Monitor: `?` help panel removed entirely — was triggering automatically on iOS Safari due to bfcache page restore combined with a JS scope bug that prevented the display:none guard from applying
+
 ## [1.9.507] - 2026-04-25
 
 ### Fixed
