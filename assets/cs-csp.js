@@ -342,11 +342,11 @@
             if (home.warnings && home.warnings.length) {
                 var warnRows = '';
                 home.warnings.forEach(function(w) {
-                    warnRows += '<tr style="border-bottom:1px solid #f1f5f9;">' +
-                        '<td style="padding:10px 12px 10px 0;font-weight:700;color:#b45309;white-space:nowrap;vertical-align:top;width:220px;font-size:12px;">' + esc(w.header) + '</td>' +
-                        '<td style="padding:10px 0;color:#374151;font-size:12px;">' + esc(w.msg) + '</td></tr>';
+                    warnRows += '<div style="border-bottom:1px solid #f1f5f9;padding:10px 0;">' +
+                        '<div style="font-weight:700;color:#b45309;font-size:12px;margin-bottom:3px;">' + esc(w.header) + '</div>' +
+                        '<div style="color:#374151;font-size:12px;word-break:break-word;">' + esc(w.msg) + '</div></div>';
                 });
-                html += secBox('Warnings', '<table style="width:100%;border-collapse:collapse;">' + warnRows + '</table>');
+                html += secBox('Warnings', '<div>' + warnRows + '</div>');
             }
 
             // ── 3. Raw Headers ───────────────────────────────────────
@@ -356,11 +356,11 @@
                     var val = home.all_headers[hk];
                     var isSec = SEC_KEYS.indexOf(hk) !== -1;
                     var valStr = Array.isArray(val) ? val.join(', ') : String(val || '');
-                    rawRows += '<tr style="border-bottom:1px solid #f1f5f9;">' +
-                        '<td style="padding:7px 12px 7px 0;font-weight:700;white-space:nowrap;vertical-align:top;font-size:12px;width:200px;' + (isSec ? 'color:#15803d;' : 'color:#374151;') + '">' + esc(hk) + '</td>' +
-                        '<td style="padding:7px 0;font-size:12px;' + (isSec ? 'font-weight:600;color:#1e293b;' : 'color:#374151;') + 'word-break:break-all;">' + esc(valStr) + '</td></tr>';
+                    rawRows += '<div style="border-bottom:1px solid #f1f5f9;padding:7px 0;">' +
+                        '<div style="font-weight:700;font-size:12px;margin-bottom:2px;' + (isSec ? 'color:#15803d;' : 'color:#374151;') + '">' + esc(hk) + '</div>' +
+                        '<div style="font-size:12px;word-break:break-all;' + (isSec ? 'font-weight:600;color:#1e293b;' : 'color:#374151;') + '">' + esc(valStr) + '</div></div>';
                 });
-                html += secBox('Raw Headers', '<table style="width:100%;border-collapse:collapse;">' + rawRows + '</table>');
+                html += secBox('Raw Headers', '<div>' + rawRows + '</div>');
             }
         }
 
@@ -392,27 +392,56 @@
         scanResults.innerHTML = html;
     }
 
-    if (scanBtn) {
-        scanBtn.addEventListener('click', function() {
-            scanBtn.disabled = true;
-            if (scanSpinner) scanSpinner.style.display = 'inline';
-            if (scanResults) scanResults.innerHTML = '';
-            var fd = new FormData();
-            fd.append('action', 'csdt_scan_headers');
-            fd.append('nonce',  csdtVulnScan.nonce);
-            fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
-                .then(function(r){ return r.json(); })
-                .then(function(resp) {
-                    scanBtn.disabled = false;
-                    if (scanSpinner) scanSpinner.style.display = 'none';
-                    if (resp && resp.success) renderScanResults(resp.data);
-                    else if (scanResults) scanResults.innerHTML = '<p style="color:#dc2626;font-size:12px;">Scan failed: ' + (resp && resp.data ? esc(resp.data) : 'unknown error') + '</p>';
-                })
-                .catch(function() {
-                    scanBtn.disabled = false;
-                    if (scanSpinner) scanSpinner.style.display = 'none';
-                    if (scanResults) scanResults.innerHTML = '<p style="color:#dc2626;font-size:12px;">Request failed.</p>';
-                });
-        });
+    function runHeaderScan() {
+        if (!scanBtn) { return; }
+        scanBtn.disabled = true;
+        if (scanSpinner) scanSpinner.style.display = 'inline';
+        if (scanResults) scanResults.innerHTML = '';
+
+        var controller = new AbortController();
+        var timer = setTimeout(function() { controller.abort(); }, 30000);
+
+        var fd = new FormData();
+        fd.append('action', 'csdt_scan_headers');
+        fd.append('nonce',  csdtVulnScan.nonce);
+        fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd, signal: controller.signal })
+            .then(function(r) {
+                return r.text().then(function(txt) { return { status: r.status, txt: txt }; });
+            })
+            .then(function(res) {
+                clearTimeout(timer);
+                scanBtn.disabled = false;
+                if (scanSpinner) scanSpinner.style.display = 'none';
+                var resp = null;
+                try { resp = JSON.parse(res.txt); } catch(e) {}
+                if (resp && resp.success) {
+                    renderScanResults(resp.data);
+                } else if (resp) {
+                    if (scanResults) scanResults.innerHTML = '<p style="color:#dc2626;font-size:12px;">Scan failed: ' + esc(resp.data || 'unknown error') + '</p>' + retryHtml();
+                } else {
+                    var preview = res.txt ? res.txt.replace(/<[^>]+>/g, ' ').trim().slice(0, 200) : '(empty)';
+                    if (scanResults) scanResults.innerHTML = '<p style="color:#dc2626;font-size:12px;">Scan error (HTTP ' + res.status + '): ' + esc(preview) + '</p>' + retryHtml();
+                }
+            })
+            .catch(function(err) {
+                clearTimeout(timer);
+                scanBtn.disabled = false;
+                if (scanSpinner) scanSpinner.style.display = 'none';
+                var isTimeout = err && err.name === 'AbortError';
+                var msg = isTimeout ? 'Request timed out after 30s' : ('Request failed: ' + (err && err.message ? err.message : 'network error'));
+                if (scanResults) scanResults.innerHTML = '<p style="color:#dc2626;font-size:12px;">' + esc(msg) + '</p>' + retryHtml();
+            });
     }
+
+    function retryHtml() {
+        return '<p style="margin-top:6px;"><button type="button" id="cs-scan-retry" style="font-size:12px;padding:3px 10px;background:#fff;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;">Retry scan</button></p>';
+    }
+
+    if (scanBtn) {
+        scanBtn.addEventListener('click', runHeaderScan);
+    }
+
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.id === 'cs-scan-retry') { runHeaderScan(); }
+    });
 })();

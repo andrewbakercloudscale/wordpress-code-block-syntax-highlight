@@ -82,12 +82,10 @@
         var icon = CAT_ICON[f.category] || '🔍';
         var ctaHtml = '';
         if (f.cta && f.cta.url && f.cta.label) {
-            ctaHtml = '<div style="margin-top:10px;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:6px;padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">' +
-                '<div style="flex:1;min-width:0;">' +
-                '<div style="font-size:.78em;font-weight:700;color:#a5b4fc;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">CloudScale Recommendation</div>' +
-                '<div style="font-size:.83em;color:#cbd5e1;line-height:1.4;">' + escHtml(f.cta.desc || '') + '</div>' +
-                '</div>' +
-                '<a href="' + escHtml(f.cta.url) + '" target="_blank" rel="noopener" style="flex-shrink:0;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;font-size:.8em;font-weight:700;padding:7px 14px;border-radius:6px;white-space:nowrap;">' +
+            ctaHtml = '<div style="margin-top:10px;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:6px;padding:12px 14px;">' +
+                '<div style="font-size:.78em;font-weight:700;color:#a5b4fc;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">CloudScale Recommendation</div>' +
+                '<div style="font-size:.83em;color:#cbd5e1;line-height:1.5;margin-bottom:10px;">' + escHtml(f.cta.desc || '') + '</div>' +
+                '<a href="' + escHtml(f.cta.url) + '" target="_blank" rel="noopener" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;font-size:.8em;font-weight:700;padding:7px 14px;border-radius:6px;white-space:nowrap;">' +
                 escHtml(f.cta.label) + '</a>' +
                 '</div>';
         }

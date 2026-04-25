@@ -697,14 +697,18 @@ class CSDT_Thumbnails {
         $thumb_id = (int) get_post_thumbnail_id( $post_id );
         if ( ! $thumb_id ) return;
 
-        // Skip if the thumbnail hasn't changed since last generation.
-        $last_thumb = (int) get_post_meta( $post_id, '_csdt_social_formats_thumb_id', true );
-        if ( $last_thumb === $thumb_id ) return;
+        // Skip if the thumbnail ID and file are both unchanged since last generation.
+        $last_thumb    = (int) get_post_meta( $post_id, '_csdt_social_formats_thumb_id', true );
+        $last_gen_time = (int) get_post_meta( $post_id, '_csdt_social_formats_gen_time', true );
+        $thumb_post    = get_post( $thumb_id );
+        $thumb_mtime   = $thumb_post ? strtotime( $thumb_post->post_modified_gmt ) : 0;
+        if ( $last_thumb === $thumb_id && $last_gen_time >= $thumb_mtime ) return;
 
         $results = self::generate_social_formats_for_post( $post_id );
         if ( $results === null ) return;
 
         update_post_meta( $post_id, '_csdt_social_formats_thumb_id', $thumb_id );
+        update_post_meta( $post_id, '_csdt_social_formats_gen_time', time() );
 
         // Store for admin notice on next page load.
         $user_id = get_current_user_id();

@@ -51,6 +51,9 @@
     font-weight: 700;
     color: #fff;
     letter-spacing: -.3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 #cs-banner-sub {
     font-size: 12px;

@@ -192,14 +192,16 @@ class CSDT_DevTools_Passkey {
             }
         }
 
+        $user          = get_userdata( $user_id );
         $alg           = (int) ( $parsed['cose_key'][3] ?? -7 );
         $credentials[] = [
-            'id'         => $cred_id,
-            'pem'        => $pem,
-            'alg'        => $alg,
-            'sign_count' => $parsed['sign_count'],
-            'name'       => $cred_name ?: 'Passkey',
-            'created'    => time(),
+            'id'           => $cred_id,
+            'pem'          => $pem,
+            'alg'          => $alg,
+            'sign_count'   => $parsed['sign_count'],
+            'name'         => $cred_name ?: 'Passkey',
+            'wp_user_login'=> $user ? $user->user_login : '',
+            'created'      => time(),
         ];
         self::save_passkeys( $user_id, $credentials );
 
@@ -284,7 +286,7 @@ class CSDT_DevTools_Passkey {
      * @param int    $user_id User to authenticate.
      * @return void  Always exits.
      */
-    public static function render_login_challenge( string $token, int $user_id, string $error = '', bool $has_picker = false ): void {
+    public static function render_login_challenge( string $token, int $user_id, string $error = '', array $available = [] ): void {
         $credentials = self::get_passkeys( $user_id );
         if ( empty( $credentials ) ) {
             wp_safe_redirect( wp_login_url() );
@@ -305,6 +307,8 @@ class CSDT_DevTools_Passkey {
         ];
         $nonce = wp_create_nonce( 'csdt_devtools_pk_login_' . $token );
 
+        $has_picker   = count( $available ) > 1;
+        $has_totp     = in_array( 'totp', $available, true );
         $fallback_url = add_query_arg( [ 'action' => 'csdt_devtools_2fa', 'csdt_devtools_token' => rawurlencode( $token ) ], wp_login_url() );
         $picker_url   = $has_picker
             ? add_query_arg( [ 'action' => 'csdt_devtools_2fa', 'csdt_devtools_token' => rawurlencode( $token ), 'csdt_devtools_back_to_picker' => '1' ], wp_login_url() )
@@ -342,6 +346,14 @@ class CSDT_DevTools_Passkey {
                   📧 <?php esc_html_e( 'Send me an email code instead', 'cloudscale-devtools' ); ?>
                 </button>
               </p>
+              <?php if ( $has_totp ) : ?>
+              <p id="cs-pk-totp-wrap" style="<?php echo $error ? '' : 'display:none;'; ?>margin:10px 0 0;">
+                <button type="button" id="cs-pk-totp"
+                        style="background:#f0f4ff;border:1.5px solid #c7d2fe;color:#2271b1;cursor:pointer;font-size:13px;font-weight:600;padding:9px 18px;border-radius:6px;width:100%;display:flex;align-items:center;justify-content:center;gap:7px;">
+                  📱 <?php esc_html_e( 'Use Google Authenticator instead', 'cloudscale-devtools' ); ?>
+                </button>
+              </p>
+              <?php endif; ?>
               <?php if ( $picker_url ) : ?>
               <p id="cs-pk-picker-wrap" style="<?php echo $error ? '' : 'display:none;'; ?>margin:10px 0 0;">
                 <a href="<?php echo esc_url( $picker_url ); ?>"
@@ -352,6 +364,14 @@ class CSDT_DevTools_Passkey {
               <?php endif; ?>
             </div>
           </form>
+
+          <?php if ( $has_totp ) : ?>
+          <form id="cs-pk-totp-form" method="post" action="" style="display:none">
+            <input type="hidden" name="action"                      value="csdt_devtools_2fa">
+            <input type="hidden" name="csdt_devtools_token"         value="<?php echo esc_attr( $token ); ?>">
+            <input type="hidden" name="csdt_devtools_method_choice" value="totp">
+          </form>
+          <?php endif; ?>
 
           <p style="text-align:center;margin-top:12px;">
             <a href="<?php echo esc_url( wp_login_url() ); ?>" style="font-size:13px;color:#555;">
@@ -402,6 +422,8 @@ class CSDT_DevTools_Passkey {
                     if ( icon ) icon.textContent = cancelled ? '🔑' : '❌';
                     if ( wrap )     wrap.style.display = '';
                     if ( fallback ) fallback.style.display = '';
+                    const totpWrap   = document.getElementById('cs-pk-totp-wrap');
+                    if ( totpWrap )   totpWrap.style.display = '';
                     const pickerWrap = document.getElementById('cs-pk-picker-wrap');
                     if ( pickerWrap ) pickerWrap.style.display = '';
                 }
@@ -421,6 +443,15 @@ class CSDT_DevTools_Passkey {
                     f.action = <?php echo wp_json_encode( $fallback_url ); ?>;
                     f.submit();
                 }
+            });
+            document.getElementById('cs-pk-totp')?.addEventListener('click', function () {
+                const btn = this;
+                if ( btn.dataset.submitted ) return;
+                btn.dataset.submitted = '1';
+                btn.disabled = true;
+                btn.textContent = '📱 Opening authenticator…';
+                btn.style.opacity = '0.7';
+                document.getElementById('cs-pk-totp-form')?.submit();
             });
             run();
         })();
@@ -459,8 +490,10 @@ class CSDT_DevTools_Passkey {
      * @param int $user_id Logged-in admin user.
      */
     public static function render_section( int $user_id ): void {
-        $passkeys = self::get_passkeys( $user_id );
-        $count    = count( $passkeys );
+        $passkeys   = self::get_passkeys( $user_id );
+        $count      = count( $passkeys );
+        $owner      = get_userdata( $user_id );
+        $owner_login = $owner ? $owner->user_login : '';
         ?>
         <div class="cs-2fa-divider"></div>
 
@@ -497,10 +530,19 @@ class CSDT_DevTools_Passkey {
         <?php if ( $count > 0 ) : ?>
         <div id="cs-pk-list" class="cs-pk-list">
             <?php foreach ( $passkeys as $pk ) :
-                $date = ! empty( $pk['created'] ) ? date_i18n( get_option( 'date_format' ), $pk['created'] ) : '—'; ?>
+                $date      = ! empty( $pk['created'] ) ? date_i18n( get_option( 'date_format' ), $pk['created'] ) : '—';
+                $pk_login  = ! empty( $pk['wp_user_login'] ) ? $pk['wp_user_login'] : $owner_login;
+                $login_mismatch = $pk_login && $owner_login && $pk_login !== $owner_login;
+            ?>
             <div class="cs-pk-item" data-id="<?php echo esc_attr( $pk['id'] ); ?>">
                 <span class="cs-pk-icon">🔑</span>
                 <span class="cs-pk-name"><?php echo esc_html( $pk['name'] ); ?></span>
+                <span class="cs-pk-account" style="font-size:11px;color:<?php echo $login_mismatch ? '#dc2626' : '#6b7280'; ?>;font-family:monospace;margin-left:4px;">
+                    <?php echo esc_html( '@' . $pk_login ); ?>
+                    <?php if ( $login_mismatch ) : ?>
+                        <span title="<?php esc_attr_e( 'This credential was registered under a different account', 'cloudscale-devtools' ); ?>" style="cursor:help">⚠️</span>
+                    <?php endif; ?>
+                </span>
                 <span class="cs-pk-date"><?php echo esc_html( $date ); ?></span>
                 <span class="cs-pk-test-result" style="display:none;font-size:12px;font-weight:600"></span>
                 <button type="button" class="cs-btn-secondary cs-pk-test" data-id="<?php echo esc_attr( $pk['id'] ); ?>">
@@ -824,7 +866,19 @@ class CSDT_DevTools_Passkey {
         $raw = get_user_meta( $user_id, self::META_KEY, true );
         if ( ! $raw ) return [];
         $arr = json_decode( $raw, true );
-        return is_array( $arr ) ? $arr : [];
+        if ( ! is_array( $arr ) ) return [];
+
+        // Drop any credential whose registered WP account no longer exists.
+        $cleaned = array_values( array_filter( $arr, static function ( $c ) {
+            if ( empty( $c['wp_user_login'] ) ) return true;
+            return (bool) get_user_by( 'login', $c['wp_user_login'] );
+        } ) );
+
+        if ( count( $cleaned ) !== count( $arr ) ) {
+            update_user_meta( $user_id, self::META_KEY, wp_json_encode( $cleaned ) );
+        }
+
+        return $cleaned;
     }
 
     private static function save_passkeys( int $user_id, array $creds ): void {

@@ -4,7 +4,7 @@ Tags: security, code block, syntax highlighting, AI security scan, WordPress har
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.9.495
+Stable tag: 1.9.496
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,8 +85,12 @@ highlight.js with auto-detection — 190+ languages including Bash, Python, Java
 
 == Changelog ==
 
-= 1.9.495 =
-* feat: Block Basic Auth toggle — site-wide toggle in Test Account Manager to disable REST API application passwords and HTTP Basic Auth for all users; inline script handler immune to JS load failures; Playwright test covering save and reload persistence
+= 1.9.496 =
+* fix: Social thumbnails now auto-regenerate when the featured image file is replaced in the Media Library (not just when the attachment ID changes)
+* fix: Passkey login screen shows TOTP fallback link when TOTP is also configured; back-to-picker recomputes available methods from DB to fix stale transient issue
+* fix: CSP scan warnings and raw headers panel replaced table layout with div stacks so long values wrap correctly on mobile
+* fix: Site Audit CTA block stacked to show description above button on narrow screens
+* fix: Admin banner header uses flexbox for icon alignment
 
 = 1.9.433 =
 * fix: Explain buttons (and all data-cs-modal-open buttons) now work on iOS Safari — added touchend fallback in cs-admin-settings.js to handle overflow:hidden containers swallowing click events

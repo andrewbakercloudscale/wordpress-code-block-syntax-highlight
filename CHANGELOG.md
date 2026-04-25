@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.9.496] - 2026-04-25
+
+### Fixed
+- Thumbnails: `on_post_saved` now regenerates social formats when the featured image file is replaced in the Media Library — previously only triggered when the attachment ID changed, missing file-replacement updates; stores `_csdt_social_formats_gen_time` and compares against attachment `post_modified_gmt`
+- Passkey login: back-to-picker recomputes available/setup methods from DB so stale transients with missing keys still show the full method list
+- Passkey login: TOTP fallback link shown on passkey challenge screen when TOTP is also configured; `render_login_challenge` takes `$available` array instead of `$has_picker` bool; stores `wp_user_login` in credential on registration
+- CSP scan: warnings and raw headers panels replaced `<table>` layout with `<div>` stacks so long header values wrap correctly on mobile
+- Site Audit: CTA block description now stacks above button on narrow screens
+- Admin banner header: flexbox alignment for icon + text
+
 ## [1.9.495] - 2026-04-24
 
 ### Added

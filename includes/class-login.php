@@ -627,8 +627,17 @@ h1{font-size:22px;font-weight:700;color:#f1f5f9;margin-bottom:8px;line-height:1.
         $setup     = isset( $pending['setup'] )     && is_array( $pending['setup'] )     ? $pending['setup']     : $available;
         $error     = '';
 
-        // ── Back-to-picker from passkey error screen ─────────────────────────
+        // ── Back-to-picker from any challenge screen ─────────────────────────
         if ( isset( $_GET['csdt_devtools_back_to_picker'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            // Always recompute available/setup fresh so stale transients
+            // without those keys still show the full method list.
+            $u = get_user_by( 'id', $user_id );
+            if ( $u instanceof \WP_User ) {
+                $pending['available'] = self::login_2fa_available_methods( $u );
+                $pending['setup']     = self::login_2fa_setup_methods( $u );
+                $available            = $pending['available'];
+                $setup                = $pending['setup'];
+            }
             $pending['method'] = 'picker';
             set_transient( CloudScale_DevTools::LOGIN_2FA_TRANSIENT . $token, $pending, 600 );
             $url = add_query_arg( [
@@ -722,7 +731,7 @@ h1{font-size:22px;font-weight:700;color:#f1f5f9;margin-bottom:8px;line-height:1.
 
         // ── Passkey challenge page (GET or re-render after failure) ──────────
         if ( $method === 'passkey' && empty( $_POST['csdt_devtools_2fa_code'] ) ) {
-            CSDT_DevTools_Passkey::render_login_challenge( $token, $user_id, $error, count( $available ) > 1 );
+            CSDT_DevTools_Passkey::render_login_challenge( $token, $user_id, $error, $available );
             // render_login_challenge() exits.
         }
 
