@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.9.505] - 2026-04-25
+
+### Fixed
+- CS Monitor: panel no longer auto-reopens on every page load — `restoreState()` now always starts collapsed; height and active tab are still persisted via `localStorage`
+
 ## [1.9.504] - 2026-04-25
 
 ### Fixed

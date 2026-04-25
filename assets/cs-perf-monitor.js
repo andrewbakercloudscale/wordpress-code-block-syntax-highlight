@@ -222,11 +222,10 @@
 
     // ── Panel open / close ────────────────────────────────────────────────────
     function restoreState() {
-        var open = localStorage.getItem(LS_OPEN) === '1';
-        var h    = parseInt(localStorage.getItem(LS_HEIGHT), 10) || DEFAULT_H;
+        // Always start collapsed on each page load — localStorage only persists height and tab.
+        var h = parseInt(localStorage.getItem(LS_HEIGHT), 10) || DEFAULT_H;
         if (h < MIN_H) { h = DEFAULT_H; localStorage.removeItem(LS_HEIGHT); }
-        setPadding(open ? clampHeight(h) : 48);
-        if (open) openPanel(h, false);
+        setPadding(48);
         switchTab(activeTab, false);
     }
 
