@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://your-wordpress-site.example.com
  * Description: Free AI penetration testing, brute-force protection, 2FA, passkeys, AI site audit, AI debugging, performance monitor, SMTP, SQL tool, server logs, vulnerability scanner, and Cloudflare uptime monitor. No subscription, no cloud dependency.
- * Version: 1.9.515
+ * Version: 1.9.516
  * Author: Andrew Baker
  * Author URI: https://your-wordpress-site.example.com
  * License: GPL-2.0-or-later
@@ -54,7 +54,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.515';
+    const VERSION      = '1.9.516';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -406,6 +406,8 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_scan_history_item',            [ 'CSDT_Security_Headers', 'ajax_scan_history_item' ] );
         add_action( 'wp_ajax_csdt_devtools_csp_violations_get',  [ 'CSDT_CSP', 'ajax_csp_violations_get' ] );
         add_action( 'wp_ajax_csdt_devtools_csp_violations_clear', [ 'CSDT_CSP', 'ajax_csp_violations_clear' ] );
+        add_action( 'wp_ajax_csdt_devtools_csp_fixes_get',        [ 'CSDT_CSP', 'ajax_csp_fixes_get' ] );
+        add_action( 'wp_ajax_csdt_devtools_csp_fixes_clear',      [ 'CSDT_CSP', 'ajax_csp_fixes_clear' ] );
         add_action( 'send_headers',                             [ 'CSDT_CSP', 'output_security_headers' ] );
         add_action( 'wp_ajax_csdt_test_account_create',          [ 'CSDT_Test_Accounts', 'ajax_create_test_account' ] );
         add_action( 'wp_ajax_csdt_test_account_revoke',          [ 'CSDT_Test_Accounts', 'ajax_revoke_test_account' ] );

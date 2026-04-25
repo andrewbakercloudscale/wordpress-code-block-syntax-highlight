@@ -22,9 +22,10 @@ class CSDT_CSP {
         if ( get_option( 'csdt_devtools_csp_enabled', '0' ) === '1' ) {
             $csp = self::build_csp_header();
             if ( $csp ) {
-                $mode = get_option( 'csdt_devtools_csp_mode', 'enforce' );
-                $hdr  = $mode === 'report_only' ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy';
-                $report_uri = $mode === 'report_only' ? '; report-uri ' . rest_url( 'csdt/v1/csp-report' ) : '';
+                $mode         = get_option( 'csdt_devtools_csp_mode', 'enforce' );
+                $hdr          = $mode === 'report_only' ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy';
+                $reporting_on = get_option( 'csdt_csp_reporting_enabled', '0' ) === '1';
+                $report_uri   = $reporting_on ? '; report-uri ' . rest_url( 'csdt/v1/csp-report' ) : '';
                 header( $hdr . ': ' . $csp . $report_uri );
             }
         }
@@ -161,15 +162,18 @@ class CSDT_CSP {
 
 
     public static function render_csp_panel(): void {
-        $csp_on       = get_option( 'csdt_devtools_csp_enabled', '0' ) === '1';
-        $csp_mode     = get_option( 'csdt_devtools_csp_mode', 'enforce' );
-        $csp_services = json_decode( get_option( 'csdt_devtools_csp_services', '[]' ), true );
+        $csp_on          = get_option( 'csdt_devtools_csp_enabled', '0' ) === '1';
+        $csp_mode        = get_option( 'csdt_devtools_csp_mode', 'enforce' );
+        $reporting_on    = get_option( 'csdt_csp_reporting_enabled', '0' ) === '1';
+        $csp_services    = json_decode( get_option( 'csdt_devtools_csp_services', '[]' ), true );
         if ( ! is_array( $csp_services ) ) { $csp_services = []; }
-        $csp_custom   = get_option( 'csdt_devtools_csp_custom', '' );
-        $csp_backup   = json_decode( get_option( 'csdt_devtools_csp_backup', '' ), true );
-        $backup_time  = is_array( $csp_backup ) ? ( $csp_backup['saved_at'] ?? 0 ) : 0;
-        $csp_history  = json_decode( get_option( 'csdt_csp_history', '[]' ), true );
+        $csp_custom      = get_option( 'csdt_devtools_csp_custom', '' );
+        $csp_backup      = json_decode( get_option( 'csdt_devtools_csp_backup', '' ), true );
+        $backup_time     = is_array( $csp_backup ) ? ( $csp_backup['saved_at'] ?? 0 ) : 0;
+        $csp_history     = json_decode( get_option( 'csdt_csp_history', '[]' ), true );
         if ( ! is_array( $csp_history ) ) { $csp_history = []; }
+        $fixes_log       = json_decode( get_option( 'csdt_csp_fixes_log', '[]' ), true );
+        if ( ! is_array( $fixes_log ) ) { $fixes_log = []; }
 
         $services = [
             'google_analytics'    => 'Google Analytics (GA4 / gtag.js)',
@@ -215,7 +219,7 @@ class CSDT_CSP {
             </div>
             <?php endif; ?>
 
-            <!-- Enable + Mode -->
+            <!-- Enable + Mode + Reporting toggle -->
             <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:0 2px 14px;border-bottom:1px solid #f1f5f9;margin-bottom:14px;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;">
                     <input type="checkbox" id="cs-csp-enabled" <?php checked( $csp_on ); ?>>
@@ -228,6 +232,10 @@ class CSDT_CSP {
                 <label style="display:flex;align-items:center;gap:6px;font-size:13px;">
                     <input type="radio" name="cs-csp-mode" value="report_only" <?php checked( $csp_mode, 'report_only' ); ?>>
                     <?php esc_html_e( 'Report-Only (test mode)', 'cloudscale-devtools' ); ?>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;margin-left:auto;padding:5px 10px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;" title="<?php esc_attr_e( 'Adds report-uri to the CSP header so browsers send violation reports to this plugin. Turn off when you no longer need to monitor.', 'cloudscale-devtools' ); ?>">
+                    <input type="checkbox" id="cs-csp-reporting-enabled" <?php checked( $reporting_on ); ?>>
+                    <?php esc_html_e( 'Log violations', 'cloudscale-devtools' ); ?>
                 </label>
             </div>
 
@@ -295,8 +303,8 @@ class CSDT_CSP {
             </div>
             <?php endif; ?>
 
-            <!-- Violation log — only visible in report-only mode -->
-            <div id="cs-csp-violation-wrap" style="<?php echo $csp_on && $csp_mode === 'report_only' ? '' : 'display:none;'; ?>margin-top:20px;">
+            <!-- Violation log — visible whenever reporting is enabled -->
+            <div id="cs-csp-violation-wrap" style="<?php echo $csp_on && $reporting_on ? '' : 'display:none;'; ?>margin-top:20px;">
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
                     <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;"><?php esc_html_e( 'Violation Log', 'cloudscale-devtools' ); ?></span>
                     <span id="cs-csp-viol-count" style="background:#6366f1;color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;display:none;">0</span>
@@ -305,8 +313,29 @@ class CSDT_CSP {
                 </div>
                 <div id="cs-csp-viol-table" style="font-size:12px;"></div>
                 <p style="font-size:11px;color:#94a3b8;margin:6px 0 0;">
-                    <?php esc_html_e( 'The browser reports what would be blocked if CSP were in Enforce mode. Browse your site normally to populate this log, then review before switching to Enforce.', 'cloudscale-devtools' ); ?>
+                    <?php esc_html_e( 'The browser sends a report for every blocked (or would-be-blocked) resource. Browse your site normally to populate this log. Turn off "Log violations" when you no longer need to monitor.', 'cloudscale-devtools' ); ?>
                 </p>
+            </div>
+
+            <!-- Fixes log — visible whenever there are logged fixes -->
+            <div id="cs-csp-fixes-wrap" style="<?php echo ! empty( $fixes_log ) ? '' : 'display:none;'; ?>margin-top:16px;padding-top:16px;border-top:1px solid #e2e8f0;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;">✅ <?php esc_html_e( 'Fixes Applied', 'cloudscale-devtools' ); ?></span>
+                    <span id="cs-csp-fixes-count" style="background:#16a34a;color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;"><?php echo count( $fixes_log ); ?></span>
+                    <button type="button" id="cs-csp-fixes-clear" class="cs-btn-secondary cs-btn-sm" style="margin-left:auto;border-color:#f87171;color:#dc2626;"><?php esc_html_e( 'Clear Fixes Log', 'cloudscale-devtools' ); ?></button>
+                </div>
+                <div id="cs-csp-fixes-table" style="font-size:12px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
+                <?php foreach ( $fixes_log as $i => $fix ) :
+                    $ts  = isset( $fix['time'] ) ? human_time_diff( $fix['time'] ) . ' ago' : '';
+                    $lbl = esc_html( $fix['label'] ?? 'Settings updated' );
+                    $bg  = $i % 2 === 0 ? '#fff' : '#f8fafc';
+                ?>
+                    <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:<?php echo esc_attr( $bg ); ?>;<?php echo $i > 0 ? 'border-top:1px solid #e2e8f0;' : ''; ?>">
+                        <span style="color:#94a3b8;font-size:11px;white-space:nowrap;min-width:90px;"><?php echo esc_html( $ts ); ?></span>
+                        <span style="flex:1;font-size:12px;color:#15803d;font-weight:600;"><?php echo $lbl; ?></span>
+                    </div>
+                <?php endforeach; ?>
+                </div>
             </div>
 
             <!-- Header security scan -->
@@ -328,10 +357,11 @@ class CSDT_CSP {
         check_ajax_referer( CloudScale_DevTools::SECURITY_NONCE, 'nonce' );
         if ( ! current_user_can( 'manage_options' ) ) { wp_send_json_error( 'Unauthorized', 403 ); }
 
-        $enabled  = isset( $_POST['enabled'] )  ? sanitize_key( wp_unslash( $_POST['enabled'] ) )                            : '0';
-        $mode     = isset( $_POST['mode'] )     ? sanitize_key( wp_unslash( $_POST['mode'] ) )                               : 'enforce';
-        $services = isset( $_POST['services'] ) ? json_decode( sanitize_text_field( wp_unslash( $_POST['services'] ) ), true ) : [];
-        $custom   = isset( $_POST['custom'] )   ? sanitize_textarea_field( wp_unslash( $_POST['custom'] ) )                  : '';
+        $enabled          = isset( $_POST['enabled'] )           ? sanitize_key( wp_unslash( $_POST['enabled'] ) )                             : '0';
+        $mode             = isset( $_POST['mode'] )            ? sanitize_key( wp_unslash( $_POST['mode'] ) )                                : 'enforce';
+        $services         = isset( $_POST['services'] )        ? json_decode( sanitize_text_field( wp_unslash( $_POST['services'] ) ), true )  : [];
+        $custom           = isset( $_POST['custom'] )          ? sanitize_textarea_field( wp_unslash( $_POST['custom'] ) )                   : '';
+        $reporting_enabled = isset( $_POST['reporting_enabled'] ) ? sanitize_key( wp_unslash( $_POST['reporting_enabled'] ) )                : '0';
 
         if ( ! is_array( $services ) ) { $services = []; }
         $allowed_services = [ 'google_analytics', 'google_adsense', 'google_tag_manager', 'google_fonts', 'cloudflare_insights', 'facebook_pixel', 'recaptcha', 'youtube', 'vimeo' ];
@@ -361,10 +391,33 @@ class CSDT_CSP {
             'services' => wp_json_encode( $old['services'] ),
         ] ) ) );
 
-        update_option( 'csdt_devtools_csp_enabled',  $enabled === '1' ? '1' : '0' );
-        update_option( 'csdt_devtools_csp_mode',     in_array( $mode, [ 'enforce', 'report_only' ], true ) ? $mode : 'enforce' );
-        update_option( 'csdt_devtools_csp_services', wp_json_encode( $services ) );
-        update_option( 'csdt_devtools_csp_custom',   $custom );
+        update_option( 'csdt_devtools_csp_enabled',    $enabled === '1' ? '1' : '0' );
+        update_option( 'csdt_devtools_csp_mode',       in_array( $mode, [ 'enforce', 'report_only' ], true ) ? $mode : 'enforce' );
+        update_option( 'csdt_devtools_csp_services',   wp_json_encode( $services ) );
+        update_option( 'csdt_devtools_csp_custom',     $custom );
+        update_option( 'csdt_csp_reporting_enabled',   $reporting_enabled === '1' ? '1' : '0' );
+
+        // Log a fix entry whenever new services are added to the allowlist.
+        $old_svcs   = is_array( $old['services'] ) ? $old['services'] : (array) json_decode( $old['services'] ?? '[]', true );
+        $added_svcs = array_values( array_diff( $services, $old_svcs ) );
+        if ( $added_svcs ) {
+            $names = [
+                'google_analytics' => 'Google Analytics', 'google_adsense' => 'Google AdSense',
+                'google_tag_manager' => 'Google Tag Manager', 'google_fonts' => 'Google Fonts',
+                'cloudflare_insights' => 'Cloudflare Insights', 'facebook_pixel' => 'Facebook Pixel',
+                'recaptcha' => 'reCAPTCHA', 'youtube' => 'YouTube', 'vimeo' => 'Vimeo',
+            ];
+            $added_labels = array_map( fn( $s ) => $names[ $s ] ?? $s, $added_svcs );
+            $fixes = json_decode( get_option( 'csdt_csp_fixes_log', '[]' ), true );
+            if ( ! is_array( $fixes ) ) { $fixes = []; }
+            array_unshift( $fixes, [
+                'time'     => time(),
+                'label'    => 'Added ' . implode( ', ', $added_labels ),
+                'services' => $added_svcs,
+            ] );
+            update_option( 'csdt_csp_fixes_log', wp_json_encode( array_slice( $fixes, 0, 50 ) ) );
+        }
+
         wp_send_json_success( [ 'has_backup' => true ] );
     }
 
@@ -509,6 +562,20 @@ class CSDT_CSP {
         check_ajax_referer( CloudScale_DevTools::SECURITY_NONCE, 'nonce' );
         if ( ! current_user_can( 'manage_options' ) ) { wp_send_json_error( 'Unauthorized', 403 ); }
         delete_option( 'csdt_csp_violations' );
+        wp_send_json_success();
+    }
+
+    public static function ajax_csp_fixes_get(): void {
+        check_ajax_referer( CloudScale_DevTools::SECURITY_NONCE, 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) { wp_send_json_error( 'Unauthorized', 403 ); }
+        $stored = json_decode( get_option( 'csdt_csp_fixes_log', '[]' ), true );
+        wp_send_json_success( is_array( $stored ) ? $stored : [] );
+    }
+
+    public static function ajax_csp_fixes_clear(): void {
+        check_ajax_referer( CloudScale_DevTools::SECURITY_NONCE, 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) { wp_send_json_error( 'Unauthorized', 403 ); }
+        delete_option( 'csdt_csp_fixes_log' );
         wp_send_json_success();
     }
 
