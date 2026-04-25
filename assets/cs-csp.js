@@ -178,6 +178,77 @@
     var violRefresh = document.getElementById('cs-csp-viol-refresh');
     var violClear   = document.getElementById('cs-csp-viol-clear');
 
+    // Maps blocked-URI substrings to known service checkbox values.
+    var violHintMap = [
+        ['googlesyndication.com',         'google_adsense'],
+        ['doubleclick.net',               'google_adsense'],
+        ['googleadservices.com',          'google_adsense'],
+        ['adtrafficquality.google',       'google_adsense'],
+        ['fundingchoicesmessages.google', 'google_adsense'],
+        ['csi.gstatic.com',               'google_adsense'],
+        ['google-analytics.com',          'google_analytics'],
+        ['analytics.google.com',          'google_analytics'],
+        ['region1.google-analytics.com',  'google_analytics'],
+        ['googletagmanager.com',          'google_tag_manager'],
+        ['fonts.googleapis.com',          'google_fonts'],
+        ['fonts.gstatic.com',             'google_fonts'],
+        ['cloudflareinsights.com',        'cloudflare_insights'],
+        ['connect.facebook.net',          'facebook_pixel'],
+        ['facebook.com/tr',               'facebook_pixel'],
+        ['www.gstatic.com',               'recaptcha'],
+        ['youtube.com',                   'youtube'],
+        ['youtube-nocookie.com',          'youtube'],
+        ['player.vimeo.com',              'vimeo'],
+        ['js.stripe.com',                 'stripe'],
+        ['hooks.stripe.com',              'stripe'],
+        ['api.stripe.com',                'stripe'],
+        ['hotjar.com',                    'hotjar'],
+        ['intercom.io',                   'intercom'],
+        ['intercomcdn.com',               'intercom'],
+        ['platform.twitter.com',          'twitter_embeds'],
+        ['syndication.twitter.com',       'twitter_embeds'],
+        ['twimg.com',                     'twitter_embeds'],
+        ['disqus.com',                    'disqus'],
+        ['disquscdn.com',                 'disqus'],
+        ['pay.google.com',                'woocommerce_payments'],
+    ];
+
+    var violSvcLabels = {
+        google_adsense:       'Google AdSense',
+        google_analytics:     'Google Analytics',
+        google_tag_manager:   'Google Tag Manager',
+        google_fonts:         'Google Fonts',
+        cloudflare_insights:  'Cloudflare Insights',
+        facebook_pixel:       'Facebook Pixel',
+        recaptcha:            'Google reCAPTCHA',
+        youtube:              'YouTube embeds',
+        vimeo:                'Vimeo embeds',
+        stripe:               'Stripe',
+        hotjar:               'Hotjar',
+        intercom:             'Intercom',
+        twitter_embeds:       'Twitter / X embeds',
+        disqus:               'Disqus',
+        woocommerce_payments: 'WooCommerce Payments',
+    };
+
+    function suggestService(blocked) {
+        if (!blocked || blocked === 'inline' || blocked === 'eval' || blocked === '') return null;
+        for (var i = 0; i < violHintMap.length; i++) {
+            if (blocked.indexOf(violHintMap[i][0]) !== -1) return violHintMap[i][1];
+        }
+        return null;
+    }
+
+    function highlightCheckbox(svcKey) {
+        var cb = document.querySelector('.cs-csp-service[value="' + svcKey + '"]');
+        if (!cb) return;
+        var label = cb.closest('label') || cb.parentElement;
+        label.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        label.style.transition = 'background 0.3s';
+        label.style.background = '#fef9c3';
+        setTimeout(function() { label.style.background = ''; }, 2000);
+    }
+
     function renderViolations(rows) {
         if (!violTable) return;
         if (!rows || !rows.length) {
@@ -186,12 +257,35 @@
             return;
         }
         if (violCount) { violCount.textContent = rows.length; violCount.style.display = 'inline'; }
-        var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+
+        // Build quick-fix banner: group unfixed services that have violations.
+        var suggestedServices = {};
+        rows.forEach(function(r) {
+            var svc = suggestService(r.blocked || '');
+            if (!svc) return;
+            var cb = document.querySelector('.cs-csp-service[value="' + svc + '"]');
+            if (cb && cb.checked) return; // already enabled — not actionable
+            if (!suggestedServices[svc]) suggestedServices[svc] = 0;
+            suggestedServices[svc]++;
+        });
+        var svcKeys = Object.keys(suggestedServices);
+        var banner = '';
+        if (svcKeys.length) {
+            banner = '<div style="background:#fef9c3;border:1px solid #fde047;border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:12px;">' +
+                '<strong style="color:#713f12;">Quick fix:</strong> tick the following services below to allow these resources — ' +
+                svcKeys.map(function(k) {
+                    return '<a href="#" style="color:#1d4ed8;font-weight:600;text-decoration:none;" data-csp-svc="' + k + '">' +
+                        (violSvcLabels[k] || k) + ' (' + suggestedServices[k] + ')</a>';
+                }).join(', ') + '</div>';
+        }
+
+        var html = banner +
+            '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
             '<thead><tr style="background:#f1f5f9;">' +
             '<th style="padding:6px 8px;text-align:left;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;">Time</th>' +
             '<th style="padding:6px 8px;text-align:left;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;">Blocked</th>' +
             '<th style="padding:6px 8px;text-align:left;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;">Directive</th>' +
-            '<th style="padding:6px 8px;text-align:left;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;">Source</th>' +
+            '<th style="padding:6px 8px;text-align:left;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;">Fix</th>' +
             '<th style="padding:6px 8px;text-align:left;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;">Page</th>' +
             '</tr></thead><tbody>';
         rows.forEach(function(r, i) {
@@ -202,21 +296,40 @@
             var isEval   = blocked === 'eval' || blocked === 'inline';
             var blockedColor = isEval ? '#dc2626' : '#0f172a';
             var blockedDisplay = blocked.length > 50 ? blocked.slice(0, 47) + '…' : blocked;
-            var srcFile = r.source ? r.source.replace(/^https?:\/\/[^/]+\//, '') : '';
-            if (srcFile.length > 45) srcFile = '…' + srcFile.slice(-42);
-            var srcDisplay = srcFile ? srcFile + (r.line ? ':' + r.line : '') : '—';
             var pageDisplay = (r.page || '—').replace(/^https?:\/\/[^/]+/, '');
             if (pageDisplay.length > 35) pageDisplay = pageDisplay.slice(0, 32) + '…';
+            var svc = suggestService(blocked);
+            var fixCell = '—';
+            if (isEval) {
+                fixCell = '<span style="color:#94a3b8;font-size:11px;">inline/eval (expected)</span>';
+            } else if (svc) {
+                var cb = document.querySelector('.cs-csp-service[value="' + svc + '"]');
+                if (cb && cb.checked) {
+                    fixCell = '<span style="color:#16a34a;font-size:11px;">preset enabled</span>';
+                } else {
+                    fixCell = '<a href="#" style="color:#1d4ed8;font-size:11px;font-weight:600;text-decoration:none;" data-csp-svc="' + svc + '">tick ' + (violSvcLabels[svc] || svc) + '</a>';
+                }
+            } else if (blocked !== '—') {
+                fixCell = '<span style="color:#64748b;font-size:11px;">add to Custom</span>';
+            }
             html += '<tr style="background:' + bg + ';border-bottom:1px solid #f1f5f9;">' +
                 '<td style="padding:5px 8px;white-space:nowrap;color:#64748b;">' + t + '</td>' +
                 '<td style="padding:5px 8px;font-family:monospace;color:' + blockedColor + ';" title="' + blocked.replace(/"/g,'&quot;') + '">' + blockedDisplay + '</td>' +
                 '<td style="padding:5px 8px;font-family:monospace;color:#6366f1;">' + (r.directive || '—') + '</td>' +
-                '<td style="padding:5px 8px;font-family:monospace;font-size:11px;color:#0369a1;" title="' + (r.source||'').replace(/"/g,'&quot;') + (r.line?':'+r.line:'') + '">' + srcDisplay + '</td>' +
+                '<td style="padding:5px 8px;">' + fixCell + '</td>' +
                 '<td style="padding:5px 8px;color:#64748b;" title="' + (r.page||'').replace(/"/g,'&quot;') + '">' + pageDisplay + '</td>' +
                 '</tr>';
         });
         html += '</tbody></table>';
         violTable.innerHTML = html;
+
+        // Wire up "tick [service]" links — scroll to and highlight the checkbox.
+        violTable.querySelectorAll('[data-csp-svc]').forEach(function(a) {
+            a.addEventListener('click', function(e) {
+                e.preventDefault();
+                highlightCheckbox(a.getAttribute('data-csp-svc'));
+            });
+        });
     }
 
     function fetchViolations() {
