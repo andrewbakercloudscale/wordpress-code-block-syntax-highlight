@@ -73,12 +73,15 @@
             fd.append('services',     JSON.stringify(services));
             fd.append('custom',       customIn ? customIn.value.trim() : '');
             var dbgCb = document.getElementById('cs-csp-debug-panel');
-            fd.append('debug_panel',  dbgCb && dbgCb.checked ? '1' : '0');
+            fd.append('debug_panel',       dbgCb && dbgCb.checked ? '1' : '0');
+            var reportingCb = document.getElementById('cs-csp-reporting-enabled');
+            fd.append('reporting_enabled', reportingCb && reportingCb.checked ? '1' : '0');
             fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
                 .then(function(r){ return r.json(); })
                 .then(function(resp){
                 saveBtn.disabled = false;
                 if (savedMsg) { savedMsg.style.display = 'inline'; setTimeout(function(){ savedMsg.style.display = 'none'; }, 2500); }
+                document.dispatchEvent(new CustomEvent('csdt:csp:saved'));
                 // Create or update rollback button with fresh timestamp.
                 if (resp && resp.data && resp.data.has_backup) {
                     var rb = document.getElementById('cs-csp-rollback-btn');
@@ -220,23 +223,19 @@
             .catch(function(){});
     }
 
-    // Show/hide violation wrap when mode changes
-    document.querySelectorAll('input[name="cs-csp-mode"]').forEach(function(radio) {
-        radio.addEventListener('change', function() {
-            if (!violWrap) return;
-            var enabled = document.getElementById('cs-csp-enabled');
-            violWrap.style.display = (this.value === 'report_only' && enabled && enabled.checked) ? '' : 'none';
-            if (this.value === 'report_only') fetchViolations();
-        });
-    });
-    var cspEnabledCb = document.getElementById('cs-csp-enabled');
-    if (cspEnabledCb) {
-        cspEnabledCb.addEventListener('change', function() {
-            if (!violWrap) return;
-            var modeEl = document.querySelector('input[name="cs-csp-mode"]:checked');
-            violWrap.style.display = (this.checked && modeEl && modeEl.value === 'report_only') ? '' : 'none';
-        });
+    function updateViolWrapVisibility() {
+        if (!violWrap) return;
+        var cspOn    = document.getElementById('cs-csp-enabled');
+        var reportOn = document.getElementById('cs-csp-reporting-enabled');
+        var show = (cspOn && cspOn.checked) && (reportOn && reportOn.checked);
+        violWrap.style.display = show ? '' : 'none';
+        if (show) fetchViolations();
     }
+
+    var cspEnabledCb    = document.getElementById('cs-csp-enabled');
+    var reportingEnabledCb = document.getElementById('cs-csp-reporting-enabled');
+    if (cspEnabledCb)       cspEnabledCb.addEventListener('change', updateViolWrapVisibility);
+    if (reportingEnabledCb) reportingEnabledCb.addEventListener('change', updateViolWrapVisibility);
 
     if (violRefresh) violRefresh.addEventListener('click', fetchViolations);
 
@@ -251,13 +250,65 @@
         });
     }
 
-    // Auto-load if already in report-only mode
+    // Auto-load if violation log is visible on page load
     if (violWrap && violWrap.style.display !== 'none') fetchViolations();
 
     // Auto-refresh every 30 s when panel is visible
     setInterval(function() {
         if (violWrap && violWrap.style.display !== 'none') fetchViolations();
     }, 30000);
+
+    // ── Fixes log ────────────────────────────────────────────────
+    var fixesWrap  = document.getElementById('cs-csp-fixes-wrap');
+    var fixesTable = document.getElementById('cs-csp-fixes-table');
+    var fixesCount = document.getElementById('cs-csp-fixes-count');
+    var fixesClear = document.getElementById('cs-csp-fixes-clear');
+
+    function renderFixes(rows) {
+        if (!fixesWrap) return;
+        if (!rows || !rows.length) {
+            fixesWrap.style.display = 'none';
+            return;
+        }
+        fixesWrap.style.display = '';
+        if (fixesCount) fixesCount.textContent = rows.length;
+        if (!fixesTable) return;
+        var html = '';
+        rows.forEach(function(f, i) {
+            var d   = new Date(f.time * 1000);
+            var ts  = d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + ' ' + d.toLocaleDateString([], {month:'short',day:'numeric'});
+            var bg  = i % 2 === 0 ? '#fff' : '#f8fafc';
+            var lbl = f.label || 'Settings updated';
+            html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:' + bg + ';' + (i > 0 ? 'border-top:1px solid #e2e8f0;' : '') + '">' +
+                '<span style="color:#94a3b8;font-size:11px;white-space:nowrap;min-width:110px;">' + ts + '</span>' +
+                '<span style="flex:1;font-size:12px;color:#15803d;font-weight:600;">' + lbl + '</span>' +
+                '</div>';
+        });
+        fixesTable.innerHTML = html;
+    }
+
+    if (fixesClear) {
+        fixesClear.addEventListener('click', function() {
+            var fd = new FormData();
+            fd.append('action', 'csdt_devtools_csp_fixes_clear');
+            fd.append('nonce',  csdtVulnScan.nonce);
+            fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
+                .then(function() { renderFixes([]); })
+                .catch(function() {});
+        });
+    }
+
+    // After a successful save, refresh the fixes log in case new ones were added.
+    // Hooked via a custom event dispatched by the save handler.
+    document.addEventListener('csdt:csp:saved', function() {
+        var fd = new FormData();
+        fd.append('action', 'csdt_devtools_csp_fixes_get');
+        fd.append('nonce',  csdtVulnScan.nonce);
+        fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
+            .then(function(r) { return r.json(); })
+            .then(function(resp) { if (resp && resp.success) renderFixes(resp.data); })
+            .catch(function() {});
+    });
 
     // ── Header security scan ──────────────────────────────────────
     var scanBtn     = document.getElementById('cs-csp-scan-btn');
