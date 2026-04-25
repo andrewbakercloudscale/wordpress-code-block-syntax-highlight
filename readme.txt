@@ -86,6 +86,7 @@ highlight.js with auto-detection — 190+ languages including Bash, Python, Java
 == Changelog ==
 
 = 1.9.521 =
+* feat: expand CSP preset library with Stripe, Hotjar, Intercom, Twitter/X embeds, Disqus, and WooCommerce Payments; fix AdSense preset missing csi.gstatic.com in connect-src (was causing violations on sites using AdSense); JS serviceMap kept in sync so the live CSP preview updates correctly when any new preset is ticked
 * feat: CSP violation logging and fixes log; "Log violations" toggle adds report-uri to the CSP header in both enforce and report-only modes so violations are captured in production; fixes log records every service added to the allowlist with a timestamp; both logs have clear buttons and the violation log auto-refreshes every 30 seconds
 
 = 1.9.515 =
