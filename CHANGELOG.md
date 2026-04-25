@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.9.514] - 2026-04-25
+
+### Fixed
+- CS Monitor: "Script error." hint match widened to a case-insensitive regex (`/^script error\.?$/i`) to handle browser variations in capitalisation and trailing punctuation
+
 ## [1.9.513] - 2026-04-25
 
 ### Fixed

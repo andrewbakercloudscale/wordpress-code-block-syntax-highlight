@@ -89,7 +89,7 @@
             var filePath = e.filename ? e.filename.replace(/^https?:\/\/[^/]+\//, '') : '';
             // "Script error." means a cross-origin script threw but the browser hid details.
             // Fix: add crossorigin="anonymous" to the offending <script> tag (CDN must send CORS headers).
-            if (msg === 'Script error.') {
+            if (/^script error\.?$/i.test(msg)) {
                 msg = 'Script error. (cross-origin — browser hid details; check browser DevTools console for the real error, or add crossorigin="anonymous" to the CDN <script> tag)';
             }
             pushEditorLog({ type:'jserr', detail: msg,
