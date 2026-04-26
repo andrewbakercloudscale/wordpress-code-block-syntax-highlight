@@ -60,14 +60,19 @@ test.describe.configure({ mode: 'serial' });
 
 test.describe('C1 — AI Settings location', () => {
 
+    let _sess;
+
+    test.beforeAll(async () => {
+        _sess = await getAdminSession(900);
+    });
+
     test.afterAll(async () => {
         await logoutTestUser();
     });
 
     test('Home tab — AI settings form absent, status card present', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
@@ -86,9 +91,8 @@ test.describe('C1 — AI Settings location', () => {
     });
 
     test('Security tab — AI settings form present', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=security`, { waitUntil: 'domcontentloaded' });
@@ -105,9 +109,8 @@ test.describe('C1 — AI Settings location', () => {
     });
 
     test('Security tab intro — no reference to Home tab for configuration', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=security`, { waitUntil: 'domcontentloaded' });

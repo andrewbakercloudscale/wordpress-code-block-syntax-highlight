@@ -3,66 +3,70 @@
  * Verifies the security summary widget shows a single "View Cyber and Devtools"
  * button with gradient styling, and no "Run Security Scan" or "Open Plugin" buttons.
  *
+ * Authentication: test-session API — no new WP users created.
+ * Requires .env.test with CSDT_TEST_SECRET, CSDT_TEST_ROLE, CSDT_TEST_SESSION_URL.
+ *
  * Run:  npx playwright test tests/dashboard-widget.spec.js --headed
  */
 
-const { test, expect } = require('@playwright/test');
-const { execSync: exec } = require('child_process');
+const { test, expect, request: playwrightRequest } = require('@playwright/test');
 const path = require('path');
-const fs   = require('fs');
 
-const SITE       = process.env.WP_SITE        || 'https://your-wordpress-site.example.com';
-const LOGIN_SLUG = process.env.WP_LOGIN_SLUG  || 'wp-login.php';
-const AUTH_FILE  = path.join(__dirname, '.auth', 'dw-test-admin.json');
+[
+    path.join(__dirname, '..', '.env.test'),
+    path.join(__dirname, '..', '..', '.env.test'),
+].forEach(p => { try { require('dotenv').config({ path: p }); } catch {} });
 
-// Placeholder so test.use({ storageState }) doesn't fail before beforeAll runs
-fs.mkdirSync(path.dirname(AUTH_FILE), { recursive: true });
-if (!fs.existsSync(AUTH_FILE)) {
-    fs.writeFileSync(AUTH_FILE, JSON.stringify({ cookies: [], origins: [] }));
+const SITE        = process.env.WP_SITE              || 'https://your-wordpress-site.example.com';
+const SECRET      = process.env.CSDT_TEST_SECRET     || '';
+const ROLE        = process.env.CSDT_TEST_ROLE        || '';
+const SESSION_URL = process.env.CSDT_TEST_SESSION_URL || '';
+const LOGOUT_URL  = process.env.CSDT_TEST_LOGOUT_URL  || '';
+
+if (!SECRET || !ROLE || !SESSION_URL) {
+    throw new Error('CSDT_TEST_SECRET, CSDT_TEST_ROLE, and CSDT_TEST_SESSION_URL must be set in .env.test');
 }
 
-const WP_CLI = 'docker exec pi_wordpress php /var/www/html/wp-cli.phar';
-const SSH    = 'ssh pi@andrew-pi-5.local';
+async function getAdminSession(ttl = 900) {
+    const ctx  = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+    const resp = await ctx.post(SESSION_URL, { data: { secret: SECRET, role: ROLE, ttl } });
+    const body = await resp.json().catch(() => resp.text());
+    await ctx.dispose();
+    if (!resp.ok()) throw new Error(`test-session API: ${resp.status()} ${JSON.stringify(body)}`);
+    return body;
+}
 
-function wpCli(cmd) {
+async function injectCookies(ctx, sess) {
+    await ctx.addCookies([
+        { name: sess.secure_auth_cookie_name, value: sess.secure_auth_cookie,  domain: sess.cookie_domain, path: '/', secure: true,  httpOnly: true,  sameSite: 'Lax' },
+        { name: sess.logged_in_cookie_name,   value: sess.logged_in_cookie,    domain: sess.cookie_domain, path: '/', secure: true,  httpOnly: false, sameSite: 'Lax' },
+    ]);
+}
+
+async function logoutTestUser() {
+    if (!LOGOUT_URL) return;
     try {
-        return exec(`${SSH} "${WP_CLI} ${cmd} --allow-root 2>/dev/null"`, { stdio: 'pipe' }).toString().trim();
-    } catch {
-        return '';
-    }
+        const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+        await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
+        await ctx.dispose();
+    } catch {}
 }
 
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Dashboard security widget', () => {
 
-    test.beforeAll(async ({ browser }) => {
-        wpCli('user delete dw_test_admin --yes');
-        wpCli('user create dw_test_admin dw_test@example.com --role=administrator --user_pass=DWTest2026!');
+    test.afterAll(async () => {
+        await logoutTestUser();
+    });
 
-        // Login once and save auth state so WP 2FA only triggers once
-        fs.mkdirSync(path.dirname(AUTH_FILE), { recursive: true });
-        const ctx  = await browser.newContext();
+    test('widget has exactly one button — View Cyber and Devtools', async ({ browser }) => {
+        const sess = await getAdminSession();
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, sess);
         const page = await ctx.newPage();
-        await page.goto(`${SITE}/${LOGIN_SLUG}`);
-        await page.fill('#user_login', 'dw_test_admin');
-        await page.fill('#user_pass',  'DWTest2026!');
-        await page.click('#wp-submit');
-        await page.waitForURL('**/wp-admin/**', { timeout: 15000 });
-        await ctx.storageState({ path: AUTH_FILE });
-        await ctx.close();
-    });
 
-    test.afterAll(() => {
-        wpCli('user delete dw_test_admin --yes');
-        try { fs.unlinkSync(AUTH_FILE); } catch {}
-    });
-
-    // Reuse saved auth cookies — avoids triggering 2FA on every test
-    test.use({ storageState: AUTH_FILE });
-
-    test('widget has exactly one button — View Cyber and Devtools', async ({ page }) => {
-        await page.goto(`${SITE}/wp-admin/`);
+        await page.goto(`${SITE}/wp-admin/`, { waitUntil: 'domcontentloaded' });
         await page.waitForLoadState('networkidle');
 
         const widget = page.locator('#csdt_security_summary');
@@ -70,7 +74,6 @@ test.describe('Dashboard security widget', () => {
 
         await widget.screenshot({ path: 'tests/screenshots/dashboard-widget.png' });
 
-        // Debug: dump widget HTML
         const widgetHTML = await widget.innerHTML();
         const actionsMatch = widgetHTML.match(/.{200}cs-dw-actions.{500}/s);
         console.log('ACTIONS CONTEXT:', actionsMatch ? actionsMatch[0] : 'NOT FOUND');
@@ -80,33 +83,37 @@ test.describe('Dashboard security widget', () => {
             console.log(`ANCHOR[${i}]:`, html.substring(0, 300));
         }
 
-        // ── Assertions ──────────────────────────────────────────────
         const actions = widget.locator('.cs-dw-actions');
         await expect(actions).toBeVisible();
 
-        // Only one anchor inside actions
         const buttons = actions.locator('a');
         await expect(buttons).toHaveCount(1);
 
-        // Correct label
         await expect(buttons.first()).toHaveText('View Cyber and Devtools');
 
-        // Gradient background
         const bg = await buttons.first().evaluate(el => getComputedStyle(el).background || el.style.background);
         console.log('Button background:', bg);
         expect(bg).toContain('linear-gradient');
 
-        // Must NOT contain old buttons
         await expect(widget.locator('text=Run Security Scan')).toHaveCount(0);
         await expect(widget.locator('text=Open Plugin')).toHaveCount(0);
+
+        await ctx.close();
     });
 
-    test('button navigates to plugin page', async ({ page }) => {
-        await page.goto(`${SITE}/wp-admin/`);
+    test('button navigates to plugin page', async ({ browser }) => {
+        const sess = await getAdminSession();
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, sess);
+        const page = await ctx.newPage();
+
+        await page.goto(`${SITE}/wp-admin/`, { waitUntil: 'domcontentloaded' });
         await page.waitForLoadState('networkidle');
 
         const btn = page.locator('#csdt_security_summary .cs-dw-actions a').first();
         await btn.click();
         await page.waitForURL('**/tools.php?page=cloudscale-devtools**', { timeout: 10000 });
+
+        await ctx.close();
     });
 });

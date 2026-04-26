@@ -43,42 +43,51 @@ async function injectCookies(ctx, sess) {
     ]);
 }
 
-test.afterAll(async () => {
-    if (!LOGOUT_URL) return;
-    try {
-        const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
-        await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
-        await ctx.dispose();
-    } catch {}
-});
+let _sess;
 
-test('Tab bar shows "Diagnostics" not "Debug AI"', async ({ browser }) => {
-    const sess = await getAdminSession();
-    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-    await injectCookies(ctx, sess);
-    const page = await ctx.newPage();
+test.describe.configure({ mode: 'serial' });
 
-    await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#cs-tab-bar', { timeout: 15000 });
+test.describe('C2 — Tab rename', () => {
 
-    const tabBar = page.locator('#cs-tab-bar');
-    await expect(tabBar.locator('text=Diagnostics')).toBeVisible();
-    await expect(tabBar.locator('text=Debug AI')).toHaveCount(0);
+    test.beforeAll(async () => {
+        _sess = await getAdminSession(900);
+    });
 
-    await ctx.close();
-});
+    test.afterAll(async () => {
+        if (!LOGOUT_URL) return;
+        try {
+            const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+            await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
+            await ctx.dispose();
+        } catch {}
+    });
 
-test('Diagnostics tab (?tab=debug) loads without error', async ({ browser }) => {
-    const sess = await getAdminSession();
-    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-    await injectCookies(ctx, sess);
-    const page = await ctx.newPage();
+    test('Tab bar shows "Diagnostics" not "Debug AI"', async ({ browser }) => {
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, _sess);
+        const page = await ctx.newPage();
 
-    await page.goto(`${PLUGIN_URL}&tab=debug`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('.cs-section-header', { timeout: 15000 });
+        await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#cs-tab-bar', { timeout: 15000 });
 
-    await expect(page.locator('#cs-panel-debug')).toBeVisible();
-    await expect(page.locator('#cs-panel-cs-monitor')).toBeVisible();
+        const tabBar = page.locator('#cs-tab-bar');
+        await expect(tabBar.locator('text=Diagnostics')).toBeVisible();
+        await expect(tabBar.locator('text=Debug AI')).toHaveCount(0);
 
-    await ctx.close();
+        await ctx.close();
+    });
+
+    test('Diagnostics tab (?tab=debug) loads without error', async ({ browser }) => {
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, _sess);
+        const page = await ctx.newPage();
+
+        await page.goto(`${PLUGIN_URL}&tab=debug`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('.cs-section-header', { timeout: 15000 });
+
+        await expect(page.locator('#cs-panel-debug')).toBeVisible();
+        await expect(page.locator('#cs-panel-cs-monitor')).toBeVisible();
+
+        await ctx.close();
+    });
 });

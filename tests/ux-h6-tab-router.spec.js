@@ -46,85 +46,93 @@ async function injectCookies(ctx, sess) {
     ]);
 }
 
-test.afterAll(async () => {
-    if (!LOGOUT_URL) return;
-    try {
-        const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
-        await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
-        await ctx.dispose();
-    } catch {}
-});
+let _sess;
 
-test('Tab click updates URL without full page reload', async ({ browser }) => {
-    const sess = await getAdminSession();
-    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-    await injectCookies(ctx, sess);
-    const page = await ctx.newPage();
+test.describe.configure({ mode: 'serial' });
 
-    await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#cs-tab-bar', { timeout: 15000 });
+test.describe('H6 — Client-side tab router', () => {
 
-    // Plant a JS flag — a full page reload clears all JS state; client-side switch preserves it
-    await page.evaluate(() => { window.__noReloadFlag = 'intact'; });
+    test.beforeAll(async () => {
+        _sess = await getAdminSession(900);
+    });
 
-    // Click the Performance tab
-    await page.locator('#cs-tab-bar a[href*="tab=optimizer"]').click();
+    test.afterAll(async () => {
+        if (!LOGOUT_URL) return;
+        try {
+            const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+            await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
+            await ctx.dispose();
+        } catch {}
+    });
 
-    // Wait for content to switch
-    await page.waitForSelector('#cs-panel-plugin-stack', { timeout: 15000 });
+    test('Tab click updates URL without full page reload', async ({ browser }) => {
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, _sess);
+        const page = await ctx.newPage();
 
-    // URL should have updated to optimizer tab
-    expect(page.url()).toContain('tab=optimizer');
+        await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#cs-tab-bar', { timeout: 15000 });
 
-    // Flag must still be set — proves no full page reload occurred
-    const flag = await page.evaluate(() => window.__noReloadFlag);
-    expect(flag).toBe('intact');
+        // Plant a JS flag — a full page reload clears all JS state; client-side switch preserves it
+        await page.evaluate(() => { window.__noReloadFlag = 'intact'; });
 
-    await ctx.close();
-});
+        // Click the Performance tab
+        await page.locator('#cs-tab-bar a[href*="tab=optimizer"]').click();
 
-test('Tab bar active class updates after client-side switch', async ({ browser }) => {
-    const sess = await getAdminSession();
-    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-    await injectCookies(ctx, sess);
-    const page = await ctx.newPage();
+        // Wait for content to switch
+        await page.waitForSelector('#cs-panel-plugin-stack', { timeout: 15000 });
 
-    await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#cs-tab-bar', { timeout: 15000 });
+        // URL should have updated to optimizer tab
+        expect(page.url()).toContain('tab=optimizer');
 
-    // Home tab should be active initially
-    await expect(page.locator('#cs-tab-bar a[href*="tab=home"]')).toHaveClass(/active/);
+        // Flag must still be set — proves no full page reload occurred
+        const flag = await page.evaluate(() => window.__noReloadFlag);
+        expect(flag).toBe('intact');
 
-    // Click Performance tab
-    await page.locator('#cs-tab-bar a[href*="tab=optimizer"]').click();
-    await page.waitForSelector('#cs-panel-plugin-stack', { timeout: 15000 });
+        await ctx.close();
+    });
 
-    // Performance tab link should now be active, Home should not
-    await expect(page.locator('#cs-tab-bar a[href*="tab=optimizer"]')).toHaveClass(/active/);
-    await expect(page.locator('#cs-tab-bar a[href*="tab=home"]')).not.toHaveClass(/active/);
+    test('Tab bar active class updates after client-side switch', async ({ browser }) => {
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, _sess);
+        const page = await ctx.newPage();
 
-    await ctx.close();
-});
+        await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#cs-tab-bar', { timeout: 15000 });
 
-test('Navigating to second tab swaps content correctly', async ({ browser }) => {
-    const sess = await getAdminSession();
-    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-    await injectCookies(ctx, sess);
-    const page = await ctx.newPage();
+        // Home tab should be active initially
+        await expect(page.locator('#cs-tab-bar a[href*="tab=home"]')).toHaveClass(/active/);
 
-    await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#cs-panel-home', { timeout: 15000 });
+        // Click Performance tab
+        await page.locator('#cs-tab-bar a[href*="tab=optimizer"]').click();
+        await page.waitForSelector('#cs-panel-plugin-stack', { timeout: 15000 });
 
-    // Home panel visible initially
-    await expect(page.locator('#cs-panel-home')).toBeVisible();
+        // Performance tab link should now be active, Home should not
+        await expect(page.locator('#cs-tab-bar a[href*="tab=optimizer"]')).toHaveClass(/active/);
+        await expect(page.locator('#cs-tab-bar a[href*="tab=home"]')).not.toHaveClass(/active/);
 
-    // Navigate to Performance tab
-    await page.locator('#cs-tab-bar a[href*="tab=optimizer"]').click();
-    await page.waitForSelector('#cs-panel-plugin-stack', { timeout: 15000 });
+        await ctx.close();
+    });
 
-    // Performance panel should now be visible, Home panel gone
-    await expect(page.locator('#cs-panel-plugin-stack')).toBeVisible();
-    await expect(page.locator('#cs-panel-home')).toHaveCount(0);
+    test('Navigating to second tab swaps content correctly', async ({ browser }) => {
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, _sess);
+        const page = await ctx.newPage();
 
-    await ctx.close();
+        await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#cs-panel-home', { timeout: 15000 });
+
+        // Home panel visible initially
+        await expect(page.locator('#cs-panel-home')).toBeVisible();
+
+        // Navigate to Performance tab
+        await page.locator('#cs-tab-bar a[href*="tab=optimizer"]').click();
+        await page.waitForSelector('#cs-panel-plugin-stack', { timeout: 15000 });
+
+        // Performance panel should now be visible, Home panel gone
+        await expect(page.locator('#cs-panel-plugin-stack')).toBeVisible();
+        await expect(page.locator('#cs-panel-home')).toHaveCount(0);
+
+        await ctx.close();
+    });
 });

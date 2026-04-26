@@ -48,23 +48,28 @@ async function injectCookies(ctx, sess) {
     ]);
 }
 
-test.afterAll(async () => {
-    if (!LOGOUT_URL) return;
-    try {
-        const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
-        await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
-        await ctx.dispose();
-    } catch {}
-});
-
 test.describe.configure({ mode: 'serial' });
 
 test.describe('M6 — Status dashboard live detail', () => {
 
+    let _sess;
+
+    test.beforeAll(async () => {
+        _sess = await getAdminSession(900);
+    });
+
+    test.afterAll(async () => {
+        if (!LOGOUT_URL) return;
+        try {
+            const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+            await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
+            await ctx.dispose();
+        } catch {}
+    });
+
     test('Threat Monitor detail shows timestamp or fallback copy', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
@@ -89,9 +94,8 @@ test.describe('M6 — Status dashboard live detail', () => {
     });
 
     test('Uptime Monitor detail shows timestamp or fallback copy', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });

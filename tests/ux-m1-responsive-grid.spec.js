@@ -47,23 +47,28 @@ async function injectCookies(ctx, sess) {
     ]);
 }
 
-test.afterAll(async () => {
-    if (!LOGOUT_URL) return;
-    try {
-        const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
-        await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
-        await ctx.dispose();
-    } catch {}
-});
-
 test.describe.configure({ mode: 'serial' });
 
 test.describe('M1 — Responsive status grid', () => {
 
+    let _sess;
+
+    test.beforeAll(async () => {
+        _sess = await getAdminSession(900);
+    });
+
+    test.afterAll(async () => {
+        if (!LOGOUT_URL) return;
+        try {
+            const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+            await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
+            await ctx.dispose();
+        } catch {}
+    });
+
     test('All 6 status cards present at 1200px viewport', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1200, height: 900 } });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
@@ -77,9 +82,8 @@ test.describe('M1 — Responsive status grid', () => {
     });
 
     test('All 6 status cards visible and not overflow-clipped at 420px viewport', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 420, height: 900 } });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
@@ -100,9 +104,8 @@ test.describe('M1 — Responsive status grid', () => {
     });
 
     test('Grid CSS uses auto-fill responsive columns', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });

@@ -45,62 +45,70 @@ async function injectCookies(ctx, sess) {
     ]);
 }
 
-test.afterAll(async () => {
-    if (!LOGOUT_URL) return;
-    try {
-        const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
-        await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
-        await ctx.dispose();
-    } catch {}
-});
+let _sess;
 
-test('Home tab shows status dashboard with all 6 cards', async ({ browser }) => {
-    const sess = await getAdminSession();
-    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-    await injectCookies(ctx, sess);
-    const page = await ctx.newPage();
+test.describe.configure({ mode: 'serial' });
 
-    await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#cs-panel-home', { timeout: 15000 });
+test.describe('H2 — Home status dashboard', () => {
 
-    const panel = page.locator('#cs-panel-home');
+    test.beforeAll(async () => {
+        _sess = await getAdminSession(900);
+    });
 
-    // All 6 status card labels must be present (use first() as some labels appear in links too)
-    await expect(panel.locator('text=AI CYBER SCAN').first()).toBeVisible();
-    await expect(panel.locator('text=THREAT MONITOR').first()).toBeVisible();
-    await expect(panel.locator('text=SMTP MAIL').first()).toBeVisible();
-    await expect(panel.locator('text=LOGIN SECURITY').first()).toBeVisible();
-    await expect(panel.locator('text=UPTIME MONITOR').first()).toBeVisible();
-    await expect(panel.locator('text=SCHEDULED SCAN').first()).toBeVisible();
+    test.afterAll(async () => {
+        if (!LOGOUT_URL) return;
+        try {
+            const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+            await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
+            await ctx.dispose();
+        } catch {}
+    });
 
-    await ctx.close();
-});
+    test('Home tab shows status dashboard with all 6 cards', async ({ browser }) => {
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, _sess);
+        const page = await ctx.newPage();
 
-test('Home tab does not show the old essay intro', async ({ browser }) => {
-    const sess = await getAdminSession();
-    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-    await injectCookies(ctx, sess);
-    const page = await ctx.newPage();
+        await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#cs-panel-home', { timeout: 15000 });
 
-    await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#cs-panel-home', { timeout: 15000 });
+        const panel = page.locator('#cs-panel-home');
 
-    // The essay's distinctive first sentence is gone
-    await expect(page.locator('text=WordPress powers over 40% of the internet')).toHaveCount(0);
+        // All 6 status card labels must be present (use first() as some labels appear in links too)
+        await expect(panel.locator('text=AI CYBER SCAN').first()).toBeVisible();
+        await expect(panel.locator('text=THREAT MONITOR').first()).toBeVisible();
+        await expect(panel.locator('text=SMTP MAIL').first()).toBeVisible();
+        await expect(panel.locator('text=LOGIN SECURITY').first()).toBeVisible();
+        await expect(panel.locator('text=UPTIME MONITOR').first()).toBeVisible();
+        await expect(panel.locator('text=SCHEDULED SCAN').first()).toBeVisible();
 
-    await ctx.close();
-});
+        await ctx.close();
+    });
 
-test('Home tab Quick Fixes section is still present', async ({ browser }) => {
-    const sess = await getAdminSession();
-    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-    await injectCookies(ctx, sess);
-    const page = await ctx.newPage();
+    test('Home tab does not show the old essay intro', async ({ browser }) => {
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, _sess);
+        const page = await ctx.newPage();
 
-    await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#cs-panel-home', { timeout: 15000 });
+        await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#cs-panel-home', { timeout: 15000 });
 
-    await expect(page.locator('#cs-quick-fixes-panel')).toBeVisible();
+        // The essay's distinctive first sentence is gone
+        await expect(page.locator('text=WordPress powers over 40% of the internet')).toHaveCount(0);
 
-    await ctx.close();
+        await ctx.close();
+    });
+
+    test('Home tab Quick Fixes section is still present', async ({ browser }) => {
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, _sess);
+        const page = await ctx.newPage();
+
+        await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#cs-panel-home', { timeout: 15000 });
+
+        await expect(page.locator('#cs-quick-fixes-panel')).toBeVisible();
+
+        await ctx.close();
+    });
 });

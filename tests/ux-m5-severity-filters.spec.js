@@ -50,8 +50,7 @@ async function injectCookies(ctx, sess) {
     ]);
 }
 
-async function loadAuditTab(browser) {
-    const sess = await getAdminSession();
+async function loadAuditTab(browser, sess) {
     const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
     await injectCookies(ctx, sess);
     const page = await ctx.newPage();
@@ -60,21 +59,27 @@ async function loadAuditTab(browser) {
     return { page, ctx };
 }
 
-test.afterAll(async () => {
-    if (!LOGOUT_URL) return;
-    try {
-        const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
-        await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
-        await ctx.dispose();
-    } catch {}
-});
-
 test.describe.configure({ mode: 'serial' });
 
 test.describe('M5 — Severity filter chips', () => {
 
+    let _sess;
+
+    test.beforeAll(async () => {
+        _sess = await getAdminSession(900);
+    });
+
+    test.afterAll(async () => {
+        if (!LOGOUT_URL) return;
+        try {
+            const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+            await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
+            await ctx.dispose();
+        } catch {}
+    });
+
     test('Severity chip row present when audit results are loaded', async ({ browser }) => {
-        const { page, ctx } = await loadAuditTab(browser);
+        const { page, ctx } = await loadAuditTab(browser, _sess);
 
         const hasResults = await page.locator('#csdt-audit-cards').count();
         if (!hasResults) {
@@ -93,7 +98,7 @@ test.describe('M5 — Severity filter chips', () => {
     });
 
     test('Severity chips only shown for severities with findings', async ({ browser }) => {
-        const { page, ctx } = await loadAuditTab(browser);
+        const { page, ctx } = await loadAuditTab(browser, _sess);
 
         const hasResults = await page.locator('#csdt-audit-cards').count();
         if (!hasResults) {
@@ -125,7 +130,7 @@ test.describe('M5 — Severity filter chips', () => {
     });
 
     test('Clicking a severity chip filters cards to matching severity only', async ({ browser }) => {
-        const { page, ctx } = await loadAuditTab(browser);
+        const { page, ctx } = await loadAuditTab(browser, _sess);
 
         const hasResults = await page.locator('#csdt-audit-cards').count();
         if (!hasResults) {
@@ -161,7 +166,7 @@ test.describe('M5 — Severity filter chips', () => {
     });
 
     test('Clicking All chip restores all cards', async ({ browser }) => {
-        const { page, ctx } = await loadAuditTab(browser);
+        const { page, ctx } = await loadAuditTab(browser, _sess);
 
         const hasResults = await page.locator('#csdt-audit-cards').count();
         if (!hasResults) {

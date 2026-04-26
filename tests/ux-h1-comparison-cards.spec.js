@@ -44,40 +44,49 @@ async function injectCookies(ctx, sess) {
     ]);
 }
 
-test.afterAll(async () => {
-    if (!LOGOUT_URL) return;
-    try {
-        const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
-        await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
-        await ctx.dispose();
-    } catch {}
-});
+let _sess;
 
-test('Security tab shows comparison card mentioning Site Audit', async ({ browser }) => {
-    const sess = await getAdminSession();
-    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-    await injectCookies(ctx, sess);
-    const page = await ctx.newPage();
+test.describe.configure({ mode: 'serial' });
 
-    await page.goto(`${PLUGIN_URL}&tab=security`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('.cs-section-header', { timeout: 15000 });
+test.describe('H1 — Comparison cards', () => {
 
-    // Comparison card is in .cs-tab-intro, not inside a named panel
-    await expect(page.locator('.cs-tab-intro').locator('text=Site Audit').first()).toBeVisible();
+    test.beforeAll(async () => {
+        _sess = await getAdminSession(900);
+    });
 
-    await ctx.close();
-});
+    test.afterAll(async () => {
+        if (!LOGOUT_URL) return;
+        try {
+            const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+            await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
+            await ctx.dispose();
+        } catch {}
+    });
 
-test('Site Audit tab shows comparison card mentioning AI Security Scan', async ({ browser }) => {
-    const sess = await getAdminSession();
-    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-    await injectCookies(ctx, sess);
-    const page = await ctx.newPage();
+    test('Security tab shows comparison card mentioning Site Audit', async ({ browser }) => {
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, _sess);
+        const page = await ctx.newPage();
 
-    await page.goto(`${PLUGIN_URL}&tab=site-audit`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('.cs-section-header', { timeout: 15000 });
+        await page.goto(`${PLUGIN_URL}&tab=security`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('.cs-section-header', { timeout: 15000 });
 
-    await expect(page.locator('text=AI Security Scan').first()).toBeVisible();
+        // Comparison card is in .cs-tab-intro, not inside a named panel
+        await expect(page.locator('.cs-tab-intro').locator('text=Site Audit').first()).toBeVisible();
 
-    await ctx.close();
+        await ctx.close();
+    });
+
+    test('Site Audit tab shows comparison card mentioning AI Security Scan', async ({ browser }) => {
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, _sess);
+        const page = await ctx.newPage();
+
+        await page.goto(`${PLUGIN_URL}&tab=site-audit`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('.cs-section-header', { timeout: 15000 });
+
+        await expect(page.locator('text=AI Security Scan').first()).toBeVisible();
+
+        await ctx.close();
+    });
 });

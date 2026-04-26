@@ -48,23 +48,28 @@ async function injectCookies(ctx, sess) {
     ]);
 }
 
-test.afterAll(async () => {
-    if (!LOGOUT_URL) return;
-    try {
-        const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
-        await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
-        await ctx.dispose();
-    } catch {}
-});
-
 test.describe.configure({ mode: 'serial' });
 
 test.describe('M3 — Empty state CTA cards', () => {
 
+    let _sess;
+
+    test.beforeAll(async () => {
+        _sess = await getAdminSession(900);
+    });
+
+    test.afterAll(async () => {
+        if (!LOGOUT_URL) return;
+        try {
+            const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+            await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
+            await ctx.dispose();
+        } catch {}
+    });
+
     test('Scan history panel: either history rows or empty-state CTA present (not both, not neither)', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=security`, { waitUntil: 'domcontentloaded' });
@@ -93,9 +98,8 @@ test.describe('M3 — Empty state CTA cards', () => {
     });
 
     test('Site Audit panel: #csdt-site-audit-empty only visible when no cached result', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=site-audit`, { waitUntil: 'domcontentloaded' });
@@ -121,9 +125,8 @@ test.describe('M3 — Empty state CTA cards', () => {
     });
 
     test('Site Audit empty state contains correct copy when present', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=site-audit`, { waitUntil: 'domcontentloaded' });

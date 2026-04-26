@@ -47,23 +47,28 @@ async function injectCookies(ctx, sess) {
     ]);
 }
 
-test.afterAll(async () => {
-    if (!LOGOUT_URL) return;
-    try {
-        const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
-        await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
-        await ctx.dispose();
-    } catch {}
-});
-
 test.describe.configure({ mode: 'serial' });
 
 test.describe('M4 — Save button inline feedback', () => {
 
+    let _sess;
+
+    test.beforeAll(async () => {
+        _sess = await getAdminSession(900);
+    });
+
+    test.afterAll(async () => {
+        if (!LOGOUT_URL) return;
+        try {
+            const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+            await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
+            await ctx.dispose();
+        } catch {}
+    });
+
     test('AI settings Save button shows ✅ Saved indicator', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=security`, { waitUntil: 'domcontentloaded' });
@@ -84,9 +89,8 @@ test.describe('M4 — Save button inline feedback', () => {
     });
 
     test('Threat monitor Save button shows ✅ Saved indicator', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=security`, { waitUntil: 'domcontentloaded' });
@@ -104,9 +108,8 @@ test.describe('M4 — Save button inline feedback', () => {
     });
 
     test('Login security Save button shows ✅ Saved indicator', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=login`, { waitUntil: 'domcontentloaded' });
@@ -124,9 +127,8 @@ test.describe('M4 — Save button inline feedback', () => {
     });
 
     test('Saved indicator loses "visible" class after ~2.5s', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=security`, { waitUntil: 'domcontentloaded' });

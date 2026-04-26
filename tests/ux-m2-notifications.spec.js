@@ -46,23 +46,28 @@ async function injectCookies(ctx, sess) {
     ]);
 }
 
-test.afterAll(async () => {
-    if (!LOGOUT_URL) return;
-    try {
-        const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
-        await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
-        await ctx.dispose();
-    } catch {}
-});
-
 test.describe.configure({ mode: 'serial' });
 
 test.describe('M2 — Unified notification settings', () => {
 
+    let _sess;
+
+    test.beforeAll(async () => {
+        _sess = await getAdminSession(900);
+    });
+
+    test.afterAll(async () => {
+        if (!LOGOUT_URL) return;
+        try {
+            const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+            await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
+            await ctx.dispose();
+        } catch {}
+    });
+
     test('Notifications panel is present with required inputs', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=security`, { waitUntil: 'domcontentloaded' });
@@ -76,9 +81,8 @@ test.describe('M2 — Unified notification settings', () => {
     });
 
     test('Email override input is present', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=security`, { waitUntil: 'domcontentloaded' });
@@ -90,9 +94,8 @@ test.describe('M2 — Unified notification settings', () => {
     });
 
     test('Save Notification Settings shows Saved feedback', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=security`, { waitUntil: 'domcontentloaded' });
@@ -110,13 +113,12 @@ test.describe('M2 — Unified notification settings', () => {
     });
 
     test('Scheduled scan section no longer has per-scan ntfy/email rows', async ({ browser }) => {
-        const sess = await getAdminSession();
         const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-        await injectCookies(ctx, sess);
+        await injectCookies(ctx, _sess);
         const page = await ctx.newPage();
 
         await page.goto(`${PLUGIN_URL}&tab=security`, { waitUntil: 'domcontentloaded' });
-        await page.waitForSelector('#cs-sched-save', { timeout: 15000 });
+        await page.waitForSelector('#cs-sched-enabled', { timeout: 15000 });
 
         await expect(page.locator('#cs-sched-email')).toHaveCount(0);
         await expect(page.locator('#cs-sched-ntfy-url')).toHaveCount(0);

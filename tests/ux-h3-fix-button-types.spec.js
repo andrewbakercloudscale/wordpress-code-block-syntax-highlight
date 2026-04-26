@@ -46,101 +46,109 @@ async function injectCookies(ctx, sess) {
     ]);
 }
 
-test.afterAll(async () => {
-    if (!LOGOUT_URL) return;
-    try {
-        const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
-        await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
-        await ctx.dispose();
-    } catch {}
-});
+let _sess;
 
-test('Moderate-risk fix items use risk field in AJAX response', async ({ browser }) => {
-    const sess = await getAdminSession();
-    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-    await injectCookies(ctx, sess);
-    const page = await ctx.newPage();
+test.describe.configure({ mode: 'serial' });
 
-    await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#cs-quick-fixes-panel', { timeout: 15000 });
+test.describe('H3 — Fix button types', () => {
 
-    // Fetch quick fixes from the API and verify the risk field is present
-    const nonce = await page.evaluate(() => window.csdt_nonce || window.csdtSettings?.nonce || document.querySelector('[name="_wpnonce"]')?.value || '');
-    const ajaxUrl = `${SITE}/wp-admin/admin-ajax.php`;
-    const resp = await page.evaluate(async ({ ajaxUrl, nonce }) => {
-        const fd = new FormData();
-        fd.append('action', 'csdt_devtools_quick_fix');
-        fd.append('fix_action', 'refresh');
-        fd.append('_wpnonce', nonce || '');
+    test.beforeAll(async () => {
+        _sess = await getAdminSession(900);
+    });
+
+    test.afterAll(async () => {
+        if (!LOGOUT_URL) return;
         try {
-            const r = await fetch(ajaxUrl, { method: 'POST', body: fd });
-            return await r.json();
-        } catch (e) {
-            return null;
+            const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+            await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
+            await ctx.dispose();
+        } catch {}
+    });
+
+    test('Moderate-risk fix items use risk field in AJAX response', async ({ browser }) => {
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, _sess);
+        const page = await ctx.newPage();
+
+        await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#cs-quick-fixes-panel', { timeout: 15000 });
+
+        // Fetch quick fixes from the API and verify the risk field is present
+        const nonce = await page.evaluate(() => window.csdt_nonce || window.csdtSettings?.nonce || document.querySelector('[name="_wpnonce"]')?.value || '');
+        const ajaxUrl = `${SITE}/wp-admin/admin-ajax.php`;
+        const resp = await page.evaluate(async ({ ajaxUrl, nonce }) => {
+            const fd = new FormData();
+            fd.append('action', 'csdt_devtools_quick_fix');
+            fd.append('fix_action', 'refresh');
+            fd.append('_wpnonce', nonce || '');
+            try {
+                const r = await fetch(ajaxUrl, { method: 'POST', body: fd });
+                return await r.json();
+            } catch (e) {
+                return null;
+            }
+        }, { ajaxUrl, nonce });
+
+        // The page renders quick fix HTML — verify moderate risk buttons exist in HTML source when fixes are unfixed,
+        // OR verify that any present moderate-risk buttons have the correct attribute.
+        const moderateBtns = page.locator('.cs-quick-fix-btn[data-risk="moderate"]');
+        const count = await moderateBtns.count();
+        // If unfixed moderate buttons are present, they must have the data-risk attribute
+        if (count > 0) {
+            for (let i = 0; i < count; i++) {
+                await expect(moderateBtns.nth(i)).toHaveAttribute('data-risk', 'moderate');
+            }
         }
-    }, { ajaxUrl, nonce });
+        // Either 0 (all fixed) or up to 2 moderate-risk buttons
+        expect(count).toBeGreaterThanOrEqual(0);
+        expect(count).toBeLessThanOrEqual(2);
 
-    // The page renders quick fix HTML — verify moderate risk buttons exist in HTML source when fixes are unfixed,
-    // OR verify that any present moderate-risk buttons have the correct attribute.
-    const moderateBtns = page.locator('.cs-quick-fix-btn[data-risk="moderate"]');
-    const count = await moderateBtns.count();
-    // If unfixed moderate buttons are present, they must have the data-risk attribute
-    if (count > 0) {
-        for (let i = 0; i < count; i++) {
-            await expect(moderateBtns.nth(i)).toHaveAttribute('data-risk', 'moderate');
+        await ctx.close();
+    });
+
+    test('Clicking a moderate-risk button shows inline confirmation', async ({ browser }) => {
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, _sess);
+        const page = await ctx.newPage();
+
+        await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#cs-quick-fixes-panel', { timeout: 15000 });
+
+        // Find the first unfixed moderate-risk button
+        const btn = page.locator('.cs-quick-fix-btn[data-risk="moderate"]').first();
+        const count = await btn.count();
+        if (count === 0) {
+            // All moderate fixes already applied — skip
+            return;
         }
-    }
-    // Either 0 (all fixed) or up to 2 moderate-risk buttons
-    expect(count).toBeGreaterThanOrEqual(0);
-    expect(count).toBeLessThanOrEqual(2);
 
-    await ctx.close();
-});
+        await btn.click();
 
-test('Clicking a moderate-risk button shows inline confirmation', async ({ browser }) => {
-    const sess = await getAdminSession();
-    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-    await injectCookies(ctx, sess);
-    const page = await ctx.newPage();
+        // Confirmation prompt should appear with Confirm and Cancel buttons
+        await expect(page.locator('[data-qf-confirm]').first()).toBeVisible({ timeout: 3000 });
+        await expect(page.locator('[data-qf-cancel]').first()).toBeVisible({ timeout: 3000 });
 
-    await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#cs-quick-fixes-panel', { timeout: 15000 });
+        await ctx.close();
+    });
 
-    // Find the first unfixed moderate-risk button
-    const btn = page.locator('.cs-quick-fix-btn[data-risk="moderate"]').first();
-    const count = await btn.count();
-    if (count === 0) {
-        // All moderate fixes already applied — skip
-        return;
-    }
+    test('Cancelling moderate-risk confirmation restores the button', async ({ browser }) => {
+        const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+        await injectCookies(ctx, _sess);
+        const page = await ctx.newPage();
 
-    await btn.click();
+        await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#cs-quick-fixes-panel', { timeout: 15000 });
 
-    // Confirmation prompt should appear with Confirm and Cancel buttons
-    await expect(page.locator('[data-qf-confirm]').first()).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('[data-qf-cancel]').first()).toBeVisible({ timeout: 3000 });
+        const btn = page.locator('.cs-quick-fix-btn[data-risk="moderate"]').first();
+        const count = await btn.count();
+        if (count === 0) return;
 
-    await ctx.close();
-});
+        await btn.click();
+        await page.locator('[data-qf-cancel]').first().click();
 
-test('Cancelling moderate-risk confirmation restores the button', async ({ browser }) => {
-    const sess = await getAdminSession();
-    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
-    await injectCookies(ctx, sess);
-    const page = await ctx.newPage();
+        // Button should be restored
+        await expect(page.locator('.cs-quick-fix-btn[data-risk="moderate"]').first()).toBeVisible({ timeout: 3000 });
 
-    await page.goto(`${PLUGIN_URL}&tab=home`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#cs-quick-fixes-panel', { timeout: 15000 });
-
-    const btn = page.locator('.cs-quick-fix-btn[data-risk="moderate"]').first();
-    const count = await btn.count();
-    if (count === 0) return;
-
-    await btn.click();
-    await page.locator('[data-qf-cancel]').first().click();
-
-    // Button should be restored
-    await expect(page.locator('.cs-quick-fix-btn[data-risk="moderate"]').first()).toBeVisible({ timeout: 3000 });
-
-    await ctx.close();
+        await ctx.close();
+    });
 });
