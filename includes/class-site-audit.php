@@ -503,8 +503,8 @@ class CSDT_Site_Audit {
                         <div style="font-weight:700;color:#15803d;margin-bottom:4px;">🔍 Site Audit — this tab</div>
                         <div style="color:#374151;line-height:1.5;"><?php esc_html_e( 'Content quality, SEO, database health, plugin status. Finds issues affecting visitors and search rankings.', 'cloudscale-devtools' ); ?></div>
                     </div>
-                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;">
-                        <div style="font-weight:700;color:#374151;margin-bottom:4px;">🛡️ AI Security Scan</div>
+                    <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:6px;padding:10px 14px;">
+                        <div style="font-weight:700;color:#1d4ed8;margin-bottom:4px;">🛡️ AI Security Scan</div>
                         <div style="color:#374151;line-height:1.5;"><?php esc_html_e( 'Security misconfigurations, exposed endpoints, headers, brute-force exposure. Finds issues attackers exploit.', 'cloudscale-devtools' ); ?></div>
                         <a href="<?php echo esc_url( $security_url ); ?>" style="display:inline-block;margin-top:6px;font-size:11px;color:#6366f1;font-weight:600;"><?php esc_html_e( 'Go to Security Scan →', 'cloudscale-devtools' ); ?></a>
                     </div>
