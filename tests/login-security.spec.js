@@ -4,45 +4,76 @@
  * Run:  npx playwright test tests/login-security.spec.js --headed
  *
  * Requires:
- *   - Site:     https://your-wordpress-site.example.com
- *   - Test user: cs_devtools_test / TempTest2026! (admin, ID 164)
- *   - Admin:     Set ADMIN_USER / ADMIN_PASS below or via env vars
- *   - wp-2fa and wps-hide-login must be inactive
+ *   - CSDT_TEST_SECRET, CSDT_TEST_ROLE, CSDT_TEST_SESSION_URL  (admin session)
+ *   - WP_TEST_USER, WP_TEST_PASS  (form-login user for 2FA/brute-force/passkey tests)
  */
 
-const { test, expect, request } = require('@playwright/test');
+const { test, expect, request: playwrightRequest } = require('@playwright/test');
+const path = require('path');
 const readline = require('readline');
 
-const SITE        = process.env.WP_SITE        || 'https://your-wordpress-site.example.com';
-const ADMIN_USER  = process.env.WP_ADMIN_USER  || '';
-const ADMIN_PASS  = process.env.WP_ADMIN_PASS  || '';
-const TEST_USER   = process.env.WP_TEST_USER   || 'cs_devtools_test';
-const TEST_PASS   = process.env.WP_TEST_PASS   || 'TempTest2026!';
+[
+    path.join(__dirname, '..', '.env.test'),
+    path.join(__dirname, '..', '..', '.env.test'),
+].forEach(p => { try { require('dotenv').config({ path: p }); } catch {} });
+
+const SITE        = process.env.WP_SITE              || 'https://your-wordpress-site.example.com';
+const SECRET      = process.env.CSDT_TEST_SECRET     || '';
+const ROLE        = process.env.CSDT_TEST_ROLE        || '';
+const SESSION_URL = process.env.CSDT_TEST_SESSION_URL || '';
+const LOGOUT_URL  = process.env.CSDT_TEST_LOGOUT_URL  || '';
+const TEST_USER   = process.env.WP_TEST_USER          || 'cs_devtools_test';
+const TEST_PASS   = process.env.WP_TEST_PASS          || '';
+
+if (!SECRET || !ROLE || !SESSION_URL) {
+    throw new Error('CSDT_TEST_SECRET, CSDT_TEST_ROLE, and CSDT_TEST_SESSION_URL must be set in .env.test');
+}
 
 // Pi direct address — bypasses Cloudflare for instant redirect verification.
 const PI_NGINX  = 'http://192.168.0.48:8082';
 const SITE_HOST = new URL(SITE).hostname;
 
+const LOGIN_URL        = `${SITE}/wp-login.php`;
+const SECURITY_TAB_URL = `${SITE}/wp-admin/tools.php?page=cloudscale-devtools&tab=login`;
+
+async function getAdminSession(ttl = 900) {
+    const ctx  = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+    const resp = await ctx.post(SESSION_URL, { data: { secret: SECRET, role: ROLE, ttl } });
+    const body = await resp.json().catch(() => resp.text());
+    await ctx.dispose();
+    if (!resp.ok()) throw new Error(`test-session API: ${resp.status()} ${JSON.stringify(body)}`);
+    return body;
+}
+
+async function injectCookies(ctx, sess) {
+    await ctx.addCookies([
+        { name: sess.secure_auth_cookie_name, value: sess.secure_auth_cookie,  domain: sess.cookie_domain, path: '/', secure: true,  httpOnly: true,  sameSite: 'Lax' },
+        { name: sess.logged_in_cookie_name,   value: sess.logged_in_cookie,    domain: sess.cookie_domain, path: '/', secure: true,  httpOnly: false, sameSite: 'Lax' },
+    ]);
+}
+
+async function logoutTestUser() {
+    if (!LOGOUT_URL) return;
+    try {
+        const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+        await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
+        await ctx.dispose();
+    } catch {}
+}
+
 /**
  * Check the HTTP status of a path directly against Pi nginx (no Cloudflare cache).
- * Sends a fake wordpress_logged_in cookie to bypass the nginx FastCGI cache
- * (the cache is keyed on presence of that cookie, not its value).
- * Returns the response status code, e.g. 200, 302.
+ * Sends a fake wordpress_logged_in cookie to bypass the nginx FastCGI cache.
  */
-async function checkDirectStatus(path) {
-    const ctx = await request.newContext();
+async function checkDirectStatus(urlPath) {
+    const ctx = await playwrightRequest.newContext();
     const headers = {
         'Host':              SITE_HOST,
         'X-Forwarded-Proto': 'https',
-        // Bypass nginx FastCGI cache (keyed on cookie presence).
         'Cookie':            'wordpress_logged_in_bypass=1',
     };
-    // Warm-up: follow redirects first to establish the connection.
-    // Without this, maxRedirects:0 may return a cached 200 from a prior
-    // keep-alive connection that pre-dates the Hide Login redirect.
-    await ctx.get(`${PI_NGINX}${path}`, { headers }).catch(() => null);
-    // Now check without following redirects to read the actual status code.
-    const resp = await ctx.get(`${PI_NGINX}${path}`, {
+    await ctx.get(`${PI_NGINX}${urlPath}`, { headers }).catch(() => null);
+    const resp = await ctx.get(`${PI_NGINX}${urlPath}`, {
         headers,
         maxRedirects: 0,
     }).catch(() => null);
@@ -50,21 +81,8 @@ async function checkDirectStatus(path) {
     await ctx.dispose();
     return status;
 }
-const LOGIN_URL        = `${SITE}/wp-login.php`;
-const SECURITY_TAB_URL = `${SITE}/wp-admin/tools.php?page=cloudscale-devtools&tab=login`;
 
-/** Pause and ask the tester to type a value (2FA code, URL, etc.) */
-async function askTester(prompt) {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    return new Promise(resolve => {
-        rl.question(`\n>>> ${prompt}\n>>> `, answer => {
-            rl.close();
-            resolve(answer.trim());
-        });
-    });
-}
-
-/** Pre-set WP test cookie in context so "Cookies blocked" check passes. */
+/** Pre-set WP test cookie so the login form "Cookies blocked" check passes. */
 async function addWpTestCookie(ctx) {
     await ctx.addCookies([{
         name:     'wordpress_test_cookie',
@@ -77,7 +95,7 @@ async function addWpTestCookie(ctx) {
     }]);
 }
 
-/** Log in as a given user. */
+/** Log in via WP login form — only used for tests that exercise the login flow itself. */
 async function wpLogin(page, user, pass) {
     await addWpTestCookie(page.context());
     await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
@@ -93,34 +111,52 @@ async function wpLogin(page, user, pass) {
     }
 }
 
+/** Pause and ask the tester to type a value (2FA code, URL, etc.) */
+async function askTester(prompt) {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    return new Promise(resolve => {
+        rl.question(`\n>>> ${prompt}\n>>> `, answer => {
+            rl.close();
+            resolve(answer.trim());
+        });
+    });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Login Security tab renders correctly
 // ─────────────────────────────────────────────────────────────────────────────
-test('Login Security tab renders', async ({ page }) => {
-    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
+test('Login Security tab renders', async ({ browser }) => {
+    const sess = await getAdminSession();
+    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(ctx, sess);
+    const page = await ctx.newPage();
+
     await page.goto(SECURITY_TAB_URL);
 
-    // Tab is active (nav link or heading anywhere on page)
     await expect(page.locator('body')).toContainText(/Login Security/i);
 
-    // Hide Login section — checkbox exists in DOM (may be visually hidden by custom toggle CSS)
     await expect(page.locator('#cs-hide-enabled')).toBeAttached();
     await expect(page.locator('#cs-login-slug')).toBeVisible();
     await expect(page.locator('#cs-hide-save')).toBeVisible();
 
-    // 2FA method radios exist in DOM
     await expect(page.locator('input[name="cs_devtools_2fa_method"][value="off"]')).toBeAttached();
     await expect(page.locator('input[name="cs_devtools_2fa_method"][value="email"]')).toBeAttached();
     await expect(page.locator('input[name="cs_devtools_2fa_method"][value="totp"]')).toBeAttached();
 
     console.log('✅  Login Security tab renders correctly.');
+    await ctx.close();
+    await logoutTestUser();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. Slug live-preview updates the link
 // ─────────────────────────────────────────────────────────────────────────────
-test('Slug live-preview updates URL link', async ({ page }) => {
-    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
+test('Slug live-preview updates URL link', async ({ browser }) => {
+    const sess = await getAdminSession();
+    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(ctx, sess);
+    const page = await ctx.newPage();
+
     await page.goto(SECURITY_TAB_URL);
 
     const slugInput = page.locator('#cs-login-slug');
@@ -128,20 +164,25 @@ test('Slug live-preview updates URL link', async ({ page }) => {
     const href = await page.locator('#cs-current-login-url').getAttribute('href');
     expect(href).toContain('my-secret-login');
 
-    // Reset
     await slugInput.fill('');
     console.log('✅  Slug live-preview works.');
+    await ctx.close();
+    await logoutTestUser();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. Hide Login — enable, set slug, save, verify redirect
 // ─────────────────────────────────────────────────────────────────────────────
-test('Hide Login enables custom slug', async ({ page }) => {
+test('Hide Login enables custom slug', async ({ browser }) => {
     test.setTimeout(120_000);
-    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
+
+    const sess = await getAdminSession();
+    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(ctx, sess);
+    const page = await ctx.newPage();
+
     await page.goto(SECURITY_TAB_URL);
 
-    // Enable Hide Login — checkbox is visually hidden (custom toggle), set via JS.
     await page.locator('#cs-hide-enabled').waitFor({ state: 'attached', timeout: 10000 });
     await page.evaluate(() => {
         const cb = document.getElementById('cs-hide-enabled');
@@ -150,24 +191,20 @@ test('Hide Login enables custom slug', async ({ page }) => {
     await page.locator('#cs-login-slug').fill('my-test-login');
     await page.locator('#cs-hide-save').click();
 
-    // "Saved" feedback should flash
     await expect(page.locator('#cs-hide-saved')).toBeVisible({ timeout: 5000 });
     console.log('✅  Hide Login saved.');
 
-    // Verify redirect directly against Pi nginx (bypasses Cloudflare cache entirely).
     const directStatus = await checkDirectStatus('/wp-login.php');
     expect(directStatus).not.toBe(200);
     console.log(`✅  /wp-login.php direct status (bypassing CF): ${directStatus} (expected 302)`);
 
-    // Verify custom slug serves login content using a fresh request context (no session).
-    const freshCtx = await page.context().browser().newContext({ ignoreHTTPSErrors: true });
+    const freshCtx = await browser.newContext({ ignoreHTTPSErrors: true });
     const freshPage = await freshCtx.newPage();
     await freshPage.goto(`${SITE}/my-test-login/`);
     await expect(freshPage.locator('#loginform').first()).toBeVisible({ timeout: 8000 });
     console.log('✅  Custom slug serves login form.');
     await freshCtx.close();
 
-    // Cleanup — navigate back to admin (session still valid) and disable Hide Login.
     await page.goto(SECURITY_TAB_URL);
     await expect(page.locator('#cs-login-slug')).toBeVisible({ timeout: 10000 });
     await page.locator('#cs-hide-enabled').waitFor({ state: 'attached', timeout: 10000 });
@@ -178,60 +215,63 @@ test('Hide Login enables custom slug', async ({ page }) => {
     await page.locator('#cs-hide-save').click();
     await expect(page.locator('#cs-hide-saved')).toBeVisible({ timeout: 5000 });
     console.log('✅  Hide Login disabled after test.');
+
+    await ctx.close();
+    await logoutTestUser();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 4. Email 2FA — enable for test user (as test user)
 // ─────────────────────────────────────────────────────────────────────────────
-test('Email 2FA — enable flow (test user)', async ({ page }) => {
-    // First enable Email as the 2FA method (as admin)
-    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
-    await page.goto(SECURITY_TAB_URL);
-    await page.evaluate(() => {
+test('Email 2FA — enable flow (test user)', async ({ browser }) => {
+    // Enable Email as the 2FA method (as admin via test-session API)
+    const adminSess = await getAdminSession();
+    const adminCtx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(adminCtx, adminSess);
+    const adminPage = await adminCtx.newPage();
+
+    await adminPage.goto(SECURITY_TAB_URL);
+    await adminPage.evaluate(() => {
         const radio = document.querySelector('input[name="cs_devtools_2fa_method"][value="email"]');
         if (radio && !radio.checked) { radio.checked = true; radio.dispatchEvent(new Event('change', { bubbles: true })); }
     });
-    await page.locator('#cs-2fa-save').click();
-    await expect(page.locator('#cs-2fa-saved')).toBeVisible({ timeout: 5000 });
+    await adminPage.locator('#cs-2fa-save').click();
+    await expect(adminPage.locator('#cs-2fa-saved')).toBeVisible({ timeout: 5000 });
     console.log('✅  Email 2FA method selected and saved.');
+    await adminCtx.close();
+    await logoutTestUser();
 
-    // Now act as the test user
-    // Logout via wp-login.php?action=logout (WP will redirect to get the nonce first).
-    await page.goto(`${SITE}/wp-login.php?action=logout`);
-    // Confirm the "you want to log out?" page if it appears.
-    const confirmBtn = page.locator('a[href*="action=logout"]');
-    if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await confirmBtn.click();
+    if (!TEST_PASS) {
+        console.log('⏭️  Skipped test user 2FA enable flow — WP_TEST_PASS not set.');
+        return;
     }
-    await page.waitForTimeout(1000);
-    await wpLogin(page, TEST_USER, TEST_PASS);
-    await page.goto(`${SITE}/wp-admin/admin.php?page=cloudscale-devtools&tab=login-security`);
 
-    const enableBtn = page.locator('#cs-email-enable-btn');
+    const testCtx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    const testPage = await testCtx.newPage();
+    await wpLogin(testPage, TEST_USER, TEST_PASS);
+    await testPage.goto(`${SITE}/wp-admin/admin.php?page=cloudscale-devtools&tab=login-security`);
+
+    const enableBtn = testPage.locator('#cs-email-enable-btn');
     await expect(enableBtn).toBeVisible({ timeout: 5000 });
 
     await enableBtn.click();
-    // Button should change to "Resend" or show pending message
-    await expect(page.locator('#cs-email-pending-msg')).toBeVisible({ timeout: 10000 });
-    const pendingText = await page.locator('#cs-email-pending-msg').textContent();
+    await expect(testPage.locator('#cs-email-pending-msg')).toBeVisible({ timeout: 10000 });
+    const pendingText = await testPage.locator('#cs-email-pending-msg').textContent();
     console.log('📬  Pending message:', pendingText.trim());
 
-    // Show any port warning
-    const warnEl = page.locator('#cs-email-port-warn');
+    const warnEl = testPage.locator('#cs-email-port-warn');
     if (await warnEl.isVisible()) {
         console.log('⚠️  Port warning:', await warnEl.textContent());
     }
 
-    // Ask tester to retrieve the verification link from the email
     const verifyUrl = await askTester(
         'Paste the Email 2FA verification link from the email sent to cs_devtools_test (or press Enter to skip):'
     );
 
     if (verifyUrl) {
-        await page.goto(verifyUrl);
-        // Should land back in admin with badge now showing "Active"
-        await page.goto(`${SITE}/wp-admin/admin.php?page=cloudscale-devtools&tab=login-security`);
-        const badge = page.locator('#cs-email-badge');
+        await testPage.goto(verifyUrl);
+        await testPage.goto(`${SITE}/wp-admin/admin.php?page=cloudscale-devtools&tab=login-security`);
+        const badge = testPage.locator('#cs-email-badge');
         await expect(badge).toBeVisible({ timeout: 5000 });
         const badgeText = await badge.textContent();
         console.log('🏷️  Email 2FA badge after verify:', badgeText.trim());
@@ -240,62 +280,73 @@ test('Email 2FA — enable flow (test user)', async ({ page }) => {
     } else {
         console.log('⏭️  Skipped email verification (no URL provided).');
     }
+
+    await testCtx.close();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 5. 2FA login intercept — email code challenge
 // ─────────────────────────────────────────────────────────────────────────────
-test('2FA login intercept — email code challenge', async ({ page }) => {
-    // Make sure Email 2FA method is set
-    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
-    await page.goto(SECURITY_TAB_URL);
-    const methodRadio = page.locator('input[name="cs_devtools_2fa_method"][value="email"]');
+test('2FA login intercept — email code challenge', async ({ browser }) => {
+    // Make sure Email 2FA method is set (as admin via test-session API)
+    const adminSess = await getAdminSession();
+    const adminCtx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(adminCtx, adminSess);
+    const adminPage = await adminCtx.newPage();
+
+    await adminPage.goto(SECURITY_TAB_URL);
+    const methodRadio = adminPage.locator('input[name="cs_devtools_2fa_method"][value="email"]');
     if (!(await methodRadio.isChecked())) {
-        await page.evaluate(() => {
+        await adminPage.evaluate(() => {
             const r = document.querySelector('input[name="cs_devtools_2fa_method"][value="email"]');
             if (r && !r.checked) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); }
         });
-        await page.locator('#cs-2fa-save').click();
-        await expect(page.locator('#cs-2fa-saved')).toBeVisible({ timeout: 5000 });
+        await adminPage.locator('#cs-2fa-save').click();
+        await expect(adminPage.locator('#cs-2fa-saved')).toBeVisible({ timeout: 5000 });
     }
-    // Logout via wp-login.php?action=logout (WP will redirect to get the nonce first).
-    await page.goto(`${SITE}/wp-login.php?action=logout`);
-    // Confirm the "you want to log out?" page if it appears.
-    const confirmBtn = page.locator('a[href*="action=logout"]');
-    if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await confirmBtn.click();
-    }
-    await page.waitForTimeout(1000);
+    await adminCtx.close();
+    await logoutTestUser();
 
-    // Try logging in as test user — should get 2FA challenge
-    await page.goto(LOGIN_URL);
-    await page.fill('#user_login', TEST_USER);
-    await page.fill('#user_pass', TEST_PASS);
-    await page.click('#wp-submit');
-
-    // Should land on the 2FA challenge page, not wp-admin
-    await page.waitForURL(/cs_devtools_2fa|cs_devtools_token/, { timeout: 10000 });
-    console.log('✅  Intercepted at 2FA challenge page:', page.url());
-
-    // Ask for the emailed code
-    const code = await askTester('Enter the 6-digit code from the 2FA email sent to cs_devtools_test:');
-    if (!code) {
-        console.log('⏭️  Skipped 2FA code entry.');
+    if (!TEST_PASS) {
+        console.log('⏭️  Skipped 2FA intercept test — WP_TEST_PASS not set.');
         return;
     }
 
-    await page.fill('input[name="cs_devtools_2fa_code"], #cs-2fa-code-input', code);
-    await page.click('button[type="submit"], #cs-2fa-submit');
-    await page.waitForURL(/wp-admin/, { timeout: 10000 });
+    const testCtx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    const testPage = await testCtx.newPage();
+
+    await testPage.goto(LOGIN_URL);
+    await testPage.fill('#user_login', TEST_USER);
+    await testPage.fill('#user_pass', TEST_PASS);
+    await testPage.click('#wp-submit');
+
+    await testPage.waitForURL(/cs_devtools_2fa|cs_devtools_token/, { timeout: 10000 });
+    console.log('✅  Intercepted at 2FA challenge page:', testPage.url());
+
+    const code = await askTester('Enter the 6-digit code from the 2FA email sent to cs_devtools_test:');
+    if (!code) {
+        console.log('⏭️  Skipped 2FA code entry.');
+        await testCtx.close();
+        return;
+    }
+
+    await testPage.fill('input[name="cs_devtools_2fa_code"], #cs-2fa-code-input', code);
+    await testPage.click('button[type="submit"], #cs-2fa-submit');
+    await testPage.waitForURL(/wp-admin/, { timeout: 10000 });
     console.log('✅  Logged in via Email 2FA code.');
+
+    await testCtx.close();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 6. TOTP setup wizard
 // ─────────────────────────────────────────────────────────────────────────────
-test('TOTP setup wizard', async ({ page }) => {
-    // Switch 2FA method to TOTP (as admin)
-    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
+test('TOTP setup wizard', async ({ browser }) => {
+    const sess = await getAdminSession();
+    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(ctx, sess);
+    const page = await ctx.newPage();
+
     await page.goto(SECURITY_TAB_URL);
     await page.evaluate(() => {
         const radio = document.querySelector('input[name="cs_devtools_2fa_method"][value="totp"]');
@@ -305,32 +356,31 @@ test('TOTP setup wizard', async ({ page }) => {
     await expect(page.locator('#cs-2fa-saved')).toBeVisible({ timeout: 5000 });
     console.log('✅  TOTP method saved.');
 
-    // Open wizard
     const setupBtn = page.locator('#cs-totp-setup-btn');
     if (!(await setupBtn.isVisible())) {
         console.log('ℹ️  TOTP already configured — check existing setup or disable first.');
+        await ctx.close();
+        await logoutTestUser();
         return;
     }
     await setupBtn.click();
 
-    // Wizard should appear with QR loading → QR image or manual key
     await expect(page.locator('#cs-totp-wizard')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('#cs-totp-qr-loading')).toBeHidden({ timeout: 10000 });
 
-    // Show manual secret
     const secretEl = page.locator('#cs-totp-secret-display');
     if (await secretEl.isVisible()) {
         const secret = await secretEl.textContent();
         console.log('🔑  TOTP secret (Base32):', secret.trim());
 
-        // Ask tester to add to their authenticator and enter a code
         const totpCode = await askTester(
             `Add the TOTP secret "${secret.trim()}" to your authenticator app, then enter the 6-digit code:`
         );
         if (!totpCode) {
-            // Cancel wizard
             await page.locator('#cs-totp-cancel-btn').click();
             console.log('⏭️  Skipped TOTP verification.');
+            await ctx.close();
+            await logoutTestUser();
             return;
         }
 
@@ -342,48 +392,56 @@ test('TOTP setup wizard', async ({ page }) => {
         expect(msg).toMatch(/Activated|activated/i);
         console.log('✅  TOTP setup complete.');
     }
+
+    await ctx.close();
+    await logoutTestUser();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 7. Brute-force protection — UI renders and saves
 // ─────────────────────────────────────────────────────────────────────────────
-test('Brute-force protection — panel renders with correct fields', async ({ page }) => {
-    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
+test('Brute-force protection — panel renders with correct fields', async ({ browser }) => {
+    const sess = await getAdminSession();
+    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(ctx, sess);
+    const page = await ctx.newPage();
+
     await page.goto(SECURITY_TAB_URL);
 
-    // Panel elements exist
     await expect(page.locator('#cs-bf-enabled')).toBeAttached();
     await expect(page.locator('#cs-bf-attempts')).toBeVisible();
     await expect(page.locator('#cs-bf-lockout')).toBeVisible();
     await expect(page.locator('#cs-bf-save')).toBeVisible();
 
-    // Default values
     const attempts = await page.locator('#cs-bf-attempts').inputValue();
     const lockout  = await page.locator('#cs-bf-lockout').inputValue();
     expect(Number(attempts)).toBeGreaterThanOrEqual(1);
     expect(Number(lockout)).toBeGreaterThanOrEqual(1);
 
     console.log(`✅  Brute-force panel: ${attempts} attempts, ${lockout}m lockout.`);
+    await ctx.close();
+    await logoutTestUser();
 });
 
-test('Brute-force protection — saves updated values', async ({ page }) => {
-    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
+test('Brute-force protection — saves updated values', async ({ browser }) => {
+    const sess = await getAdminSession();
+    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(ctx, sess);
+    const page = await ctx.newPage();
+
     await page.goto(SECURITY_TAB_URL);
 
-    // Ensure enabled
     await page.evaluate(() => {
         const cb = document.getElementById('cs-bf-enabled');
         if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
     });
 
-    // Set 7 attempts, 10-minute lockout
     await page.locator('#cs-bf-attempts').fill('7');
     await page.locator('#cs-bf-lockout').fill('10');
     await page.locator('#cs-bf-save').click();
     await expect(page.locator('#cs-bf-saved')).toBeVisible({ timeout: 5000 });
     console.log('✅  Brute-force settings saved (7 attempts, 10m lockout).');
 
-    // Reload and verify persistence
     await page.reload();
     const savedAttempts = await page.locator('#cs-bf-attempts').inputValue();
     const savedLockout  = await page.locator('#cs-bf-lockout').inputValue();
@@ -391,128 +449,150 @@ test('Brute-force protection — saves updated values', async ({ page }) => {
     expect(savedLockout).toBe('10');
     console.log('✅  Brute-force settings persisted after reload.');
 
-    // Restore defaults
     await page.locator('#cs-bf-attempts').fill('5');
     await page.locator('#cs-bf-lockout').fill('5');
     await page.locator('#cs-bf-save').click();
     await expect(page.locator('#cs-bf-saved')).toBeVisible({ timeout: 5000 });
     console.log('✅  Brute-force defaults restored.');
+
+    await ctx.close();
+    await logoutTestUser();
 });
 
-test('Brute-force protection — lockout triggered after N failures', async ({ page }) => {
-    // First make sure brute-force is enabled with low thresholds
-    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
-    await page.goto(SECURITY_TAB_URL);
-    await page.evaluate(() => {
+test('Brute-force protection — lockout triggered after N failures', async ({ browser }) => {
+    // Admin sets low threshold via test-session API
+    const adminSess = await getAdminSession();
+    const adminCtx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(adminCtx, adminSess);
+    const adminPage = await adminCtx.newPage();
+
+    await adminPage.goto(SECURITY_TAB_URL);
+    await adminPage.evaluate(() => {
         const cb = document.getElementById('cs-bf-enabled');
         if (cb && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
     });
-    await page.locator('#cs-bf-attempts').fill('3');
-    await page.locator('#cs-bf-lockout').fill('1');
-    await page.locator('#cs-bf-save').click();
-    await expect(page.locator('#cs-bf-saved')).toBeVisible({ timeout: 5000 });
+    await adminPage.locator('#cs-bf-attempts').fill('3');
+    await adminPage.locator('#cs-bf-lockout').fill('1');
+    await adminPage.locator('#cs-bf-save').click();
+    await expect(adminPage.locator('#cs-bf-saved')).toBeVisible({ timeout: 5000 });
     console.log('✅  Set lockout threshold: 3 attempts, 1 minute.');
+    await adminCtx.close();
+    await logoutTestUser();
 
-    // Log out
-    await page.goto(`${SITE}/wp-login.php?action=logout`);
-    const confirmBtn = page.locator('a[href*="action=logout"]');
-    if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await confirmBtn.click();
+    if (!TEST_PASS) {
+        console.log('⏭️  Skipped lockout trigger test — WP_TEST_PASS not set.');
+    } else {
+        // Attempt 3 failed logins via form in a fresh context (no session cookies)
+        const testCtx = await browser.newContext({ ignoreHTTPSErrors: true });
+        const testPage = await testCtx.newPage();
+
+        for (let i = 1; i <= 3; i++) {
+            await addWpTestCookie(testCtx);
+            await testPage.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
+            await testPage.fill('#user_login', TEST_USER);
+            await testPage.fill('#user_pass', 'definitely-wrong-password-' + i);
+            await testPage.click('#wp-submit');
+            await testPage.waitForURL(/wp-login/, { timeout: 8000 }).catch(() => null);
+            console.log(`  Attempt ${i}: ${testPage.url()}`);
+        }
+
+        // 4th attempt — correct password, should still be blocked
+        await addWpTestCookie(testCtx);
+        await testPage.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
+        await testPage.fill('#user_login', TEST_USER);
+        await testPage.fill('#user_pass', TEST_PASS);
+        await testPage.click('#wp-submit');
+        await testPage.waitForURL(/wp-login/, { timeout: 8000 }).catch(() => null);
+
+        const errorText = await testPage.locator('#login_error').textContent().catch(() => '');
+        console.log('🔒  Login error after lockout:', errorText.trim());
+        expect(errorText.toLowerCase()).toMatch(/locked|temporarily/);
+        console.log('✅  Account lockout confirmed.');
+        await testCtx.close();
     }
-    await page.waitForTimeout(500);
 
-    // Attempt 3 failed logins for the test user
-    for (let i = 1; i <= 3; i++) {
-        await addWpTestCookie(page.context());
-        await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
-        await page.fill('#user_login', TEST_USER);
-        await page.fill('#user_pass', 'definitely-wrong-password-' + i);
-        await page.click('#wp-submit');
-        await page.waitForURL(/wp-login/, { timeout: 8000 }).catch(() => null);
-        console.log(`  Attempt ${i}: ${page.url()}`);
-    }
-
-    // 4th attempt should see the lockout error
-    await addWpTestCookie(page.context());
-    await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
-    await page.fill('#user_login', TEST_USER);
-    await page.fill('#user_pass', TEST_PASS);  // correct password — should still be blocked
-    await page.click('#wp-submit');
-    await page.waitForURL(/wp-login/, { timeout: 8000 }).catch(() => null);
-
-    const errorText = await page.locator('#login_error').textContent().catch(() => '');
-    console.log('🔒  Login error after lockout:', errorText.trim());
-    expect(errorText.toLowerCase()).toMatch(/locked|temporarily/);
-    console.log('✅  Account lockout confirmed.');
-
-    // Restore defaults (log back in as admin after lockout expires — wait 65s or do direct DB)
-    // In automated tests just restore the setting; the 1-minute lockout will self-clear.
-    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
-    await page.goto(SECURITY_TAB_URL);
-    await page.locator('#cs-bf-attempts').fill('5');
-    await page.locator('#cs-bf-lockout').fill('5');
-    await page.locator('#cs-bf-save').click();
-    await expect(page.locator('#cs-bf-saved')).toBeVisible({ timeout: 5000 });
+    // Restore defaults via test-session API
+    const restoreSess = await getAdminSession();
+    const restoreCtx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(restoreCtx, restoreSess);
+    const restorePage = await restoreCtx.newPage();
+    await restorePage.goto(SECURITY_TAB_URL);
+    await restorePage.locator('#cs-bf-attempts').fill('5');
+    await restorePage.locator('#cs-bf-lockout').fill('5');
+    await restorePage.locator('#cs-bf-save').click();
+    await expect(restorePage.locator('#cs-bf-saved')).toBeVisible({ timeout: 5000 });
     console.log('✅  Brute-force threshold restored to defaults.');
+    await restoreCtx.close();
+    await logoutTestUser();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 8. Session persistence — 30-day session survives simulated browser restart
 // ─────────────────────────────────────────────────────────────────────────────
 test('Session — custom duration persists cookies across browser restart', async ({ browser }) => {
-    // Set session to 30 days (as admin)
-    const adminCtx = await browser.newContext();
+    // Set session to 30 days (as admin via test-session API)
+    const adminSess = await getAdminSession();
+    const adminCtx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(adminCtx, adminSess);
     const adminPage = await adminCtx.newPage();
-    await wpLogin(adminPage, ADMIN_USER, ADMIN_PASS);
     await adminPage.goto(SECURITY_TAB_URL);
 
-    // Set 30-day session
     await adminPage.locator('#cs-session-duration').selectOption('30');
     await adminPage.locator('#cs-session-save').click();
     await expect(adminPage.locator('#cs-session-saved')).toBeVisible({ timeout: 5000 });
     console.log('✅  Session duration set to 30 days.');
+    await adminCtx.close();
+    await logoutTestUser();
 
-    // Log in as test user and capture the cookies
-    const testCtx = await browser.newContext();
-    const testPage = await testCtx.newPage();
-    await addWpTestCookie(testCtx);
-    await testPage.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
-    await testPage.fill('#user_login', TEST_USER);
-    await testPage.fill('#user_pass', TEST_PASS);
-    await Promise.all([
-        testPage.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }),
-        testPage.click('#wp-submit'),
-    ]);
+    if (!TEST_PASS) {
+        console.log('⏭️  Skipped session cookie check — WP_TEST_PASS not set.');
+    } else {
+        // Log in as test user via form to verify cookie gets persistent expiry
+        const testCtx = await browser.newContext({ ignoreHTTPSErrors: true });
+        const testPage = await testCtx.newPage();
+        await addWpTestCookie(testCtx);
+        await testPage.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
+        await testPage.fill('#user_login', TEST_USER);
+        await testPage.fill('#user_pass', TEST_PASS);
+        await Promise.all([
+            testPage.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }),
+            testPage.click('#wp-submit'),
+        ]);
 
-    // Verify the auth cookie has a non-zero expiry (i.e. it is a persistent cookie, not a session cookie)
-    const cookies = await testCtx.cookies();
-    const authCookies = cookies.filter(c => c.name.startsWith('wordpress_logged_in_'));
-    console.log('🍪  Auth cookies:', authCookies.map(c => `${c.name} expires=${c.expires}`).join(', '));
-    for (const c of authCookies) {
-        // expires = -1 means "session cookie" (cleared on browser close).
-        // A real expiry is a Unix timestamp > 0.
-        expect(c.expires).toBeGreaterThan(0);
+        const cookies = await testCtx.cookies();
+        const authCookies = cookies.filter(c => c.name.startsWith('wordpress_logged_in_'));
+        console.log('🍪  Auth cookies:', authCookies.map(c => `${c.name} expires=${c.expires}`).join(', '));
+        for (const c of authCookies) {
+            expect(c.expires).toBeGreaterThan(0);
+        }
+        console.log('✅  Auth cookie is persistent (non-zero expiry) — survives browser close.');
+        await testCtx.close();
     }
-    console.log('✅  Auth cookie is persistent (non-zero expiry) — survives browser close.');
 
     // Restore default session
-    await adminPage.goto(SECURITY_TAB_URL);
-    await adminPage.locator('#cs-session-duration').selectOption('default');
-    await adminPage.locator('#cs-session-save').click();
-    await expect(adminPage.locator('#cs-session-saved')).toBeVisible({ timeout: 5000 });
+    const restoreSess = await getAdminSession();
+    const restoreCtx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(restoreCtx, restoreSess);
+    const restorePage = await restoreCtx.newPage();
+    await restorePage.goto(SECURITY_TAB_URL);
+    await restorePage.locator('#cs-session-duration').selectOption('default');
+    await restorePage.locator('#cs-session-save').click();
+    await expect(restorePage.locator('#cs-session-saved')).toBeVisible({ timeout: 5000 });
     console.log('✅  Session duration restored to default.');
-
-    await adminCtx.close();
-    await testCtx.close();
+    await restoreCtx.close();
+    await logoutTestUser();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 10. Cleanup — disable 2FA, reset method to Off
 // ─────────────────────────────────────────────────────────────────────────────
-test('Cleanup — reset 2FA method to Off', async ({ page }) => {
-    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
+test('Cleanup — reset 2FA method to Off', async ({ browser }) => {
+    const sess = await getAdminSession();
+    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(ctx, sess);
+    const page = await ctx.newPage();
+
     await page.goto(SECURITY_TAB_URL);
-    // Radio may be visually hidden by custom toggle CSS — set via JS.
     await page.evaluate(() => {
         const radio = document.querySelector('input[name="cs_devtools_2fa_method"][value="off"]');
         if (radio && !radio.checked) {
@@ -523,4 +603,7 @@ test('Cleanup — reset 2FA method to Off', async ({ page }) => {
     await page.locator('#cs-2fa-save').click();
     await expect(page.locator('#cs-2fa-saved')).toBeVisible({ timeout: 5000 });
     console.log('✅  2FA method reset to Off.');
+
+    await ctx.close();
+    await logoutTestUser();
 });

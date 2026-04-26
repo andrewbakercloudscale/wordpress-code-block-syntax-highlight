@@ -7,23 +7,59 @@
  * Run: npx playwright test tests/passkey.spec.js --headed
  *
  * Requires:
- *   - Site:   https://your-wordpress-site.example.com
- *   - Admin:  Set ADMIN_USER / ADMIN_PASS env vars (or edit defaults below)
- *   - Test user: cs_devtools_test / TempTest2026! (subscriber, ID 164)
- *   - global-setup.js resets cs_devtools_passkeys user meta before each suite run
+ *   - CSDT_TEST_SECRET, CSDT_TEST_ROLE, CSDT_TEST_SESSION_URL  (admin panel access)
+ *   - WP_TEST_USER, WP_TEST_PASS  (form-login user for passkey registration/login tests)
  */
 
-const { test, expect, request } = require('@playwright/test');
+const { test, expect, request: playwrightRequest } = require('@playwright/test');
+const path = require('path');
 
-const SITE         = process.env.WP_SITE       || 'https://your-wordpress-site.example.com';
-const ADMIN_USER   = process.env.WP_ADMIN_USER || 'admin';
-const ADMIN_PASS   = process.env.WP_ADMIN_PASS || '';
-const TEST_USER    = process.env.WP_TEST_USER  || 'cs_devtools_test';
-const TEST_PASS    = process.env.WP_TEST_PASS  || 'TempTest2026!';
+[
+    path.join(__dirname, '..', '.env.test'),
+    path.join(__dirname, '..', '..', '.env.test'),
+].forEach(p => { try { require('dotenv').config({ path: p }); } catch {} });
+
+const SITE        = process.env.WP_SITE              || 'https://your-wordpress-site.example.com';
+const SECRET      = process.env.CSDT_TEST_SECRET     || '';
+const ROLE        = process.env.CSDT_TEST_ROLE        || '';
+const SESSION_URL = process.env.CSDT_TEST_SESSION_URL || '';
+const LOGOUT_URL  = process.env.CSDT_TEST_LOGOUT_URL  || '';
+const TEST_USER   = process.env.WP_TEST_USER          || 'cs_devtools_test';
+const TEST_PASS   = process.env.WP_TEST_PASS          || '';
+
+if (!SECRET || !ROLE || !SESSION_URL) {
+    throw new Error('CSDT_TEST_SECRET, CSDT_TEST_ROLE, and CSDT_TEST_SESSION_URL must be set in .env.test');
+}
+
 const LOGIN_URL    = `${SITE}/wp-login.php`;
 const SECURITY_URL = `${SITE}/wp-admin/tools.php?page=cloudscale-devtools&tab=login`;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+async function getAdminSession(ttl = 900) {
+    const ctx  = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+    const resp = await ctx.post(SESSION_URL, { data: { secret: SECRET, role: ROLE, ttl } });
+    const body = await resp.json().catch(() => resp.text());
+    await ctx.dispose();
+    if (!resp.ok()) throw new Error(`test-session API: ${resp.status()} ${JSON.stringify(body)}`);
+    return body;
+}
+
+async function injectCookies(ctx, sess) {
+    await ctx.addCookies([
+        { name: sess.secure_auth_cookie_name, value: sess.secure_auth_cookie,  domain: sess.cookie_domain, path: '/', secure: true,  httpOnly: true,  sameSite: 'Lax' },
+        { name: sess.logged_in_cookie_name,   value: sess.logged_in_cookie,    domain: sess.cookie_domain, path: '/', secure: true,  httpOnly: false, sameSite: 'Lax' },
+    ]);
+}
+
+async function logoutTestUser() {
+    if (!LOGOUT_URL) return;
+    try {
+        const ctx = await playwrightRequest.newContext({ ignoreHTTPSErrors: true });
+        await ctx.post(LOGOUT_URL, { data: { secret: SECRET, role: ROLE } });
+        await ctx.dispose();
+    } catch {}
+}
 
 async function addWpTestCookie(ctx) {
     await ctx.addCookies([{
@@ -33,6 +69,7 @@ async function addWpTestCookie(ctx) {
     }]);
 }
 
+/** Log in via WP login form — used for tests that exercise the login/passkey flow itself. */
 async function wpLogin(page, user, pass) {
     await addWpTestCookie(page.context());
     await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
@@ -77,8 +114,12 @@ async function disableVirtualAuthenticator(client, authenticatorId) {
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Passkey section renders on the Login Security tab
 // ─────────────────────────────────────────────────────────────────────────────
-test('Passkey section renders', async ({ page }) => {
-    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
+test('Passkey section renders', async ({ browser }) => {
+    const sess = await getAdminSession();
+    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(ctx, sess);
+    const page = await ctx.newPage();
+
     await page.goto(SECURITY_URL);
 
     await expect(page.locator('#cs-pk-row')).toBeVisible({ timeout: 8000 });
@@ -86,52 +127,61 @@ test('Passkey section renders', async ({ page }) => {
     await expect(page.locator('#cs-pk-badge')).toBeVisible();
 
     console.log('✅  Passkey section renders.');
+    await ctx.close();
+    await logoutTestUser();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. Add Passkey wizard opens and closes
 // ─────────────────────────────────────────────────────────────────────────────
-test('Add Passkey wizard opens and cancels', async ({ page }) => {
-    await wpLogin(page, ADMIN_USER, ADMIN_PASS);
+test('Add Passkey wizard opens and cancels', async ({ browser }) => {
+    const sess = await getAdminSession();
+    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    await injectCookies(ctx, sess);
+    const page = await ctx.newPage();
+
     await page.goto(SECURITY_URL);
 
-    // Open wizard
     await page.locator('#cs-pk-add-btn').click();
     await expect(page.locator('#cs-pk-wizard')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('#cs-pk-name-input')).toBeVisible();
     await expect(page.locator('#cs-pk-register-btn')).toBeVisible();
 
-    // Cancel
     await page.locator('#cs-pk-cancel-btn').click();
     await expect(page.locator('#cs-pk-wizard')).toBeHidden({ timeout: 3000 });
     await expect(page.locator('#cs-pk-add-btn')).toBeVisible();
 
     console.log('✅  Passkey wizard opens and cancels correctly.');
+    await ctx.close();
+    await logoutTestUser();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. Register a passkey (virtual authenticator)
 // ─────────────────────────────────────────────────────────────────────────────
-test('Register a passkey via virtual authenticator', async ({ page }) => {
+test('Register a passkey via virtual authenticator', async ({ browser }) => {
     test.setTimeout(60_000);
 
-    // Enable virtual WebAuthn authenticator BEFORE navigating to the page.
+    if (!TEST_PASS) {
+        console.log('⏭️  Skipped passkey registration — WP_TEST_PASS not set.');
+        return;
+    }
+
+    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    const page = await ctx.newPage();
+
     const { client, authenticatorId } = await enableVirtualAuthenticator(page);
 
     try {
         await wpLogin(page, TEST_USER, TEST_PASS);
         await page.goto(SECURITY_URL);
 
-        // Open wizard
         await page.locator('#cs-pk-add-btn').click();
         await expect(page.locator('#cs-pk-wizard')).toBeVisible({ timeout: 5000 });
 
-        // Fill name and register
         await page.locator('#cs-pk-name-input').fill('Test Device');
         await page.locator('#cs-pk-register-btn').click();
 
-        // Should show success and reload — wait for badge update
-        // (Either "success" status flashes OR page reloads showing "1 passkey" badge)
         await page.waitForFunction(
             () => {
                 const badge = document.getElementById('cs-pk-badge');
@@ -144,7 +194,6 @@ test('Register a passkey via virtual authenticator', async ({ page }) => {
         expect(badgeText).toMatch(/\d+\s*passkey/i);
         console.log(`✅  Passkey registered. Badge: "${badgeText.trim()}"`);
 
-        // Passkey item should appear in the list
         await expect(page.locator('#cs-pk-list .cs-pk-item').first()).toBeVisible({ timeout: 5000 });
         const itemName = await page.locator('#cs-pk-list .cs-pk-item .cs-pk-name').first().textContent();
         expect(itemName.trim()).toBe('Test Device');
@@ -152,74 +201,91 @@ test('Register a passkey via virtual authenticator', async ({ page }) => {
 
     } finally {
         await disableVirtualAuthenticator(client, authenticatorId);
+        await ctx.close();
     }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 4. Login with passkey (2FA intercept)
 // ─────────────────────────────────────────────────────────────────────────────
-test('Login with passkey — 2FA intercept', async ({ page }) => {
+test('Login with passkey — 2FA intercept', async ({ browser }) => {
     test.setTimeout(60_000);
 
-    // Virtual authenticator must be active when the login page triggers credentials.get().
+    if (!TEST_PASS) {
+        console.log('⏭️  Skipped passkey login intercept — WP_TEST_PASS not set.');
+        return;
+    }
+
+    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    const page = await ctx.newPage();
+
     const { client, authenticatorId } = await enableVirtualAuthenticator(page);
 
     try {
-        await addWpTestCookie(page.context());
+        await addWpTestCookie(ctx);
         await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
         await page.fill('#user_login', TEST_USER);
         await page.fill('#user_pass', TEST_PASS);
         await page.click('#wp-submit');
 
-        // Should redirect to passkey challenge page (action=cs_devtools_2fa).
         await page.waitForURL(/cs_devtools_2fa|cs_devtools_token/, { timeout: 15000 });
         console.log('✅  Intercepted at passkey challenge page:', page.url());
 
-        // The passkey challenge page auto-calls navigator.credentials.get().
-        // The virtual authenticator handles it and submits the form.
-        // We should end up in wp-admin.
         await page.waitForURL(/wp-admin/, { timeout: 20000 });
         console.log('✅  Logged in via passkey. URL:', page.url());
 
-        // Confirm we're actually in the dashboard.
         await expect(page.locator('#wpbody')).toBeVisible({ timeout: 5000 });
 
     } finally {
         await disableVirtualAuthenticator(client, authenticatorId);
+        await ctx.close();
     }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 5. Remove a passkey
 // ─────────────────────────────────────────────────────────────────────────────
-test('Remove a passkey', async ({ page }) => {
+test('Remove a passkey', async ({ browser }) => {
+    if (!TEST_PASS) {
+        console.log('⏭️  Skipped passkey removal — WP_TEST_PASS not set.');
+        return;
+    }
+
+    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    const page = await ctx.newPage();
+
     await wpLogin(page, TEST_USER, TEST_PASS);
     await page.goto(SECURITY_URL);
 
-    // Check there's at least one passkey to remove (from test 3).
     const firstItem = page.locator('#cs-pk-list .cs-pk-item').first();
     await expect(firstItem).toBeVisible({ timeout: 5000 });
 
-    // Click Remove — handle the confirm dialog.
     page.on('dialog', d => d.accept());
     await firstItem.locator('.cs-pk-delete').click();
 
-    // Item should disappear.
     await expect(firstItem).toBeHidden({ timeout: 5000 });
 
-    // Badge should update.
     const badgeText = await page.locator('#cs-pk-badge').textContent();
     console.log(`✅  Passkey removed. Badge now: "${badgeText.trim()}"`);
+
+    await ctx.close();
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 6. Cleanup — ensure cs_devtools_test has no passkeys left
 // ─────────────────────────────────────────────────────────────────────────────
-test('Cleanup — verify no passkeys remain for cs_devtools_test', async ({ page }) => {
+test('Cleanup — verify no passkeys remain for cs_devtools_test', async ({ browser }) => {
+    if (!TEST_PASS) {
+        console.log('⏭️  Skipped passkey cleanup check — WP_TEST_PASS not set.');
+        return;
+    }
+
+    const ctx  = await browser.newContext({ ignoreHTTPSErrors: true });
+    const page = await ctx.newPage();
+
     await wpLogin(page, TEST_USER, TEST_PASS);
     await page.goto(SECURITY_URL);
 
-    // After test 5 removed the passkey, there should be none.
     const items = page.locator('#cs-pk-list .cs-pk-item');
     const count = await items.count();
     expect(count).toBe(0);
@@ -227,4 +293,6 @@ test('Cleanup — verify no passkeys remain for cs_devtools_test', async ({ page
     const badge = page.locator('#cs-pk-badge');
     await expect(badge).toContainText(/none/i, { timeout: 3000 });
     console.log('✅  No passkeys remain for cs_devtools_test.');
+
+    await ctx.close();
 });
