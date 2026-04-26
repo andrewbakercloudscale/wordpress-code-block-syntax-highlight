@@ -32,6 +32,8 @@
         woocommerce_payments: { 'script-src':['https://js.stripe.com','https://pay.google.com'], 'frame-src':['https://js.stripe.com','https://hooks.stripe.com','https://pay.google.com'], 'connect-src':['https://api.stripe.com'] }
     };
 
+    // ── Pure helpers (re-query DOM each call) ──────────────────────────────
+
     function buildPreview() {
         var d = JSON.parse(JSON.stringify(base));
         document.querySelectorAll('.cs-csp-service:checked').forEach(function(cb){
@@ -44,141 +46,9 @@
         var parts = Object.keys(d).map(function(k){ return k + ' ' + d[k].join(' '); });
         var custom = document.getElementById('cs-csp-custom');
         if (custom && custom.value.trim()) parts.push(custom.value.trim());
-        document.getElementById('cs-csp-preview').textContent = parts.join(';\n');
+        var preview = document.getElementById('cs-csp-preview');
+        if (preview) preview.textContent = parts.join(';\n');
     }
-
-    document.querySelectorAll('.cs-csp-service').forEach(function(cb){ cb.addEventListener('change', buildPreview); });
-    var customIn = document.getElementById('cs-csp-custom');
-    if (customIn) customIn.addEventListener('input', buildPreview);
-    buildPreview();
-
-    var copyBtn = document.getElementById('cs-csp-copy-btn');
-    if (copyBtn) {
-        copyBtn.addEventListener('click', function(){
-            var text = document.getElementById('cs-csp-preview').textContent;
-            navigator.clipboard.writeText(text).then(function(){
-                copyBtn.textContent = '✅ Copied';
-                setTimeout(function(){ copyBtn.textContent = '📋 Copy'; }, 2000);
-            });
-        });
-    }
-
-    var saveBtn  = document.getElementById('cs-csp-save-btn');
-    var savedMsg = document.getElementById('cs-csp-saved');
-    if (saveBtn) {
-        saveBtn.addEventListener('click', function(){
-            saveBtn.disabled = true;
-            var services = [];
-            document.querySelectorAll('.cs-csp-service:checked').forEach(function(cb){ services.push(cb.value); });
-            var modeEl = document.querySelector('input[name="cs-csp-mode"]:checked');
-            var fd = new FormData();
-            fd.append('action',   'csdt_devtools_csp_save');
-            fd.append('nonce',    csdtVulnScan.nonce);
-            fd.append('enabled',      document.getElementById('cs-csp-enabled').checked ? '1' : '0');
-            fd.append('mode',         modeEl ? modeEl.value : 'enforce');
-            fd.append('services',     JSON.stringify(services));
-            fd.append('custom',       customIn ? customIn.value.trim() : '');
-            var dbgCb = document.getElementById('cs-csp-debug-panel');
-            fd.append('debug_panel',       dbgCb && dbgCb.checked ? '1' : '0');
-            var reportingCb = document.getElementById('cs-csp-reporting-enabled');
-            fd.append('reporting_enabled', reportingCb && reportingCb.checked ? '1' : '0');
-            fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
-                .then(function(r){ return r.json(); })
-                .then(function(resp){
-                saveBtn.disabled = false;
-                if (savedMsg) { savedMsg.style.display = 'inline'; setTimeout(function(){ savedMsg.style.display = 'none'; }, 2500); }
-                document.dispatchEvent(new CustomEvent('csdt:csp:saved'));
-                // Create or update rollback button with fresh timestamp.
-                if (resp && resp.data && resp.data.has_backup) {
-                    var rb = document.getElementById('cs-csp-rollback-btn');
-                    if (!rb) {
-                        rb = document.createElement('button');
-                        rb.id = 'cs-csp-rollback-btn';
-                        rb.type = 'button';
-                        rb.className = 'cs-btn-secondary cs-btn-sm';
-                        rb.style.cssText = 'border-color:#f87171;color:#dc2626;';
-                        saveBtn.parentNode.insertBefore(rb, saveBtn.nextSibling);
-                        wireRollback(rb);
-                    }
-                    rb.innerHTML = '\u21a9 ' + ( window.csdtCspI18n ? csdtCspI18n.rollbackLabel : 'Rollback to previous settings' ) + ' <span style="font-weight:400;font-size:11px;opacity:.8;">(just now)</span>';
-                }
-            })
-            .catch(function(){ saveBtn.disabled = false; });
-        });
-    }
-
-    function wireRollback(btn) {
-        if (!btn) return;
-        btn.addEventListener('click', function(){
-            if (!confirm('Restore the previous CSP settings? This will overwrite the current configuration.')) { return; }
-            btn.disabled = true;
-            var fd = new FormData();
-            fd.append('action', 'csdt_devtools_csp_rollback');
-            fd.append('nonce',  csdtVulnScan.nonce);
-            fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
-                .then(function(r){ return r.json(); })
-                .then(function(resp){
-                    if (!resp.success) { alert('Rollback failed: ' + (resp.data || 'unknown error')); btn.disabled = false; return; }
-                    var d = resp.data;
-                    // Restore UI state.
-                    var en = document.getElementById('cs-csp-enabled');
-                    if (en) en.checked = d.enabled === '1';
-                    var modeEl = document.querySelector('input[name="cs-csp-mode"][value="' + (d.mode || 'enforce') + '"]');
-                    if (modeEl) modeEl.checked = true;
-                    document.querySelectorAll('.cs-csp-service').forEach(function(cb){
-                        cb.checked = Array.isArray(d.services) && d.services.indexOf(cb.value) !== -1;
-                    });
-                    if (customIn) customIn.value = d.custom || '';
-                    buildPreview();
-                    btn.remove();
-                    var rb2 = document.getElementById('cs-csp-rolledback');
-                    if (rb2) { rb2.style.display = 'inline'; setTimeout(function(){ rb2.style.display = 'none'; }, 3000); }
-                })
-                .catch(function(){ btn.disabled = false; });
-        });
-    }
-    wireRollback(document.getElementById('cs-csp-rollback-btn'));
-
-    // ── Change history restore ────────────────────────────────────
-    document.querySelectorAll('.cs-csp-restore-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var idx = btn.getAttribute('data-index');
-            if (!confirm('Restore this CSP configuration? The current settings will be pushed to history first.')) { return; }
-            btn.disabled = true; btn.textContent = '⏳';
-            var fd = new FormData();
-            fd.append('action', 'csdt_devtools_csp_restore');
-            fd.append('nonce',  csdtVulnScan.nonce);
-            fd.append('index',  idx);
-            fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
-                .then(function(r){ return r.json(); })
-                .then(function(resp) {
-                    if (!resp.success) { alert('Restore failed: ' + (resp.data || 'unknown error')); btn.disabled = false; btn.textContent = '↩ Restore'; return; }
-                    var d = resp.data;
-                    var en = document.getElementById('cs-csp-enabled');
-                    if (en) en.checked = d.enabled === '1';
-                    var modeEl = document.querySelector('input[name="cs-csp-mode"][value="' + (d.mode || 'enforce') + '"]');
-                    if (modeEl) modeEl.checked = true;
-                    document.querySelectorAll('.cs-csp-service').forEach(function(cb) {
-                        cb.checked = Array.isArray(d.services) && d.services.indexOf(cb.value) !== -1;
-                    });
-                    if (customIn) customIn.value = d.custom || '';
-                    var repEl = document.getElementById('cs-csp-reporting');
-                    if (repEl) repEl.checked = d.reporting_enabled === '1';
-                    buildPreview();
-                    var msg = document.getElementById('cs-csp-restore-msg');
-                    if (msg) { msg.style.display = 'block'; msg.textContent = '✅ Restored and saved.'; setTimeout(function(){ msg.style.display = 'none'; }, 5000); }
-                    btn.textContent = '✅ Restored';
-                })
-                .catch(function() { btn.disabled = false; btn.textContent = '↩ Restore'; });
-        });
-    });
-
-    // ── Violation log ────────────────────────────────────────────
-    var violWrap    = document.getElementById('cs-csp-violation-wrap');
-    var violTable   = document.getElementById('cs-csp-viol-table');
-    var violCount   = document.getElementById('cs-csp-viol-count');
-    var violRefresh = document.getElementById('cs-csp-viol-refresh');
-    var violClear   = document.getElementById('cs-csp-viol-clear');
 
     // Maps blocked-URI substrings to known service checkbox values.
     var violHintMap = [
@@ -251,7 +121,22 @@
         setTimeout(function() { label.style.background = ''; }, 2000);
     }
 
+    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    function secBox(title, content) {
+        return '<div style="border:1px solid #d1d5db;border-radius:6px;overflow:hidden;margin-bottom:12px;">' +
+            '<div style="background:#e8edf5;padding:9px 14px;border-bottom:1px solid #d1d5db;">' +
+            '<strong style="font-size:13px;color:#1e293b;">' + title + '</strong></div>' +
+            '<div style="padding:14px 16px;">' + content + '</div></div>';
+    }
+
+    function retryHtml() {
+        return '<p style="margin-top:6px;"><button type="button" id="cs-scan-retry" style="font-size:12px;padding:3px 10px;background:#fff;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;">Retry scan</button></p>';
+    }
+
     function renderViolations(rows) {
+        var violTable = document.getElementById('cs-csp-viol-table');
+        var violCount = document.getElementById('cs-csp-viol-count');
         if (!violTable) return;
         if (!rows || !rows.length) {
             violTable.innerHTML = '<p style="color:#94a3b8;font-size:12px;margin:0;">No violations recorded yet. Browse your site with Report-Only enabled to capture them.</p>';
@@ -266,7 +151,7 @@
             var svc = suggestService(r.blocked || '');
             if (!svc) return;
             var cb = document.querySelector('.cs-csp-service[value="' + svc + '"]');
-            if (cb && cb.checked) return; // already enabled — not actionable
+            if (cb && cb.checked) return;
             if (!suggestedServices[svc]) suggestedServices[svc] = 0;
             suggestedServices[svc]++;
         });
@@ -325,7 +210,7 @@
         html += '</tbody></table>';
         violTable.innerHTML = html;
 
-        // Wire up "tick [service]" links — scroll to and highlight the checkbox.
+        // Wire up "tick [service]" links.
         violTable.querySelectorAll('[data-csp-svc]').forEach(function(a) {
             a.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -345,6 +230,7 @@
     }
 
     function updateViolWrapVisibility() {
+        var violWrap = document.getElementById('cs-csp-violation-wrap');
         if (!violWrap) return;
         var cspOn    = document.getElementById('cs-csp-enabled');
         var reportOn = document.getElementById('cs-csp-reporting-enabled');
@@ -353,40 +239,11 @@
         if (show) fetchViolations();
     }
 
-    var cspEnabledCb    = document.getElementById('cs-csp-enabled');
-    var reportingEnabledCb = document.getElementById('cs-csp-reporting-enabled');
-    if (cspEnabledCb)       cspEnabledCb.addEventListener('change', updateViolWrapVisibility);
-    if (reportingEnabledCb) reportingEnabledCb.addEventListener('change', updateViolWrapVisibility);
-
-    if (violRefresh) violRefresh.addEventListener('click', fetchViolations);
-
-    if (violClear) {
-        violClear.addEventListener('click', function() {
-            var fd = new FormData();
-            fd.append('action', 'csdt_devtools_csp_violations_clear');
-            fd.append('nonce',  csdtVulnScan.nonce);
-            fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
-                .then(function(){ renderViolations([]); })
-                .catch(function(){});
-        });
-    }
-
-    // Auto-load if violation log is visible on page load
-    if (violWrap && violWrap.style.display !== 'none') fetchViolations();
-
-    // Auto-refresh every 30 s when panel is visible
-    setInterval(function() {
-        if (violWrap && violWrap.style.display !== 'none') fetchViolations();
-    }, 30000);
-
-    // ── Fixes log ────────────────────────────────────────────────
-    var fixesWrap  = document.getElementById('cs-csp-fixes-wrap');
-    var fixesTable = document.getElementById('cs-csp-fixes-table');
-    var fixesCount = document.getElementById('cs-csp-fixes-count');
-    var fixesClear = document.getElementById('cs-csp-fixes-clear');
-
     function renderFixes(rows) {
+        var fixesWrap  = document.getElementById('cs-csp-fixes-wrap');
         if (!fixesWrap) return;
+        var fixesTable = document.getElementById('cs-csp-fixes-table');
+        var fixesCount = document.getElementById('cs-csp-fixes-count');
         if (!rows || !rows.length) {
             fixesWrap.style.display = 'none';
             return;
@@ -408,70 +265,30 @@
         fixesTable.innerHTML = html;
     }
 
-    if (fixesClear) {
-        fixesClear.addEventListener('click', function() {
-            var fd = new FormData();
-            fd.append('action', 'csdt_devtools_csp_fixes_clear');
-            fd.append('nonce',  csdtVulnScan.nonce);
-            fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
-                .then(function() { renderFixes([]); })
-                .catch(function() {});
-        });
-    }
-
-    // After a successful save, refresh the fixes log in case new ones were added.
-    // Hooked via a custom event dispatched by the save handler.
-    document.addEventListener('csdt:csp:saved', function() {
-        var fd = new FormData();
-        fd.append('action', 'csdt_devtools_csp_fixes_get');
-        fd.append('nonce',  csdtVulnScan.nonce);
-        fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
-            .then(function(r) { return r.json(); })
-            .then(function(resp) { if (resp && resp.success) renderFixes(resp.data); })
-            .catch(function() {});
-    });
-
-    // ── Header security scan ──────────────────────────────────────
-    var scanBtn     = document.getElementById('cs-csp-scan-btn');
-    var scanResults = document.getElementById('cs-csp-scan-results');
-    var scanSpinner = document.getElementById('cs-csp-scan-spinner');
-
-    var SEC_KEYS = ['content-security-policy','content-security-policy-report-only','strict-transport-security','x-frame-options','x-content-type-options','referrer-policy','permissions-policy'];
-    var SEC_LABELS = {'content-security-policy':'Content-Security-Policy','content-security-policy-report-only':'CSP-Report-Only','strict-transport-security':'Strict-Transport-Security','x-frame-options':'X-Frame-Options','x-content-type-options':'X-Content-Type-Options','referrer-policy':'Referrer-Policy','permissions-policy':'Permissions-Policy'};
-    var GRADE_COLORS = {'A+':'#15803d','A':'#16a34a','B':'#1d4ed8','C':'#b45309','D':'#c2410c','F':'#991b1b'};
-
-    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-    function secBox(title, content) {
-        return '<div style="border:1px solid #d1d5db;border-radius:6px;overflow:hidden;margin-bottom:12px;">' +
-            '<div style="background:#e8edf5;padding:9px 14px;border-bottom:1px solid #d1d5db;">' +
-            '<strong style="font-size:13px;color:#1e293b;">' + title + '</strong></div>' +
-            '<div style="padding:14px 16px;">' + content + '</div></div>';
-    }
-
     function renderScanResults(data) {
+        var scanResults = document.getElementById('cs-csp-scan-results');
         if (!scanResults) return;
         var home = data && data.home;
         if (!home) { scanResults.innerHTML = '<p style="color:#94a3b8;font-size:12px;">No data returned.</p>'; return; }
 
         var html = '';
 
-        // ── 1. Security Report Summary ───────────────────────────────
         if (home.error) {
             html += secBox('Security Report Summary', '<p style="color:#dc2626;font-size:12px;margin:0;">Error: ' + esc(home.error) + '</p>');
         } else {
             var grade = home.grade || '?';
+            var GRADE_COLORS = {'A+':'#15803d','A':'#16a34a','B':'#1d4ed8','C':'#b45309','D':'#c2410c','F':'#991b1b'};
+            var SEC_KEYS = ['content-security-policy','content-security-policy-report-only','strict-transport-security','x-frame-options','x-content-type-options','referrer-policy','permissions-policy'];
+            var SEC_LABELS = {'content-security-policy':'Content-Security-Policy','content-security-policy-report-only':'CSP-Report-Only','strict-transport-security':'Strict-Transport-Security','x-frame-options':'X-Frame-Options','x-content-type-options':'X-Content-Type-Options','referrer-policy':'Referrer-Policy','permissions-policy':'Permissions-Policy'};
             var gc    = GRADE_COLORS[grade] || '#64748b';
             var sec   = home.sec || {};
             var now   = new Date();
             var ts    = now.toISOString().replace('T',' ').slice(0,19) + ' UTC';
 
-            // Build header pills
             var pills = '';
             SEC_KEYS.forEach(function(k) {
                 var s = sec[k] ? sec[k].status : 'missing';
                 var lbl = SEC_LABELS[k] || k;
-                // CSP-Report-Only is optional/informational — only show when present
                 if (k === 'content-security-policy-report-only' && s === 'missing') return;
                 if (s === 'present') {
                     pills += '<span style="display:inline-flex;align-items:center;gap:4px;background:#15803d;color:#fff;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;margin:2px 3px 2px 0;white-space:nowrap;">✓ ' + lbl + '</span>';
@@ -510,7 +327,6 @@
             summaryInner += '</table></div>';
             html += secBox('Security Report Summary', summaryInner);
 
-            // ── 2. Warnings ──────────────────────────────────────────
             if (home.warnings && home.warnings.length) {
                 var warnRows = '';
                 home.warnings.forEach(function(w) {
@@ -521,12 +337,12 @@
                 html += secBox('Warnings', '<div>' + warnRows + '</div>');
             }
 
-            // ── 3. Raw Headers ───────────────────────────────────────
             if (home.all_headers) {
+                var SEC_KEYS2 = ['content-security-policy','content-security-policy-report-only','strict-transport-security','x-frame-options','x-content-type-options','referrer-policy','permissions-policy'];
                 var rawRows = '';
                 Object.keys(home.all_headers).forEach(function(hk) {
                     var val = home.all_headers[hk];
-                    var isSec = SEC_KEYS.indexOf(hk) !== -1;
+                    var isSec = SEC_KEYS2.indexOf(hk) !== -1;
                     var valStr = Array.isArray(val) ? val.join(', ') : String(val || '');
                     rawRows += '<div style="border-bottom:1px solid #f1f5f9;padding:7px 0;">' +
                         '<div style="font-weight:700;font-size:12px;margin-bottom:2px;' + (isSec ? 'color:#15803d;' : 'color:#374151;') + '">' + esc(hk) + '</div>' +
@@ -536,12 +352,12 @@
             }
         }
 
-        // ── 4. Other pages compact table ─────────────────────────────
         if (data.pages && data.pages.length) {
-            var PAGE_COLS = ['content-security-policy','strict-transport-security','x-frame-options','x-content-type-options'];
+            var PAGE_COLS   = ['content-security-policy','strict-transport-security','x-frame-options','x-content-type-options'];
+            var PAGE_LABELS = {'content-security-policy':'Content-Security-Policy','strict-transport-security':'Strict-Transport-Security','x-frame-options':'X-Frame-Options','x-content-type-options':'X-Content-Type-Options'};
             var pageRows = '<tr style="background:#f8fafc;">' +
                 '<th style="padding:5px 8px;text-align:left;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;font-size:11px;">Page</th>';
-            PAGE_COLS.forEach(function(k) { pageRows += '<th style="padding:5px 6px;text-align:center;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;font-size:10px;white-space:nowrap;">' + SEC_LABELS[k] + '</th>'; });
+            PAGE_COLS.forEach(function(k) { pageRows += '<th style="padding:5px 6px;text-align:center;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;font-size:10px;white-space:nowrap;">' + (PAGE_LABELS[k] || k) + '</th>'; });
             pageRows += '</tr>';
             data.pages.forEach(function(row, i) {
                 var bg = i % 2 ? '#f8fafc' : '#fff';
@@ -565,6 +381,9 @@
     }
 
     function runHeaderScan() {
+        var scanBtn     = document.getElementById('cs-csp-scan-btn');
+        var scanResults = document.getElementById('cs-csp-scan-results');
+        var scanSpinner = document.getElementById('cs-csp-scan-spinner');
         if (!scanBtn) { return; }
         scanBtn.disabled = true;
         if (scanSpinner) scanSpinner.style.display = 'inline';
@@ -582,38 +401,253 @@
             })
             .then(function(res) {
                 clearTimeout(timer);
-                scanBtn.disabled = false;
-                if (scanSpinner) scanSpinner.style.display = 'none';
+                var sb = document.getElementById('cs-csp-scan-btn');
+                var ss = document.getElementById('cs-csp-scan-spinner');
+                if (sb) sb.disabled = false;
+                if (ss) ss.style.display = 'none';
                 var resp = null;
                 try { resp = JSON.parse(res.txt); } catch(e) {}
+                var sr = document.getElementById('cs-csp-scan-results');
                 if (resp && resp.success) {
                     renderScanResults(resp.data);
                 } else if (resp) {
-                    if (scanResults) scanResults.innerHTML = '<p style="color:#dc2626;font-size:12px;">Scan failed: ' + esc(resp.data || 'unknown error') + '</p>' + retryHtml();
+                    if (sr) sr.innerHTML = '<p style="color:#dc2626;font-size:12px;">Scan failed: ' + esc(resp.data || 'unknown error') + '</p>' + retryHtml();
                 } else {
                     var preview = res.txt ? res.txt.replace(/<[^>]+>/g, ' ').trim().slice(0, 200) : '(empty)';
-                    if (scanResults) scanResults.innerHTML = '<p style="color:#dc2626;font-size:12px;">Scan error (HTTP ' + res.status + '): ' + esc(preview) + '</p>' + retryHtml();
+                    if (sr) sr.innerHTML = '<p style="color:#dc2626;font-size:12px;">Scan error (HTTP ' + res.status + '): ' + esc(preview) + '</p>' + retryHtml();
                 }
             })
             .catch(function(err) {
                 clearTimeout(timer);
-                scanBtn.disabled = false;
-                if (scanSpinner) scanSpinner.style.display = 'none';
+                var sb = document.getElementById('cs-csp-scan-btn');
+                var ss = document.getElementById('cs-csp-scan-spinner');
+                if (sb) sb.disabled = false;
+                if (ss) ss.style.display = 'none';
                 var isTimeout = err && err.name === 'AbortError';
                 var msg = isTimeout ? 'Request timed out after 30s' : ('Request failed: ' + (err && err.message ? err.message : 'network error'));
-                if (scanResults) scanResults.innerHTML = '<p style="color:#dc2626;font-size:12px;">' + esc(msg) + '</p>' + retryHtml();
+                var sr = document.getElementById('cs-csp-scan-results');
+                if (sr) sr.innerHTML = '<p style="color:#dc2626;font-size:12px;">' + esc(msg) + '</p>' + retryHtml();
             });
     }
 
-    function retryHtml() {
-        return '<p style="margin-top:6px;"><button type="button" id="cs-scan-retry" style="font-size:12px;padding:3px 10px;background:#fff;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;">Retry scan</button></p>';
+    function wireRollback(btn) {
+        if (!btn) return;
+        btn.addEventListener('click', function(){
+            if (!confirm('Restore the previous CSP settings? This will overwrite the current configuration.')) { return; }
+            btn.disabled = true;
+            var fd = new FormData();
+            fd.append('action', 'csdt_devtools_csp_rollback');
+            fd.append('nonce',  csdtVulnScan.nonce);
+            fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
+                .then(function(r){ return r.json(); })
+                .then(function(resp){
+                    if (!resp.success) { alert('Rollback failed: ' + (resp.data || 'unknown error')); btn.disabled = false; return; }
+                    var d = resp.data;
+                    var en = document.getElementById('cs-csp-enabled');
+                    if (en) en.checked = d.enabled === '1';
+                    var modeEl = document.querySelector('input[name="cs-csp-mode"][value="' + (d.mode || 'enforce') + '"]');
+                    if (modeEl) modeEl.checked = true;
+                    document.querySelectorAll('.cs-csp-service').forEach(function(cb){
+                        cb.checked = Array.isArray(d.services) && d.services.indexOf(cb.value) !== -1;
+                    });
+                    var ci = document.getElementById('cs-csp-custom');
+                    if (ci) ci.value = d.custom || '';
+                    buildPreview();
+                    btn.remove();
+                    var rb2 = document.getElementById('cs-csp-rolledback');
+                    if (rb2) { rb2.style.display = 'inline'; setTimeout(function(){ rb2.style.display = 'none'; }, 3000); }
+                })
+                .catch(function(){ btn.disabled = false; });
+        });
     }
 
-    if (scanBtn) {
-        scanBtn.addEventListener('click', runHeaderScan);
+    // ── One-time flags for document-level side-effects ──────────────────────
+    var _cspDocListeners = false;
+    var _cspIntervalId   = null;
+
+    // ── Tab-safe init: re-runs each time security tab becomes active ─────────
+    function csdtCspInit() {
+        if (!document.getElementById('cs-csp-preview')) return;
+
+        // Re-bind service checkboxes + custom input → preview
+        document.querySelectorAll('.cs-csp-service').forEach(function(cb){
+            cb.addEventListener('change', buildPreview);
+        });
+        var customIn = document.getElementById('cs-csp-custom');
+        if (customIn) customIn.addEventListener('input', buildPreview);
+        buildPreview();
+
+        // Copy button
+        var copyBtn = document.getElementById('cs-csp-copy-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function(){
+                var text = document.getElementById('cs-csp-preview').textContent;
+                navigator.clipboard.writeText(text).then(function(){
+                    copyBtn.textContent = '✅ Copied';
+                    setTimeout(function(){ copyBtn.textContent = '📋 Copy'; }, 2000);
+                });
+            });
+        }
+
+        // Save button
+        var saveBtn  = document.getElementById('cs-csp-save-btn');
+        var savedMsg = document.getElementById('cs-csp-saved');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function(){
+                saveBtn.disabled = true;
+                var services = [];
+                document.querySelectorAll('.cs-csp-service:checked').forEach(function(cb){ services.push(cb.value); });
+                var modeEl = document.querySelector('input[name="cs-csp-mode"]:checked');
+                var fd = new FormData();
+                fd.append('action',   'csdt_devtools_csp_save');
+                fd.append('nonce',    csdtVulnScan.nonce);
+                fd.append('enabled',      document.getElementById('cs-csp-enabled').checked ? '1' : '0');
+                fd.append('mode',         modeEl ? modeEl.value : 'enforce');
+                fd.append('services',     JSON.stringify(services));
+                var ci = document.getElementById('cs-csp-custom');
+                fd.append('custom',       ci ? ci.value.trim() : '');
+                var dbgCb = document.getElementById('cs-csp-debug-panel');
+                fd.append('debug_panel',       dbgCb && dbgCb.checked ? '1' : '0');
+                var reportingCb = document.getElementById('cs-csp-reporting-enabled');
+                fd.append('reporting_enabled', reportingCb && reportingCb.checked ? '1' : '0');
+                fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
+                    .then(function(r){ return r.json(); })
+                    .then(function(resp){
+                        saveBtn.disabled = false;
+                        if (savedMsg) { savedMsg.style.display = 'inline'; setTimeout(function(){ savedMsg.style.display = 'none'; }, 2500); }
+                        document.dispatchEvent(new CustomEvent('csdt:csp:saved'));
+                        if (resp && resp.data && resp.data.has_backup) {
+                            var rb = document.getElementById('cs-csp-rollback-btn');
+                            if (!rb) {
+                                rb = document.createElement('button');
+                                rb.id = 'cs-csp-rollback-btn';
+                                rb.type = 'button';
+                                rb.className = 'cs-btn-secondary cs-btn-sm';
+                                rb.style.cssText = 'border-color:#f87171;color:#dc2626;';
+                                saveBtn.parentNode.insertBefore(rb, saveBtn.nextSibling);
+                                wireRollback(rb);
+                            }
+                            rb.innerHTML = '↩ ' + ( window.csdtCspI18n ? csdtCspI18n.rollbackLabel : 'Rollback to previous settings' ) + ' <span style="font-weight:400;font-size:11px;opacity:.8;">(just now)</span>';
+                        }
+                    })
+                    .catch(function(){ saveBtn.disabled = false; });
+            });
+        }
+
+        wireRollback(document.getElementById('cs-csp-rollback-btn'));
+
+        // Change history restore buttons
+        document.querySelectorAll('.cs-csp-restore-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var idx = btn.getAttribute('data-index');
+                if (!confirm('Restore this CSP configuration? The current settings will be pushed to history first.')) { return; }
+                btn.disabled = true; btn.textContent = '⏳';
+                var fd = new FormData();
+                fd.append('action', 'csdt_devtools_csp_restore');
+                fd.append('nonce',  csdtVulnScan.nonce);
+                fd.append('index',  idx);
+                fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
+                    .then(function(r){ return r.json(); })
+                    .then(function(resp) {
+                        if (!resp.success) { alert('Restore failed: ' + (resp.data || 'unknown error')); btn.disabled = false; btn.textContent = '↩ Restore'; return; }
+                        var d = resp.data;
+                        var en = document.getElementById('cs-csp-enabled');
+                        if (en) en.checked = d.enabled === '1';
+                        var modeEl = document.querySelector('input[name="cs-csp-mode"][value="' + (d.mode || 'enforce') + '"]');
+                        if (modeEl) modeEl.checked = true;
+                        document.querySelectorAll('.cs-csp-service').forEach(function(cb) {
+                            cb.checked = Array.isArray(d.services) && d.services.indexOf(cb.value) !== -1;
+                        });
+                        var ci = document.getElementById('cs-csp-custom');
+                        if (ci) ci.value = d.custom || '';
+                        var repEl = document.getElementById('cs-csp-reporting');
+                        if (repEl) repEl.checked = d.reporting_enabled === '1';
+                        buildPreview();
+                        var msg = document.getElementById('cs-csp-restore-msg');
+                        if (msg) { msg.style.display = 'block'; msg.textContent = '✅ Restored and saved.'; setTimeout(function(){ msg.style.display = 'none'; }, 5000); }
+                        btn.textContent = '✅ Restored';
+                    })
+                    .catch(function() { btn.disabled = false; btn.textContent = '↩ Restore'; });
+            });
+        });
+
+        // Violation log
+        var violRefresh        = document.getElementById('cs-csp-viol-refresh');
+        var violClear          = document.getElementById('cs-csp-viol-clear');
+        var cspEnabledCb       = document.getElementById('cs-csp-enabled');
+        var reportingEnabledCb = document.getElementById('cs-csp-reporting-enabled');
+        if (cspEnabledCb)       cspEnabledCb.addEventListener('change', updateViolWrapVisibility);
+        if (reportingEnabledCb) reportingEnabledCb.addEventListener('change', updateViolWrapVisibility);
+        if (violRefresh) violRefresh.addEventListener('click', fetchViolations);
+        if (violClear) {
+            violClear.addEventListener('click', function() {
+                var fd = new FormData();
+                fd.append('action', 'csdt_devtools_csp_violations_clear');
+                fd.append('nonce',  csdtVulnScan.nonce);
+                fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
+                    .then(function(){ renderViolations([]); })
+                    .catch(function(){});
+            });
+        }
+
+        // Auto-load if violation log is visible on activation
+        var violWrap = document.getElementById('cs-csp-violation-wrap');
+        if (violWrap && violWrap.style.display !== 'none') fetchViolations();
+
+        // Fixes clear button
+        var fixesClear = document.getElementById('cs-csp-fixes-clear');
+        if (fixesClear) {
+            fixesClear.addEventListener('click', function() {
+                var fd = new FormData();
+                fd.append('action', 'csdt_devtools_csp_fixes_clear');
+                fd.append('nonce',  csdtVulnScan.nonce);
+                fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
+                    .then(function() { renderFixes([]); })
+                    .catch(function() {});
+            });
+        }
+
+        // Scan button
+        var scanBtn = document.getElementById('cs-csp-scan-btn');
+        if (scanBtn) {
+            scanBtn.addEventListener('click', runHeaderScan);
+        }
+
+        // Document-level listeners added only once — survive tab switches
+        if (!_cspDocListeners) {
+            _cspDocListeners = true;
+
+            document.addEventListener('click', function(e) {
+                if (e.target && e.target.id === 'cs-scan-retry') { runHeaderScan(); }
+            });
+
+            document.addEventListener('csdt:csp:saved', function() {
+                var fd = new FormData();
+                fd.append('action', 'csdt_devtools_csp_fixes_get');
+                fd.append('nonce',  csdtVulnScan.nonce);
+                fetch(csdtVulnScan.ajaxUrl, { method:'POST', body:fd })
+                    .then(function(r) { return r.json(); })
+                    .then(function(resp) { if (resp && resp.success) renderFixes(resp.data); })
+                    .catch(function() {});
+            });
+        }
+
+        // Auto-refresh violations every 30 s — start only once
+        if (_cspIntervalId === null) {
+            _cspIntervalId = setInterval(function() {
+                var vw = document.getElementById('cs-csp-violation-wrap');
+                if (vw && vw.style.display !== 'none') fetchViolations();
+            }, 30000);
+        }
     }
 
-    document.addEventListener('click', function(e) {
-        if (e.target && e.target.id === 'cs-scan-retry') { runHeaderScan(); }
+    // ── Boot ────────────────────────────────────────────────────────────────
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', csdtCspInit);
+    } else {
+        csdtCspInit();
+    }
+    document.addEventListener('csdt:tab-shown', function(e) {
+        if (e.detail && e.detail.tab === 'security') csdtCspInit();
     });
 })();
