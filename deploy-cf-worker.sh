@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 # deploy-cf-worker.sh — Deploy CloudScale Uptime Worker to Cloudflare
-# Reads CF credentials from ~/.cf-credentials and WP token from the Pi server.
+# Reads credentials from ~/Desktop/github/.creds and WP token from the Pi server.
 set -euo pipefail
 
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SEO_TESTS_DIR="REPO_BASE/wordpress-seo-ai-optimizer/tests"
-PI_KEY="REPO_BASE/pi-monitor/deploy/pi_key"
 CONTAINER="pi_wordpress"
 WP_PATH="/var/www/html"
 WP_CLI="php ${WP_PATH}/wp-cli.phar --allow-root"
 CTRL_SOCK="/tmp/cf-worker-$$"
 
-# Load CF credentials
-CF_CREDS="${HOME}/Desktop/github/.cf-credentials"
+# Load credentials
+CF_CREDS="${HOME}/Desktop/github/.creds"
 [[ -f "$CF_CREDS" ]] || { echo "ERROR: ${CF_CREDS} not found."; exit 1; }
 source "$CF_CREDS"
 
@@ -72,11 +71,11 @@ echo "  KV ID     : ${KV_ID:-<not yet created>}"
 
 # Resolve CF account ID from zone
 echo ""
-echo "--- Resolving Cloudflare account ID from zone ${CF_ZONE_ID}..."
+echo "--- Resolving Cloudflare account ID from zone ${CF_ZONE}..."
 ZONE_RESP=$(curl -s \
     -H "X-Auth-Email: ${CF_EMAIL}" \
     -H "X-Auth-Key: ${CF_KEY}" \
-    "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}")
+    "https://api.cloudflare.com/client/v4/zones/${CF_ZONE}")
 CF_ACCOUNT_ID=$(echo "$ZONE_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['result']['account']['id'])" 2>/dev/null || echo "")
 if [[ -z "$CF_ACCOUNT_ID" ]]; then
     echo "ERROR: Could not resolve account ID."
