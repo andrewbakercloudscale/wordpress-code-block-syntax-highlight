@@ -663,19 +663,25 @@ class CSDT_Thumbnails {
             $file_url = "{$dest_url}/{$key}.{$ext}";
             $quality  = 90;
 
+            $actual_w = $platform['w'];
+            $actual_h = $platform['h'];
+
             for ( $attempt = 0; $attempt < 4; $attempt++ ) {
                 $editor = wp_get_image_editor( $source_file );
                 if ( is_wp_error( $editor ) ) {
                     $results[ $key ] = [ 'success' => false, 'label' => $platform['label'], 'error' => $editor->get_error_message() ];
                     continue 2;
                 }
-                $editor->resize( $platform['w'], $platform['h'], true );
+                // Scale to fit within target dimensions — no crop, no content lost.
+                $editor->resize( $platform['w'], $platform['h'], false );
                 $editor->set_quality( $quality );
                 $saved = $editor->save( $filename );
                 if ( is_wp_error( $saved ) ) {
                     $results[ $key ] = [ 'success' => false, 'label' => $platform['label'], 'error' => $saved->get_error_message() ];
                     continue 2;
                 }
+                $actual_w = (int) ( $saved['width']  ?? $platform['w'] );
+                $actual_h = (int) ( $saved['height'] ?? $platform['h'] );
                 $kb = round( (int) filesize( $filename ) / 1024, 1 );
                 if ( $kb <= $platform['target_kb'] || $quality <= 55 ) break;
                 $quality -= 10;
@@ -687,8 +693,8 @@ class CSDT_Thumbnails {
             $results[ $key ] = [
                 'success'     => true,
                 'label'       => $platform['label'],
-                'w'           => $platform['w'],
-                'h'           => $platform['h'],
+                'w'           => $actual_w,
+                'h'           => $actual_h,
                 'kb'          => $kb,
                 'max_kb'      => $platform['max_kb'],
                 'under_limit' => $under_limit,
