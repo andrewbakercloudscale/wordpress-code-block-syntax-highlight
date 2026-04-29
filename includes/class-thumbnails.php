@@ -1225,22 +1225,12 @@ class CSDT_Thumbnails {
         return (int) get_option( 'cloudscale_default_image_id', 0 ) > 0;
     }
 
-    // ─── Hero image: swap to 1200×630 social format on single posts ──────
+    // ─── Hero image: show original image on single posts ─────────────────
+    // Previously swapped to the 1200×630 social-format crop, which cut off
+    // title text at the top of images. Now returns the unmodified thumbnail HTML
+    // so the original uploaded image is displayed at natural dimensions.
 
     public static function hero_image_html( string $html, int $post_id, $post_thumbnail_id, $size, $attr ): string {
-        if ( empty( $html ) || ! is_singular( 'post' ) ) { return $html; }
-        $formats = get_post_meta( $post_id, '_csdt_social_formats', true );
-        if ( empty( $formats['facebook']['success'] ) || empty( $formats['facebook']['url'] ) ) {
-            return $html;
-        }
-        $url = esc_url( $formats['facebook']['url'] );
-        $w   = (int) $formats['facebook']['w'];
-        $h   = (int) $formats['facebook']['h'];
-        $html = preg_replace( '/\ssrc="[^"]*"/',    ' src="' . $url . '"', $html );
-        $html = preg_replace( '/\ssrcset="[^"]*"/', '',                     $html );
-        $html = preg_replace( '/\ssizes="[^"]*"/',  '',                     $html );
-        $html = preg_replace( '/\swidth="[^"]*"/',  ' width="' . $w . '"', $html );
-        $html = preg_replace( '/\sheight="[^"]*"/', ' height="' . $h . '"', $html );
         return $html;
     }
 
