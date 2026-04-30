@@ -622,7 +622,7 @@ class CSDT_Site_Audit {
                     <div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:6px;padding:14px 16px;margin-bottom:16px;">
                         <p style="margin:0 0 6px;font-weight:600;font-size:13px;color:#92400e;">&#x26A0; Back up your database before continuing</p>
                         <p style="margin:0 0 10px;font-size:13px;color:#78350f;">This operation renames tables directly in MySQL. If anything goes wrong mid-migration you will need a backup to recover.</p>
-                        <a href="https://your-wordpress-site.example.com/wordpress-plugin-help/backup-restore-help/" target="_blank" style="color:#b45309;font-weight:600;font-size:13px;text-decoration:underline;">&#x2192; CloudScale Backup &amp; Restore &#x2014; install &amp; create a backup first</a>
+                        <a href="https://andrewbaker.ninja/wordpress-plugin-help/backup-restore-help/" target="_blank" style="color:#b45309;font-weight:600;font-size:13px;text-decoration:underline;">&#x2192; CloudScale Backup &amp; Restore &#x2014; install &amp; create a backup first</a>
                     </div>
                     <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#166534;">
                         &#x21A9; <strong>Rollback is saved automatically</strong> &#x2014; after the rename a rollback snapshot is stored. You can undo from the <strong>Home tab</strong> at any time.
@@ -2054,7 +2054,7 @@ PROMPT;
                 'fix'      => 'Install a backup plugin and schedule daily off-site backups before making any significant changes.',
                 'cta'      => [
                     'label' => '🗄 CloudScale Backup & Restore — Free',
-                    'url'   => 'https://your-wordpress-site.example.com/wordpress-plugin-help/cloudscale-backup-restore-help/',
+                    'url'   => 'https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-backup-restore-help/',
                     'desc'  => 'One-click backup to S3, automated schedules, and point-in-time restore. Free and open-source.',
                 ],
             ];
@@ -2068,7 +2068,7 @@ PROMPT;
                 'fix'      => 'Install an SEO plugin to manage meta descriptions, Open Graph tags, sitemaps, and structured data across all your pages.',
                 'cta'      => [
                     'label' => '🤖 CloudScale SEO AI — Free',
-                    'url'   => 'https://your-wordpress-site.example.com/wordpress-plugin-help/cloudscale-seo-ai-help/',
+                    'url'   => 'https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-seo-ai-help/',
                     'desc'  => 'AI-generated meta descriptions, og:image creation, Cloudflare CDN integration, and a social preview checker. Free and open-source.',
                 ],
             ];
@@ -2108,7 +2108,7 @@ PROMPT;
                 'affected'   => "{$d['no_meta_desc_count']} posts/pages",
                 'cta'        => [
                     'label' => '🤖 CloudScale SEO AI — Free',
-                    'url'   => 'https://your-wordpress-site.example.com/wordpress-plugin-help/cloudscale-seo-ai-help/',
+                    'url'   => 'https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-seo-ai-help/',
                     'desc'  => 'AI-generated meta descriptions for your entire content library in one click. Free and open-source.',
                 ],
             ];
@@ -2132,7 +2132,7 @@ PROMPT;
                 'affected'   => "{$d['no_title_tag_count']} posts/pages",
                 'cta'        => [
                     'label' => '🤖 CloudScale SEO AI — Free',
-                    'url'   => 'https://your-wordpress-site.example.com/wordpress-plugin-help/cloudscale-seo-ai-help/',
+                    'url'   => 'https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-seo-ai-help/',
                     'desc'  => 'AI-generated SEO titles and meta descriptions in one batch — free and open-source.',
                 ],
             ];
@@ -2271,7 +2271,7 @@ PROMPT;
                 'affected'   => "wp_options table",
                 'cta'        => [
                     'label' => '🧹 CloudScale Cleanup — Free',
-                    'url'   => 'https://your-wordpress-site.example.com/wordpress-plugin-help/cloudscale-cleanup-help/',
+                    'url'   => 'https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-cleanup-help/',
                     'desc'  => 'Automatically cleans expired transients, revisions, orphaned postmeta, and auto-drafts on a schedule.',
                 ],
             ];
@@ -2288,7 +2288,7 @@ PROMPT;
                 'affected' => "wp_posts table ({$d['revision_count']} revisions)",
                 'cta'      => [
                     'label' => '🧹 CloudScale Cleanup — Free',
-                    'url'   => 'https://your-wordpress-site.example.com/wordpress-plugin-help/cloudscale-cleanup-help/',
+                    'url'   => 'https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-cleanup-help/',
                     'desc'  => 'Scheduled CRON deletes revisions, expired transients, orphaned postmeta, and auto-drafts automatically — no WP-CLI required.',
                 ],
             ];

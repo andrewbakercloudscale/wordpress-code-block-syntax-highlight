@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: CloudScale Cyber and Devtools
- * Plugin URI: https://your-wordpress-site.example.com
+ * Plugin URI: https://andrewbaker.ninja
  * Description: Free AI penetration testing, brute-force protection, 2FA, passkeys, AI site audit, AI debugging, performance monitor, SMTP, SQL tool, server logs, vulnerability scanner, and Cloudflare uptime monitor. No subscription, no cloud dependency.
  * Version: 1.9.581
  * Author: Andrew Baker
- * Author URI: https://your-wordpress-site.example.com
+ * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Requires at least: 6.0
@@ -867,7 +867,7 @@ class CloudScale_DevTools {
     private static function build_html( $id, $code, $lang, $title, $theme ) {
         $lang_class = $lang ? 'language-' . esc_attr( $lang ) : '';
 
-        $cloudscale_link = '<a class="cs-code-brand" href="https://your-wordpress-site.example.com/2026/02/27/building-a-better-code-block-for-wordpress-cloudscale-code-block-plugin/" target="_blank" rel="noopener noreferrer"><span class="cs-brand-bolt">&#9889;</span> Powered by CloudScale</a>';
+        $cloudscale_link = '<a class="cs-code-brand" href="https://andrewbaker.ninja/2026/02/27/building-a-better-code-block-for-wordpress-cloudscale-code-block-plugin/" target="_blank" rel="noopener noreferrer"><span class="cs-brand-bolt">&#9889;</span> Powered by CloudScale</a>';
 
         $title_html = '';
         if ( $title ) {
@@ -1575,8 +1575,8 @@ class CloudScale_DevTools {
                 </div>
                 <div id="cs-banner-right">
                     <span class="cs-badge cs-badge-green">✅ <?php esc_html_e( 'Totally Free', 'cloudscale-devtools' ); ?></span>
-                    <a href="https://your-wordpress-site.example.com" target="_blank" rel="noopener noreferrer" class="cs-badge cs-badge-orange" style="text-decoration:none">andrewbaker.ninja</a>
-                    <a href="https://your-wordpress-site.example.com/wordpress-plugin-help/cloudscale-cyber-devtools-help/" target="_blank" rel="noopener noreferrer" class="cs-badge cs-badge-help" style="text-decoration:none">❓ <?php esc_html_e( 'Help', 'cloudscale-devtools' ); ?></a>
+                    <a href="https://andrewbaker.ninja" target="_blank" rel="noopener noreferrer" class="cs-badge cs-badge-orange" style="text-decoration:none">andrewbaker.ninja</a>
+                    <a href="https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-cyber-devtools-help/" target="_blank" rel="noopener noreferrer" class="cs-badge cs-badge-help" style="text-decoration:none">❓ <?php esc_html_e( 'Help', 'cloudscale-devtools' ); ?></a>
                 </div>
             </div>
 

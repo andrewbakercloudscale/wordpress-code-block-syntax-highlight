@@ -125,7 +125,7 @@
                 html +=
                     '<div style="background:#f0f9ff;border-left:3px solid #0ea5e9;padding:11px 16px;border-radius:0 6px 6px 0;font-size:.87em;color:#0c4a6e;line-height:1.6;margin-bottom:' + (inactivePlugins.length > 0 ? '24' : '0') + 'px;">' +
                     '<strong>Before deactivating:</strong> set up and test the CloudScale equivalent first. Take a backup — the free ' +
-                    '<a href="https://your-wordpress-site.example.com/wordpress-plugin-help/cloudscale-backup-restore-help/" target="_blank" rel="noopener" style="color:#0369a1;">CloudScale Backup plugin</a>' +
+                    '<a href="https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-backup-restore-help/" target="_blank" rel="noopener" style="color:#0369a1;">CloudScale Backup plugin</a>' +
                     ' does a one-click full-site snapshot.' +
                     '</div>';
             }

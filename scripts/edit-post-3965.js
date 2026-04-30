@@ -29,7 +29,7 @@ if (fs.existsSync(envFile)) {
     });
 }
 
-const SITE        = process.env.WP_SITE             || 'https://your-wordpress-site.example.com';
+const SITE        = process.env.WP_SITE             || 'https://andrewbaker.ninja';
 const SECRET      = process.env.CSDT_TEST_SECRET    || '';
 const ROLE        = process.env.CSDT_TEST_ROLE      || 'my_test_account';
 const SESSION_URL = process.env.CSDT_TEST_SESSION_URL || '';

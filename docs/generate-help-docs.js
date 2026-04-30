@@ -27,10 +27,10 @@ helpLib.run({
         'operatingSystem': 'WordPress',
         'offers': { '@type': 'Offer', 'price': '0', 'priceCurrency': 'USD' },
         'description': 'Free WordPress security plugin powered by Anthropic Claude and Google Gemini AI. Features: AI-powered penetration testing, brute-force protection, two-factor authentication, passkeys (WebAuthn), hide login URL, AI site audit, AI debugging assistant, PHP-FPM monitoring, performance panel, SMTP mailer, SQL tool, server logs, plugin vulnerability scanner, Cloudflare uptime monitor with readiness probe, and syntax-highlighted code blocks.',
-        'url': 'https://your-wordpress-site.example.com/wordpress-plugin-help/cloudscale-cyber-devtools-help/',
+        'url': 'https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-cyber-devtools-help/',
         'downloadUrl': 'https://your-s3-bucket.s3.af-south-1.amazonaws.com/cloudscale-devtools.zip',
         'softwareVersion': _pluginVersion,
-        'author': { '@type': 'Person', 'name': 'Andrew Baker', 'url': 'https://your-wordpress-site.example.com' },
+        'author': { '@type': 'Person', 'name': 'Andrew Baker', 'url': 'https://andrewbaker.ninja' },
         'isAccessibleForFree': true,
         'license': 'https://www.gnu.org/licenses/gpl-2.0.html',
     },
@@ -310,7 +310,7 @@ helpLib.run({
 </div>
 
 <div style="background:#fff7ed;border-left:4px solid #ea580c;border-radius:0 8px 8px 0;padding:16px 20px;margin:0 0 32px;">
-<p style="margin:0;color:#374151;font-size:.95em;line-height:1.65;"><strong>Before you start hardening anything: take a backup.</strong> The Quick Fixes in this plugin modify wp-config.php, database tables, and server configuration. In the unlikely event something goes wrong, you want a restore point. The free <a href="https://your-wordpress-site.example.com/wordpress-plugin-help/cloudscale-backup-restore-help/" target="_blank" rel="noopener"><strong>CloudScale Backup and Restore plugin</strong></a> does one-click full-site backups (database + files) to local storage or cloud. Five minutes now saves hours later.</p>
+<p style="margin:0;color:#374151;font-size:.95em;line-height:1.65;"><strong>Before you start hardening anything: take a backup.</strong> The Quick Fixes in this plugin modify wp-config.php, database tables, and server configuration. In the unlikely event something goes wrong, you want a restore point. The free <a href="https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-backup-restore-help/" target="_blank" rel="noopener"><strong>CloudScale Backup and Restore plugin</strong></a> does one-click full-site backups (database + files) to local storage or cloud. Five minutes now saves hours later.</p>
 </div>
 
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin:0 0 32px;">
@@ -839,7 +839,7 @@ helpLib.run({
 <ol>
 <li>Click the CloudScale tab link and configure the equivalent feature</li>
 <li>Test the CloudScale version works correctly on your site</li>
-<li>Take a full backup with <a href="https://your-wordpress-site.example.com/wordpress-plugin-help/cloudscale-backup-restore-help/" target="_blank" rel="noopener"><strong>CloudScale Backup and Restore</strong></a></li>
+<li>Take a full backup with <a href="https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-backup-restore-help/" target="_blank" rel="noopener"><strong>CloudScale Backup and Restore</strong></a></li>
 <li>Deactivate the original plugin</li>
 <li>Verify nothing broke, then delete the plugin entirely rather than leaving it deactivated (inactive plugins still present an attack surface)</li>
 </ol>

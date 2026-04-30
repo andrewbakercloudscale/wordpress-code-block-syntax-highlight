@@ -37,7 +37,7 @@ for var in CSDT_TEST_SECRET CSDT_TEST_ROLE CSDT_TEST_SESSION_URL CSDT_TEST_LOGOU
 done
 
 WP_SITE=$(grep '^WP_SITE=' "$SHARED_ENV" | cut -d'=' -f2- | tr -d '\r')
-[[ -z "$WP_SITE" ]] && WP_SITE="https://your-wordpress-site.example.com"
+[[ -z "$WP_SITE" ]] && WP_SITE="https://andrewbaker.ninja"
 
 ENV_FILE="${SCRIPT_DIR}/.env.test"
 cat > "${ENV_FILE}" <<EOF

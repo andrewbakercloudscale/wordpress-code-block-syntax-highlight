@@ -233,7 +233,7 @@ class CSDT_Login {
                 'authentication_failed',
                 '<strong>' . esc_html__( 'Error:', 'cloudscale-devtools' ) . '</strong> ' .
                 esc_html__( 'Invalid username or password.', 'cloudscale-devtools' ) .
-                '<br><small style="color:#6b7280;">Protected by <a href="https://your-wordpress-site.example.com" target="_blank" rel="noopener noreferrer" style="color:#6b7280;">CloudScale Cyber and Devtools</a>.</small>'
+                '<br><small style="color:#6b7280;">Protected by <a href="https://andrewbaker.ninja" target="_blank" rel="noopener noreferrer" style="color:#6b7280;">CloudScale Cyber and Devtools</a>.</small>'
             );
         }
         return $errors;
@@ -404,11 +404,11 @@ h1{font-size:22px;font-weight:700;color:#f1f5f9;margin-bottom:8px;line-height:1.
   <p class="site-name">' . esc_html( $site_name ) . '</p>
   <div class="divider"></div>
   <p class="protected-by">This site is secured by</p>
-  <a href="https://your-wordpress-site.example.com" target="_blank" rel="noopener noreferrer" class="brand">
+  <a href="https://andrewbaker.ninja" target="_blank" rel="noopener noreferrer" class="brand">
     CloudScale <span>Cyber</span> and Devtools
   </a>
   <br>
-  <a href="https://your-wordpress-site.example.com/wordpress-plugin-help/cloudscale-cyber-devtools-help/" target="_blank" rel="noopener noreferrer" class="help-link">
+  <a href="https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-cyber-devtools-help/" target="_blank" rel="noopener noreferrer" class="help-link">
     &#x2753; Plugin Help &amp; Documentation
   </a>
   <div class="tracking">

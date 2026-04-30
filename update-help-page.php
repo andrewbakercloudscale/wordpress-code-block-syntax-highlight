@@ -50,7 +50,7 @@ $content = <<<'HTML'
 <h1>CloudScale Cyber and Devtools</h1>
 <p style="margin-top:6px;font-size:1.15em;font-weight:600;color:#4ade80;">Free WordPress Pentesting &amp; Vulnerability Scanner</p>
 </div>
-<img src="https://your-wordpress-site.example.com/wp-content/plugins/cloudscale-devtools/CloudScaleCyberDevtools.jpeg" alt="CloudScale Cyber Devtools" style="width:100px;height:100px;border-radius:18px;flex-shrink:0;box-shadow:0 4px 20px rgba(0,0,0,.4);">
+<img src="https://andrewbaker.ninja/wp-content/plugins/cloudscale-devtools/CloudScaleCyberDevtools.jpeg" alt="CloudScale Cyber Devtools" style="width:100px;height:100px;border-radius:18px;flex-shrink:0;box-shadow:0 4px 20px rgba(0,0,0,.4);">
 </div>
 <p style="margin-top:16px;">WordPress powers over <strong>40% of the internet</strong>, making it the most targeted platform on the web. Automated scanners probe every exposed site every day, looking for unpatched plugins, misconfigured headers, exposed admin pages, and weak credentials. The attackers are tooled up. Most site owners aren't.</p>
 <p style="margin-top:14px;"><strong>CloudScale</strong> is a free, open-source WordPress security plugin with a built-in <strong>AI-powered penetration testing engine</strong>. Point it at your site and get a full <strong>free WordPress pentest</strong> in under 60 seconds: live HTTP probes, DNS validation, weak TLS detection, <strong>free plugin vulnerability scanning</strong>, PHP end-of-life checks, hardening analysis, and a prioritised fix list. It uses frontier AI (Anthropic Claude or Google Gemini) with your own API key, running entirely on your own server. No subscription, no data sent to third parties. A <strong>free Gemini tier</strong> is available with no credit card required.</p>
@@ -91,7 +91,7 @@ $content = <<<'HTML'
 <!-- ═══ CODE BLOCK ═══ -->
 <div class="cs-panel-section">
 <h3 class="cs-panel-heading" id="code-block">Code Block</h3>
-<figure class="cs-screenshot"><img decoding="async" src="https://your-wordpress-site.example.com/wp-content/uploads/2026/04/panel-code-block-5.jpg" alt="Code Block" /></figure>
+<figure class="cs-screenshot"><img decoding="async" src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-code-block-5.jpg" alt="Code Block" /></figure>
 <div class="cs-panel-body">
 <div style="background:#f0f9ff;border-left:4px solid #0e6b8f;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:28px;">
 <p style="margin:0 0 10px;"><strong>Why CloudScale Devtools?</strong> Popular code highlighting plugins load external CDN scripts that add 100–300ms to your page load. Others charge $30–50/year for features that should come included. CloudScale Devtools bundles everything locally — zero external requests, zero CDN cache impact. Auto language detection, clipboard copy, dark/light toggle, and line numbers all work out of the box.</p>
@@ -120,7 +120,7 @@ $content = <<<'HTML'
 <!-- ═══ MIGRATOR ═══ -->
 <div class="cs-panel-section">
 <h3 class="cs-panel-heading" id="migrator">Code Block Migrator</h3>
-<figure class="cs-screenshot"><img decoding="async" src="https://your-wordpress-site.example.com/wp-content/uploads/2026/04/panel-migrator-5.jpg" alt="Code Block Migrator" /></figure>
+<figure class="cs-screenshot"><img decoding="async" src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-migrator-5.jpg" alt="Code Block Migrator" /></figure>
 <div class="cs-panel-body">
 <p>The <strong>Code Block Migrator</strong> (Tools → CloudScale Cyber and Devtools → Migrate tab) converts legacy code block shortcodes and blocks from other plugins to CloudScale Devtools blocks in a single batch operation.</p>
 <p><strong>Supported source formats:</strong></p>
@@ -144,7 +144,7 @@ $content = <<<'HTML'
 <!-- ═══ HIDE LOGIN ═══ -->
 <div class="cs-panel-section">
 <h3 class="cs-panel-heading" id="hide-login">Hide Login URL</h3>
-<figure class="cs-screenshot"><img decoding="async" src="https://your-wordpress-site.example.com/wp-content/uploads/2026/04/panel-hide-login-5.jpg" alt="Hide Login URL" /></figure>
+<figure class="cs-screenshot"><img decoding="async" src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-hide-login-5.jpg" alt="Hide Login URL" /></figure>
 <div class="cs-panel-body">
 <p>The <strong>Hide Login URL</strong> feature moves your WordPress login from the default <code>/wp-login.php</code> to a custom URL slug of your choice. Requests to <code>/wp-login.php</code> return a 404 to automated scanners and bots.</p>
 <p><strong>How it works:</strong> The feature hooks into <code>init</code> and rewrites the login request transparently — no redirect occurs, so there is no latency penalty. It overrides <code>login_url</code>, <code>lostpassword_url</code>, and <code>register_url</code> filters so all WordPress-generated links point to your custom slug automatically. WP-CLI, REST API, XML-RPC, and WP Cron connections are unaffected.</p>
@@ -519,7 +519,7 @@ $content = <<<'HTML'
 <!-- ═══ SQL TOOL ═══ -->
 <div class="cs-panel-section">
 <h3 class="cs-panel-heading" id="sql-tool">SQL Query Tool</h3>
-<figure class="cs-screenshot"><img decoding="async" src="https://your-wordpress-site.example.com/wp-content/uploads/2026/04/panel-sql-tool-5.jpg" alt="SQL Query Tool" /></figure>
+<figure class="cs-screenshot"><img decoding="async" src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-sql-tool-5.jpg" alt="SQL Query Tool" /></figure>
 <div class="cs-panel-body">
 <p>The <strong>SQL Query Tool</strong> lets administrators run read-only SELECT queries against the live database from within wp-admin — no phpMyAdmin or SSH required. Results display in a paginated table with column headers and query execution time.</p>
 <p><strong>Security model:</strong> Access requires <code>manage_options</code>. Every query is validated before execution: block/line comments are stripped, semicolons are rejected, <code>INTO OUTFILE</code>/<code>LOAD_FILE</code> are blocked, and only <code>SELECT</code>, <code>SHOW</code>, <code>DESCRIBE</code>, <code>DESC</code>, and <code>EXPLAIN</code> are permitted.</p>
