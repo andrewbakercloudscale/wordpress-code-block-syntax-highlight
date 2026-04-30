@@ -1035,6 +1035,10 @@
             let processed   = 0;
             let regenerated = 0;
             let errors      = 0;
+            let nextOffset  = 0;
+            let inFlight    = 0;
+            const BATCH     = 5;
+            const THREADS   = 2;
 
             function updateLog() {
                 if ( ! log ) return;
@@ -1042,50 +1046,60 @@
                 log.innerHTML = `<strong>Processing ${processed}${totalImages ? ' / ' + totalImages : ''} images (${pct}%)</strong> — ${regenerated} regenerated, ${errors} errors`;
             }
 
-            function runBatch( offset ) {
-                post( 'csdt_devtools_regen_thumb_batch', { offset, total: totalImages } ).then( res => {
-                    if ( ! res.success ) {
-                        regenAllBtn.disabled = false;
-                        scanBtn.disabled = false;
-                        if ( log ) log.innerHTML += `<br><span style="color:#dc2626">✗ Error: ${esc( res.data?.message || 'Unknown error' )}</span>`;
-                        return;
+            function onAllDone() {
+                regenAllBtn.disabled = false;
+                scanBtn.disabled = false;
+                regenAllBtn.textContent = '✔ Done';
+                if ( log ) {
+                    log.innerHTML = `<strong style="color:#166534">✔ Done — ${regenerated} images regenerated${errors ? ', ' + errors + ' errors' : ''}.</strong>`;
+                    if ( regenerated > 0 ) {
+                        log.innerHTML += '<br><span style="color:#555;font-size:12px">Refresh the page to see updated images. The article thumbnails should now display correctly.</span>';
                     }
-                    const d = res.data;
-                    if ( ! totalImages ) totalImages = d.total;
-
-                    ( d.batch || [] ).forEach( item => {
-                        processed++;
-                        if ( item.regenerated ) regenerated++;
-                        else if ( ! item.ok )   errors++;
-                    } );
-
-                    updateLog();
-
-                    if ( d.has_more ) {
-                        runBatch( d.next_offset );
-                    } else {
-                        regenAllBtn.disabled = false;
-                        scanBtn.disabled = false;
-                        regenAllBtn.textContent = '✔ Done';
-                        if ( log ) {
-                            log.innerHTML = `<strong style="color:#166534">✔ Done — ${regenerated} images regenerated${errors ? ', ' + errors + ' errors' : ''}.</strong>`;
-                            if ( regenerated > 0 ) {
-                                log.innerHTML += '<br><span style="color:#555;font-size:12px">Refresh the page to see updated images. The article thumbnails should now display correctly.</span>';
-                            }
-                        }
-                        if ( regenAllBtn ) regenAllBtn.style.display = 'none';
-                        // Re-scan to confirm.
-                        scanBtn.click();
-                    }
-                } ).catch( err => {
-                    regenAllBtn.disabled = false;
-                    scanBtn.disabled = false;
-                    if ( log ) log.innerHTML += '<br><span style="color:#dc2626">✗ Network error — see console.</span>';
-                    console.error( 'regen_thumb_batch error', err );
-                } );
+                }
+                if ( regenAllBtn ) regenAllBtn.style.display = 'none';
+                scanBtn.click();
             }
 
-            runBatch( 0 );
+            function dispatch() {
+                while ( inFlight < THREADS ) {
+                    if ( totalImages > 0 && nextOffset >= totalImages ) break;
+                    const offset = nextOffset;
+                    nextOffset += BATCH;
+                    inFlight++;
+                    post( 'csdt_devtools_regen_thumb_batch', { offset, total: totalImages } ).then( res => {
+                        inFlight--;
+                        if ( ! res.success ) {
+                            errors++;
+                        } else {
+                            const d = res.data;
+                            if ( ! totalImages ) totalImages = d.total;
+                            ( d.batch || [] ).forEach( item => {
+                                processed++;
+                                if ( item.regenerated ) regenerated++;
+                                else if ( ! item.ok )   errors++;
+                            } );
+                            updateLog();
+                        }
+                        if ( inFlight === 0 && ( totalImages > 0 && nextOffset >= totalImages ) ) {
+                            onAllDone();
+                        } else {
+                            dispatch();
+                        }
+                    } ).catch( err => {
+                        inFlight--;
+                        errors++;
+                        if ( log ) log.innerHTML += '<br><span style="color:#dc2626">✗ Network error — see console.</span>';
+                        console.error( 'regen_thumb_batch error', err );
+                        if ( inFlight === 0 && totalImages > 0 && nextOffset >= totalImages ) {
+                            onAllDone();
+                        } else {
+                            dispatch();
+                        }
+                    } );
+                }
+            }
+
+            dispatch();
         } );
     }
 
