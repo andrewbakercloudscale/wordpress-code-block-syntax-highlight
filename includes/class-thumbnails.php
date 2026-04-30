@@ -1561,7 +1561,7 @@ class CSDT_Thumbnails {
         ];
     }
 
-    // ─── AJAX: scan for missing WordPress thumbnail sizes ─────────────────
+    // ─── AJAX: scan featured images for missing WordPress thumbnail sizes ────
 
     public static function ajax_regen_thumb_scan(): void {
         check_ajax_referer( self::THUMB_NONCE, 'nonce' );
@@ -1571,32 +1571,30 @@ class CSDT_Thumbnails {
 
         $sizes  = wp_get_registered_image_subsizes();
         $upload = wp_upload_dir();
-
-        // Collect all attachment IDs used as featured images.
         global $wpdb;
-        $used_ids = array_map( 'intval', $wpdb->get_col(
+
+        // Only check images that are actually in use as featured images.
+        $candidate_ids = array_map( 'intval', $wpdb->get_col(
             "SELECT DISTINCT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_thumbnail_id' AND meta_value != '0'"
         ) );
         $default_id = (int) get_option( 'cloudscale_default_image_id', 0 );
         if ( $default_id ) {
-            $used_ids[] = $default_id;
+            $candidate_ids[] = $default_id;
         }
-        $used_ids = array_unique( $used_ids );
+        $logo = get_theme_mod( 'custom_logo' );
+        if ( $logo ) {
+            $candidate_ids[] = (int) $logo;
+        }
+        $icon = (int) get_option( 'site_icon', 0 );
+        if ( $icon ) {
+            $candidate_ids[] = $icon;
+        }
+        $candidate_ids = array_values( array_unique( $candidate_ids ) );
 
-        $all_ids = get_posts( [
-            'post_type'      => 'attachment',
-            'post_mime_type' => 'image',
-            'posts_per_page' => -1,
-            'post_status'    => 'inherit',
-            'fields'         => 'ids',
-            'orderby'        => 'ID',
-            'order'          => 'ASC',
-        ] );
-
-        $total   = count( $all_ids );
+        $total   = count( $candidate_ids );
         $missing = [];
 
-        foreach ( $all_ids as $id ) {
+        foreach ( $candidate_ids as $id ) {
             $meta = wp_get_attachment_metadata( $id );
             if ( ! $meta || empty( $meta['file'] ) ) {
                 continue;
@@ -1615,16 +1613,18 @@ class CSDT_Thumbnails {
                 }
             }
             if ( $has_miss ) {
-                $is_used = in_array( $id, $used_ids, true );
                 $missing[] = [
-                    'id'      => $id,
-                    'used'    => $is_used,
-                    'title'   => get_the_title( $id ) ?: basename( get_attached_file( $id ) ?: '' ),
-                    'url'     => wp_get_attachment_url( $id ),
-                    'thumb'   => wp_get_attachment_image_url( $id, 'thumbnail' ) ?: '',
+                    'id'    => $id,
+                    'used'  => true,
+                    'title' => get_the_title( $id ) ?: basename( get_attached_file( $id ) ?: '' ),
+                    'url'   => wp_get_attachment_url( $id ),
+                    'thumb' => wp_get_attachment_image_url( $id, 'thumbnail' ) ?: '',
                 ];
             }
         }
+
+        // Store the queue of IDs needing regeneration for the batch endpoint.
+        set_transient( 'csdt_regen_thumb_queue', array_column( $missing, 'id' ), HOUR_IN_SECONDS );
 
         wp_send_json_success( [
             'total'   => $total,
@@ -1641,58 +1641,18 @@ class CSDT_Thumbnails {
             wp_send_json_error( 'Unauthorized', 403 );
         }
 
-        $offset     = absint( $_POST['offset'] ?? 0 );
-        $total      = absint( $_POST['total']  ?? 0 );
-        $batch_size = 5;
-        $sizes      = wp_get_registered_image_subsizes();
-        $upload     = wp_upload_dir();
-
-        $all_ids = get_posts( [
-            'post_type'      => 'attachment',
-            'post_mime_type' => 'image',
-            'posts_per_page' => $batch_size,
-            'offset'         => $offset,
-            'post_status'    => 'inherit',
-            'fields'         => 'ids',
-            'orderby'        => 'ID',
-            'order'          => 'ASC',
-        ] );
-
-        if ( ! $total ) {
-            $total_q = new WP_Query( [
-                'post_type'      => 'attachment',
-                'post_mime_type' => 'image',
-                'posts_per_page' => -1,
-                'post_status'    => 'inherit',
-                'fields'         => 'ids',
-            ] );
-            $total = count( $total_q->posts );
+        $queue = get_transient( 'csdt_regen_thumb_queue' );
+        if ( ! is_array( $queue ) ) {
+            wp_send_json_error( [ 'message' => 'Queue expired — please scan again.' ] );
         }
 
+        $offset     = absint( $_POST['offset'] ?? 0 );
+        $batch_size = 5;
+        $total      = count( $queue );
+        $slice      = array_slice( $queue, $offset, $batch_size );
+
         $batch = [];
-        foreach ( $all_ids as $id ) {
-            $meta = wp_get_attachment_metadata( $id );
-            if ( ! $meta || empty( $meta['file'] ) ) {
-                $batch[] = [ 'id' => $id, 'ok' => true, 'skipped' => true ];
-                continue;
-            }
-            $dir      = trailingslashit( $upload['basedir'] ) . trailingslashit( dirname( $meta['file'] ) );
-            $has_miss = false;
-            foreach ( $sizes as $size_name => $size_data ) {
-                if ( isset( $meta['sizes'][ $size_name ] ) ) {
-                    if ( ! file_exists( $dir . $meta['sizes'][ $size_name ]['file'] ) ) {
-                        $has_miss = true;
-                        break;
-                    }
-                } else {
-                    $has_miss = true;
-                    break;
-                }
-            }
-            if ( ! $has_miss ) {
-                $batch[] = [ 'id' => $id, 'ok' => true, 'skipped' => true ];
-                continue;
-            }
+        foreach ( $slice as $id ) {
             $file = get_attached_file( $id );
             if ( ! $file || ! file_exists( $file ) ) {
                 $batch[] = [ 'id' => $id, 'ok' => false, 'skipped' => true, 'error' => 'file_missing' ];
