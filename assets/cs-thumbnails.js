@@ -1000,7 +1000,10 @@
         }
 
         resultsDiv.innerHTML = html;
-        if ( regenAllBtn ) regenAllBtn.style.display = '';
+        if ( regenAllBtn ) {
+            regenAllBtn.textContent = '⚙️ Regenerate All Missing';
+            regenAllBtn.style.display = '';
+        }
     }
 
     function renderImageGrid( images ) {
@@ -1049,15 +1052,12 @@
             function onAllDone() {
                 regenAllBtn.disabled = false;
                 scanBtn.disabled = false;
-                regenAllBtn.textContent = '✔ Done';
+                regenAllBtn.textContent = '⚙️ Regenerate All Missing';
+                regenAllBtn.style.display = 'none';
                 if ( log ) {
-                    log.innerHTML = `<strong style="color:#166534">✔ Done — ${regenerated} images regenerated${errors ? ', ' + errors + ' errors' : ''}.</strong>`;
-                    if ( regenerated > 0 ) {
-                        log.innerHTML += '<br><span style="color:#555;font-size:12px">Refresh the page to see updated images. The article thumbnails should now display correctly.</span>';
-                    }
+                    log.innerHTML = `<strong style="color:#166534">✔ Done — ${regenerated} images regenerated${errors ? ', <span style="color:#dc2626">' + errors + ' errors</span>' : ''}.</strong>`;
+                    log.innerHTML += '<br><span style="color:#555;font-size:12px">Click <em>Scan for Missing Sizes</em> to verify, or reload the page to see updated article images.</span>';
                 }
-                if ( regenAllBtn ) regenAllBtn.style.display = 'none';
-                scanBtn.click();
             }
 
             function dispatch() {

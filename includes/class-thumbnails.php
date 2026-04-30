@@ -1600,16 +1600,30 @@ class CSDT_Thumbnails {
                 continue;
             }
             $dir      = trailingslashit( $upload['basedir'] ) . trailingslashit( dirname( $meta['file'] ) );
+            $img_w    = (int) ( $meta['width']  ?? 0 );
+            $img_h    = (int) ( $meta['height'] ?? 0 );
             $has_miss = false;
             foreach ( $sizes as $size_name => $size_data ) {
                 if ( isset( $meta['sizes'][ $size_name ] ) ) {
+                    // Size is in metadata — flag missing only if the file is actually gone.
                     if ( ! file_exists( $dir . $meta['sizes'][ $size_name ]['file'] ) ) {
                         $has_miss = true;
                         break;
                     }
                 } else {
-                    $has_miss = true;
-                    break;
+                    // Size absent from metadata — only flag if the image is large enough
+                    // that WordPress should have created it (avoids false positives for
+                    // small images where WP intentionally skips certain sizes).
+                    $sz_w  = (int) ( $size_data['width']  ?? 0 );
+                    $sz_h  = (int) ( $size_data['height'] ?? 0 );
+                    $crop  = ! empty( $size_data['crop'] );
+                    $large_enough = $crop
+                        ? ( $sz_w > 0 && $sz_h > 0 && $img_w >= $sz_w && $img_h >= $sz_h )
+                        : ( ( $sz_w > 0 && $img_w > $sz_w ) || ( $sz_h > 0 && $img_h > $sz_h ) );
+                    if ( $large_enough ) {
+                        $has_miss = true;
+                        break;
+                    }
                 }
             }
             if ( $has_miss ) {
