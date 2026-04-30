@@ -257,6 +257,7 @@ class CSDT_Thumbnails {
                     <button type="button" class="cs-btn-primary" id="csdt-regen-scan-btn">🔍 <?php esc_html_e( 'Scan for Missing Sizes', 'cloudscale-devtools' ); ?></button>
                     <button type="button" class="cs-btn-primary" id="csdt-regen-all-btn" style="display:none;background:#2e7d32">⚙️ <?php esc_html_e( 'Regenerate All Missing', 'cloudscale-devtools' ); ?></button>
                     <span id="csdt-regen-progress" style="font-size:12px;color:#888"></span>
+                    <span id="csdt-regen-done-label" style="display:none;font-size:12px;font-weight:600;color:#166534"></span>
                 </div>
                 <div id="csdt-regen-log" style="display:none;margin-top:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px;font-size:13px;"></div>
                 <div id="csdt-regen-results" style="margin-top:14px;display:none"></div>
@@ -1591,6 +1592,12 @@ class CSDT_Thumbnails {
         }
         $candidate_ids = array_values( array_unique( $candidate_ids ) );
 
+        // Exclude images marked as incompatible by the batch regenerator.
+        $skip_ids = array_map( 'intval', (array) get_option( 'csdt_thumb_regen_skip', [] ) );
+        if ( $skip_ids ) {
+            $candidate_ids = array_values( array_diff( $candidate_ids, $skip_ids ) );
+        }
+
         $total   = count( $candidate_ids );
         $missing = [];
 
@@ -1677,6 +1684,14 @@ class CSDT_Thumbnails {
                 $batch[] = [ 'id' => $id, 'ok' => false, 'skipped' => false, 'error' => $new_meta->get_error_message() ];
             } else {
                 wp_update_attachment_metadata( $id, $new_meta );
+                // If regen produced no sizes for an image that has dimensions, the
+                // image format is incompatible with the server image library (e.g. CMYK
+                // JPEG). Mark it permanently so the scan won't loop on it forever.
+                if ( empty( $new_meta['sizes'] ) && ! empty( $new_meta['width'] ) ) {
+                    $skip   = (array) get_option( 'csdt_thumb_regen_skip', [] );
+                    $skip[] = $id;
+                    update_option( 'csdt_thumb_regen_skip', array_unique( $skip ), false );
+                }
                 $batch[] = [ 'id' => $id, 'ok' => true, 'skipped' => false, 'regenerated' => true ];
             }
         }

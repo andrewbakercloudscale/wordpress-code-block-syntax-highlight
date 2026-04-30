@@ -925,6 +925,7 @@
     const progress     = document.getElementById( 'csdt-regen-progress' );
     const log          = document.getElementById( 'csdt-regen-log' );
     const resultsDiv   = document.getElementById( 'csdt-regen-results' );
+    const doneLabel    = document.getElementById( 'csdt-regen-done-label' );
 
     let scanData = null; // last scan result
 
@@ -1052,11 +1053,11 @@
             function onAllDone() {
                 regenAllBtn.disabled = false;
                 scanBtn.disabled = false;
-                regenAllBtn.textContent = '⚙️ Regenerate All Missing';
-                regenAllBtn.style.display = 'none';
-                if ( log ) {
-                    log.innerHTML = `<strong style="color:#166534">✔ Done — ${regenerated} images regenerated${errors ? ', <span style="color:#dc2626">' + errors + ' errors</span>' : ''}.</strong>`;
-                    log.innerHTML += '<br><span style="color:#555;font-size:12px">Click <em>Scan for Missing Sizes</em> to verify, or reload the page to see updated article images.</span>';
+                if ( log ) log.style.display = 'none';
+                if ( doneLabel ) {
+                    doneLabel.innerHTML = `✔ Done — ${regenerated} regenerated${errors ? `, <span style="color:#dc2626">${errors} errors</span>` : ''}`;
+                    doneLabel.style.display = '';
+                    setTimeout( () => { doneLabel.style.display = 'none'; }, 10000 );
                 }
             }
 
