@@ -72,35 +72,35 @@ helpLib.run({
 <span style="font-size:.8em;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.07em;">After CloudScale</span>
 </div>
 <div style="display:flex;flex-direction:column;gap:10px;">
-<div style="display:grid;grid-template-columns:24px 1fr 1fr;gap:10px;align-items:center;background:#fff;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
-<span style="font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">1</span>
-<span style="color:#dc2626;font-size:.92em;line-height:1.5;">8 separate plugins to manage and update</span>
-<span style="color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">One plugin, one place to manage</span>
+<div style="display:flex;align-items:flex-start;gap:10px;background:#fff;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
+<span style="flex-shrink:0;width:24px;font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">1</span>
+<span style="flex:1;min-width:0;color:#dc2626;font-size:.92em;line-height:1.5;">8 separate plugins to manage and update</span>
+<span style="flex:1;min-width:0;color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">One plugin, one place to manage</span>
 </div>
-<div style="display:grid;grid-template-columns:24px 1fr 1fr;gap:10px;align-items:center;background:#f8fafc;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
-<span style="font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">2</span>
-<span style="color:#dc2626;font-size:.92em;line-height:1.5;">$300–$400/year in premium licenses</span>
-<span style="color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Free forever. No premium tier.</span>
+<div style="display:flex;align-items:flex-start;gap:10px;background:#f8fafc;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
+<span style="flex-shrink:0;width:24px;font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">2</span>
+<span style="flex:1;min-width:0;color:#dc2626;font-size:.92em;line-height:1.5;">$300–$400/year in premium licenses</span>
+<span style="flex:1;min-width:0;color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Free forever. No premium tier.</span>
 </div>
-<div style="display:grid;grid-template-columns:24px 1fr 1fr;gap:10px;align-items:center;background:#fff;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
-<span style="font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">3</span>
-<span style="color:#dc2626;font-size:.92em;line-height:1.5;">Conflicts between overlapping plugin features</span>
-<span style="color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Built as a system - designed to work together</span>
+<div style="display:flex;align-items:flex-start;gap:10px;background:#fff;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
+<span style="flex-shrink:0;width:24px;font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">3</span>
+<span style="flex:1;min-width:0;color:#dc2626;font-size:.92em;line-height:1.5;">Conflicts between overlapping plugin features</span>
+<span style="flex:1;min-width:0;color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Built as a system - designed to work together</span>
 </div>
-<div style="display:grid;grid-template-columns:24px 1fr 1fr;gap:10px;align-items:center;background:#f8fafc;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
-<span style="font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">4</span>
-<span style="color:#dc2626;font-size:.92em;line-height:1.5;">CDN scripts on every page (hurts Core Web Vitals)</span>
-<span style="color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Everything runs on your own server, zero external calls</span>
+<div style="display:flex;align-items:flex-start;gap:10px;background:#f8fafc;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
+<span style="flex-shrink:0;width:24px;font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">4</span>
+<span style="flex:1;min-width:0;color:#dc2626;font-size:.92em;line-height:1.5;">CDN scripts on every page (hurts Core Web Vitals)</span>
+<span style="flex:1;min-width:0;color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Everything runs on your own server, zero external calls</span>
 </div>
-<div style="display:grid;grid-template-columns:24px 1fr 1fr;gap:10px;align-items:center;background:#fff;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
-<span style="font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">5</span>
-<span style="color:#dc2626;font-size:.92em;line-height:1.5;">Site data routed through vendor servers</span>
-<span style="color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Data goes direct to the AI API you choose</span>
+<div style="display:flex;align-items:flex-start;gap:10px;background:#fff;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
+<span style="flex-shrink:0;width:24px;font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">5</span>
+<span style="flex:1;min-width:0;color:#dc2626;font-size:.92em;line-height:1.5;">Site data routed through vendor servers</span>
+<span style="flex:1;min-width:0;color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Data goes direct to the AI API you choose</span>
 </div>
-<div style="display:grid;grid-template-columns:24px 1fr 1fr;gap:10px;align-items:center;background:#f8fafc;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
-<span style="font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">6</span>
-<span style="color:#dc2626;font-size:.92em;line-height:1.5;">Security audit = expensive consultant or nothing</span>
-<span style="color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">AI security audit in 60 seconds, on demand</span>
+<div style="display:flex;align-items:flex-start;gap:10px;background:#f8fafc;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
+<span style="flex-shrink:0;width:24px;font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">6</span>
+<span style="flex:1;min-width:0;color:#dc2626;font-size:.92em;line-height:1.5;">Security audit = expensive consultant or nothing</span>
+<span style="flex:1;min-width:0;color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">AI security audit in 60 seconds, on demand</span>
 </div>
 </div>
 </div>
