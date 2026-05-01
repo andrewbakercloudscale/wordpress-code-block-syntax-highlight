@@ -17,11 +17,11 @@ class CSDT_AI_Dispatcher {
 
     private static function resolve_model( string $provider, string $model ): string {
         if ( $provider === 'gemini' ) {
-            if ( $model === '_auto' || $model === '_auto_deep' ) { return 'gemini-2.0-flash'; }
+            if ( $model === '_auto' || $model === '_auto_deep' ) { return 'gemini-1.5-pro'; }
             return $model;
         }
         // Anthropic
-        if ( $model === '_auto' )      { return 'claude-sonnet-4-6'; }
+        if ( $model === '_auto' )      { return 'claude-opus-4-7'; }
         if ( $model === '_auto_deep' ) { return 'claude-opus-4-7'; }
         return $model;
     }
@@ -240,7 +240,8 @@ class CSDT_AI_Dispatcher {
      *
      * @throws \RuntimeException on API or network error.
      */
-    public static function call_openai_text( string $system, string $user_message, int $max_tokens = 300 ): string {
+    public static function call_openai_text( string $system, string $user_message, int $max_tokens = 300, string $model = 'gpt-4o-mini' ): string {
+        if ( $model === '_auto' ) { $model = 'gpt-4o'; }
         $key = get_option( 'csdt_devtools_openai_key', '' );
         if ( ! $key ) { throw new \RuntimeException( 'No OpenAI API key configured.' ); }
 
@@ -251,7 +252,7 @@ class CSDT_AI_Dispatcher {
                 'Content-Type'  => 'application/json',
             ],
             'body' => wp_json_encode( [
-                'model'      => 'gpt-4o-mini',
+                'model'      => $model,
                 'max_tokens' => $max_tokens,
                 'messages'   => [
                     [ 'role' => 'system', 'content' => $system ],

@@ -3,7 +3,7 @@
  * Plugin Name: CloudScale Cyber and Devtools
  * Plugin URI: https://andrewbaker.ninja
  * Description: Free AI penetration testing, brute-force protection, 2FA, passkeys, AI site audit, AI debugging, performance monitor, SMTP, SQL tool, server logs, vulnerability scanner, and Cloudflare uptime monitor. No subscription, no cloud dependency.
- * Version: 1.9.596
+ * Version: 1.9.620
  * Author: Andrew Baker
  * Author URI: https://andrewbaker.ninja
  * License: GPL-2.0-or-later
@@ -54,7 +54,7 @@ if ( ! defined( 'SAVEQUERIES' ) && get_option( 'csdt_devtools_perf_monitor_enabl
  */
 class CloudScale_DevTools {
 
-    const VERSION      = '1.9.596';
+    const VERSION      = '1.9.620';
     const HLJS_VERSION = '11.11.1';
     const HLJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/';
     const TOOLS_SLUG   = 'cloudscale-devtools';
@@ -370,12 +370,15 @@ class CloudScale_DevTools {
         add_action( 'wp_ajax_csdt_devtools_social_cf_test',     [ 'CSDT_Thumbnails', 'ajax_social_cf_test' ] );
         add_action( 'wp_ajax_csdt_devtools_cf_purge',           [ 'CSDT_Thumbnails', 'ajax_cf_purge' ] );
         add_action( 'wp_ajax_csdt_devtools_cf_save',            [ 'CSDT_Thumbnails', 'ajax_cf_save' ] );
-        add_action( 'wp_ajax_csdt_devtools_ai_image_save_key',  [ 'CSDT_Thumbnails', 'ajax_ai_image_save_key' ] );
-        add_action( 'wp_ajax_csdt_devtools_ai_image_test_key', [ 'CSDT_Thumbnails', 'ajax_ai_image_test_key' ] );
-        add_action( 'wp_ajax_csdt_devtools_ai_image_scan',      [ 'CSDT_Thumbnails', 'ajax_ai_image_scan' ] );
-        add_action( 'wp_ajax_csdt_devtools_ai_image_generate',  [ 'CSDT_Thumbnails', 'ajax_ai_image_generate' ] );
-        add_action( 'wp_ajax_csdt_devtools_ai_image_pick',      [ 'CSDT_Thumbnails', 'ajax_ai_image_pick' ] );
-        add_action( 'wp_ajax_csdt_devtools_ai_image_discard',   [ 'CSDT_Thumbnails', 'ajax_ai_image_discard' ] );
+        add_action( 'wp_ajax_csdt_devtools_ai_image_save_key',      [ 'CSDT_Thumbnails', 'ajax_ai_image_save_key' ] );
+        add_action( 'wp_ajax_csdt_devtools_ai_image_test_key',     [ 'CSDT_Thumbnails', 'ajax_ai_image_test_key' ] );
+        add_action( 'wp_ajax_csdt_devtools_ai_image_scan',          [ 'CSDT_Thumbnails', 'ajax_ai_image_scan' ] );
+        add_action( 'wp_ajax_csdt_devtools_ai_image_write_prompt',  [ 'CSDT_Thumbnails', 'ajax_ai_image_write_prompt' ] );
+        add_action( 'wp_ajax_csdt_devtools_ai_image_generate',      [ 'CSDT_Thumbnails', 'ajax_ai_image_generate' ] );
+        add_action( 'wp_ajax_csdt_devtools_ai_image_pick',          [ 'CSDT_Thumbnails', 'ajax_ai_image_pick' ] );
+        add_action( 'wp_ajax_csdt_devtools_ai_image_discard',       [ 'CSDT_Thumbnails', 'ajax_ai_image_discard' ] );
+        add_action( 'wp_ajax_csdt_devtools_ai_image_save_sysprompt', [ 'CSDT_Thumbnails', 'ajax_ai_image_save_sysprompt' ] );
+        add_action( 'wp_ajax_csdt_devtools_ai_image_save_settings',  [ 'CSDT_Thumbnails', 'ajax_ai_image_save_settings' ] );
 
         // SMTP AJAX
         add_action( 'wp_ajax_csdt_devtools_smtp_save',      [ 'CSDT_SMTP', 'ajax_smtp_save' ] );

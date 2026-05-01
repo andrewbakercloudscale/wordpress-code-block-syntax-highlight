@@ -317,20 +317,25 @@ class CSDT_Thumbnails {
 
     // ─── Featured Images tab ─────────────────────────────────────────────────
 
-    private const DEFAULT_IMG_SYSTEM_PROMPT = 'You write DALL-E 3 prompts for WordPress blog post header images. Output ONLY the prompt — no preamble, no explanations.
+    private const DEFAULT_IMG_SYSTEM_PROMPT = 'You write DALL-E 3 prompts for 1792x1024 WordPress blog post header images. Output ONLY the prompt — no labels, preamble, or explanation.
 
-STRICT RULES:
-1. First identify the CORE HUMAN SUBJECT of the article (what is it *actually* about at a conceptual level?). A "Technology Leadership" article is about LEADERSHIP AND PEOPLE — not servers. A "PostgreSQL tuning" article is about DATABASE INTERNALS — not a generic data centre. A "Stablecoins" article is about DIGITAL CURRENCY — not abstract circuits.
-2. NEVER generate: server racks, data centres, network cables, circuit boards, women standing in server rooms, generic glowing blue/green tech atmospheres, or any "person at a laptop" stock-photo clichés.
-3. Match the visual style to the topic:
-   - Leadership / strategy / HR → editorial photography of people, teams, boardrooms, or conceptual metaphors (chess, maps, compasses)
-   - Specific databases or open-source tools → the tool\'s actual visual identity (e.g. PostgreSQL elephant, Redis cube) in a clean technical context
-   - Finance / crypto / economics → currency concepts, clean financial charts, gold/silver tones
-   - Self-assessment / learning / growth → reflection metaphors, radar charts, upward journeys, growth visuals
-   - Security / vulnerability → shields, locks, fortress concepts — NOT server rooms
-   - Cloud infrastructure → abstract architecture diagrams, sky/cloud metaphors — NOT cable-filled data centres
-4. Prefer clean editorial illustration or conceptual art over generic photorealism.
-5. No text or typography anywhere in the image.';
+GOAL: A header image that is unmistakably about THIS specific article. Include the article title as readable text and weave in real technical terms or key concepts from the article. Everything else — colours, layout, style — is DALL-E\'s creative choice.
+
+REQUIRED:
+- Article title as visible text in the image
+- 3–4 real technical terms or concepts from the article as labels or diagram nodes
+
+DO NOT specify: exact colour values, exact hex codes, exact panel counts, exact arrow wording, or any other rigid visual detail. Give DALL-E creative latitude on all of that.
+
+GOOD prompt style:
+"Technical infographic header. Title: \'AURORA POSTGRESQL WRITE THROUGHPUT — SATURATION & TUNING GUIDE\'. Diagram showing the write path from WAL Generation through Commit Queue to distributed storage nodes, with callouts for key tuning parameters: max_wal_size, checkpoint_timeout, p99 latency, DiskQueueDepth."
+
+BAD — over-specified, never write like this:
+"Dark navy and orange infographic. Title in 48px bold white Helvetica at top-left. Four equal panels below with teal borders. Exact orange #FF6B35 arrows connecting exactly 6 nodes..."
+
+RULES:
+- Start with the visual style or layout idea, never "Create" or "Generate"
+- No physical server rooms or rack hardware';
 
     public static function render_ai_images_panel(): void {
         $openai_key    = (string) get_option( 'csdt_devtools_openai_key', '' );
@@ -338,6 +343,9 @@ STRICT RULES:
         $gemini_key    = (string) get_option( 'csdt_devtools_gemini_key', '' );
         $saved_vendor  = (string) get_option( 'csdt_devtools_prompt_vendor', 'openai' );
         $saved_model   = (string) get_option( 'csdt_devtools_prompt_model', 'gpt-4o-mini' );
+        $saved_style   = (string) get_option( 'csdt_devtools_img_style', 'auto' );
+        $saved_quality = (string) get_option( 'csdt_devtools_img_quality', 'hd' );
+        $saved_dual    = (bool)   get_option( 'csdt_devtools_img_dual', false );
         $system_prompt = (string) get_option( 'csdt_devtools_img_system_prompt', self::DEFAULT_IMG_SYSTEM_PROMPT );
         $keys_json     = wp_json_encode( [
             'openai'    => $openai_key,
@@ -363,6 +371,9 @@ STRICT RULES:
                 var csdtImgKeys = <?php echo $keys_json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON-encoded ?>;
                 var csdtImgVendor = <?php echo wp_json_encode( $saved_vendor ); ?>;
                 var csdtImgModel  = <?php echo wp_json_encode( $saved_model ); ?>;
+                var csdtImgStyle   = <?php echo wp_json_encode( $saved_style ); ?>;
+                var csdtImgQuality = <?php echo wp_json_encode( $saved_quality ); ?>;
+                var csdtImgDual    = <?php echo wp_json_encode( $saved_dual ); ?>;
                 var csdtImgDefaultSysprompt = <?php echo wp_json_encode( self::DEFAULT_IMG_SYSTEM_PROMPT ); ?>;
                 </script>
 
@@ -437,22 +448,9 @@ STRICT RULES:
                     <span class="cs-sec-label"><?php esc_html_e( 'Image quality:', 'cloudscale-devtools' ); ?></span>
                     <div class="cs-sec-control">
                         <select id="cs-ai-img-quality" class="cs-sec-select">
-                            <option value="standard"><?php esc_html_e( 'Standard ($0.04 / image)', 'cloudscale-devtools' ); ?></option>
-                            <option value="hd"><?php esc_html_e( 'HD ($0.08 / image)', 'cloudscale-devtools' ); ?></option>
+                            <option value="standard" <?php selected( $saved_quality, 'standard' ); ?>><?php esc_html_e( 'Standard ($0.04 / image)', 'cloudscale-devtools' ); ?></option>
+                            <option value="hd" <?php selected( $saved_quality, 'hd' ); ?>><?php esc_html_e( 'HD ($0.08 / image)', 'cloudscale-devtools' ); ?></option>
                         </select>
-                    </div>
-                </div>
-
-                <div class="cs-sec-row">
-                    <span class="cs-sec-label"><?php esc_html_e( 'Sort by:', 'cloudscale-devtools' ); ?></span>
-                    <div class="cs-sec-control">
-                        <select id="cs-ai-img-sort" class="cs-sec-select">
-                            <option value="newest"><?php esc_html_e( 'Newest first', 'cloudscale-devtools' ); ?></option>
-                            <option value="oldest"><?php esc_html_e( 'Oldest first', 'cloudscale-devtools' ); ?></option>
-                            <option value="popular"><?php esc_html_e( 'Most popular (by views)', 'cloudscale-devtools' ); ?></option>
-                            <option value="longest"><?php esc_html_e( 'Longest posts first', 'cloudscale-devtools' ); ?></option>
-                        </select>
-                        <span class="cs-hint"><?php esc_html_e( 'Choose which posts to tackle first — new content or your most-read pages.', 'cloudscale-devtools' ); ?></span>
                     </div>
                 </div>
 
@@ -460,7 +458,7 @@ STRICT RULES:
                     <span class="cs-sec-label"><?php esc_html_e( 'Options:', 'cloudscale-devtools' ); ?></span>
                     <div class="cs-sec-control">
                         <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-                            <input type="checkbox" id="cs-ai-img-dual" style="width:16px;height:16px">
+                            <input type="checkbox" id="cs-ai-img-dual" style="width:16px;height:16px" <?php checked( $saved_dual ); ?>>
                             <?php esc_html_e( 'Generate 2 options per post (costs 2× per click)', 'cloudscale-devtools' ); ?>
                         </label>
                     </div>
@@ -471,14 +469,14 @@ STRICT RULES:
                     <span class="cs-sec-label"><?php esc_html_e( 'Image style:', 'cloudscale-devtools' ); ?></span>
                     <div class="cs-sec-control">
                         <select id="cs-ai-img-style" class="cs-sec-select">
-                            <option value="auto"><?php esc_html_e( 'Auto (system prompt decides)', 'cloudscale-devtools' ); ?></option>
-                            <option value="technical_infographic"><?php esc_html_e( 'Technical infographic', 'cloudscale-devtools' ); ?></option>
-                            <option value="photorealistic"><?php esc_html_e( 'Photorealistic', 'cloudscale-devtools' ); ?></option>
-                            <option value="editorial"><?php esc_html_e( 'Editorial photography', 'cloudscale-devtools' ); ?></option>
-                            <option value="abstract"><?php esc_html_e( 'Abstract / geometric art', 'cloudscale-devtools' ); ?></option>
-                            <option value="cartoon"><?php esc_html_e( 'Cartoon / illustration', 'cloudscale-devtools' ); ?></option>
-                            <option value="dali"><?php esc_html_e( 'Surrealist (Salvador Dali)', 'cloudscale-devtools' ); ?></option>
-                            <option value="minimalist"><?php esc_html_e( 'Minimalist', 'cloudscale-devtools' ); ?></option>
+                            <option value="auto" <?php selected( $saved_style, 'auto' ); ?>><?php esc_html_e( 'Auto (system prompt decides)', 'cloudscale-devtools' ); ?></option>
+                            <option value="technical_infographic" <?php selected( $saved_style, 'technical_infographic' ); ?>><?php esc_html_e( 'Technical infographic', 'cloudscale-devtools' ); ?></option>
+                            <option value="photorealistic" <?php selected( $saved_style, 'photorealistic' ); ?>><?php esc_html_e( 'Photorealistic', 'cloudscale-devtools' ); ?></option>
+                            <option value="editorial" <?php selected( $saved_style, 'editorial' ); ?>><?php esc_html_e( 'Editorial photography', 'cloudscale-devtools' ); ?></option>
+                            <option value="abstract" <?php selected( $saved_style, 'abstract' ); ?>><?php esc_html_e( 'Abstract / geometric art', 'cloudscale-devtools' ); ?></option>
+                            <option value="cartoon" <?php selected( $saved_style, 'cartoon' ); ?>><?php esc_html_e( 'Cartoon / illustration', 'cloudscale-devtools' ); ?></option>
+                            <option value="dali" <?php selected( $saved_style, 'dali' ); ?>><?php esc_html_e( 'Surrealist (Salvador Dali)', 'cloudscale-devtools' ); ?></option>
+                            <option value="minimalist" <?php selected( $saved_style, 'minimalist' ); ?>><?php esc_html_e( 'Minimalist', 'cloudscale-devtools' ); ?></option>
                         </select>
                         <span class="cs-hint"><?php esc_html_e( 'Override the visual style. "Auto" defers to your system prompt instructions below.', 'cloudscale-devtools' ); ?></span>
                     </div>
@@ -500,9 +498,18 @@ STRICT RULES:
                     </div>
                 </div>
 
-                <div style="margin:16px 0 12px;display:flex;gap:10px;flex-wrap:wrap">
-                    <button type="button" class="cs-btn-primary" id="cs-ai-img-scan-btn" data-mode="missing">🔍 <?php esc_html_e( 'Find posts without featured image', 'cloudscale-devtools' ); ?></button>
-                    <button type="button" class="cs-btn-secondary" id="cs-ai-img-scan-with-btn" data-mode="with_image" style="background:#475569;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer">🖼 <?php esc_html_e( 'Find posts with featured image', 'cloudscale-devtools' ); ?></button>
+                <div style="margin:16px 0 12px;display:flex;flex-direction:column;gap:8px">
+                    <button type="button" class="cs-btn-primary" id="cs-ai-img-scan-btn" data-mode="missing" style="width:100%;text-align:center;font-size:13px;padding:10px 16px">🔍 <?php esc_html_e( 'Find posts without featured image', 'cloudscale-devtools' ); ?></button>
+                    <button type="button" id="cs-ai-img-scan-with-btn" data-mode="with_image" style="width:100%;text-align:center;background:#475569;color:#fff;border:none;border-radius:5px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer">🖼 <?php esc_html_e( 'Find posts with featured image', 'cloudscale-devtools' ); ?></button>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                    <span style="font-size:12px;color:#64748b;font-weight:600"><?php esc_html_e( 'Sort:', 'cloudscale-devtools' ); ?></span>
+                    <select id="cs-ai-img-sort" style="font-size:12px;padding:3px 8px;border:1px solid #cbd5e1;border-radius:4px;background:#fff;color:#334155">
+                        <option value="newest"><?php esc_html_e( 'Newest first', 'cloudscale-devtools' ); ?></option>
+                        <option value="oldest"><?php esc_html_e( 'Oldest first', 'cloudscale-devtools' ); ?></option>
+                        <option value="popular"><?php esc_html_e( 'Most popular', 'cloudscale-devtools' ); ?></option>
+                        <option value="longest"><?php esc_html_e( 'Longest first', 'cloudscale-devtools' ); ?></option>
+                    </select>
                 </div>
                 <div id="cs-ai-img-results" style="display:none;margin-top:4px"></div>
             </div>
@@ -1945,6 +1952,19 @@ STRICT RULES:
         wp_send_json_success( [ 'saved' => true ] );
     }
 
+    // ─── AJAX: save image style / quality / dual settings ───────────────
+
+    public static function ajax_ai_image_save_settings(): void {
+        check_ajax_referer( self::THUMB_NONCE, 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+        if ( isset( $_POST['style'] ) )   { update_option( 'csdt_devtools_img_style',   sanitize_key( wp_unslash( $_POST['style'] ) ),        false ); }
+        if ( isset( $_POST['quality'] ) ) { update_option( 'csdt_devtools_img_quality', sanitize_key( wp_unslash( $_POST['quality'] ) ),       false ); }
+        if ( isset( $_POST['dual'] ) )    { update_option( 'csdt_devtools_img_dual',    rest_sanitize_boolean( wp_unslash( $_POST['dual'] ) ), false ); }
+        wp_send_json_success();
+    }
+
     // ─── AJAX: write DALL-E prompt via AI (step 1 of 2) ─────────────────
 
     public static function ajax_ai_image_write_prompt(): void {
@@ -1973,14 +1993,14 @@ STRICT RULES:
         $excerpt    = $post->post_excerpt ?: wp_trim_words( $content, 80 );
         $categories = implode( ', ', wp_list_pluck( get_the_category( $post_id ), 'name' ) );
         $tags       = implode( ', ', wp_list_pluck( get_the_tags( $post_id ) ?: [], 'name' ) );
-        $intro      = mb_substr( $content, 0, 600 );
+        $full_body  = mb_substr( $content, 0, 4000 );
 
         $context_parts = [ "Post title: \"{$title}\"" ];
-        if ( $categories )                                   { $context_parts[] = "Categories: {$categories}"; }
-        if ( $tags )                                         { $context_parts[] = "Tags: {$tags}"; }
-        $context_parts[] = "Excerpt: \"{$excerpt}\"";
-        if ( $intro && strlen( $intro ) > strlen( $excerpt ) ) { $context_parts[] = "Article intro: \"{$intro}\""; }
-        $context_str = implode( "\n", $context_parts );
+        if ( $categories ) { $context_parts[] = "Categories: {$categories}"; }
+        if ( $tags )       { $context_parts[] = "Tags: {$tags}"; }
+        if ( $excerpt )    { $context_parts[] = "Excerpt: \"{$excerpt}\""; }
+        $context_parts[] = "Article content:\n{$full_body}";
+        $context_str = implode( "\n\n", $context_parts );
 
         $style_map = [
             'technical_infographic' => 'clean flat-design technical infographic, vector illustration aesthetic, no photorealism',
@@ -1994,21 +2014,21 @@ STRICT RULES:
         $style_instruction = isset( $style_map[ $style ] ) ? " Required visual style: {$style_map[$style]}." : '';
 
         $system_msg = (string) get_option( 'csdt_devtools_img_system_prompt', self::DEFAULT_IMG_SYSTEM_PROMPT );
-        $user_msg   = "{$context_str}\n\nWrite a DALL-E 3 prompt for a 1792×1024 professional blog post header image.{$style_instruction} Under 150 words.";
+        $user_msg   = "{$context_str}\n\nWrite the DALL-E 3 prompt for this article's header image.{$style_instruction}";
 
         try {
             switch ( $prompt_vendor ) {
                 case 'openai':
-                    $prompt = CSDT_AI_Dispatcher::call_openai_text( $system_msg, $user_msg, 300, $prompt_model );
+                    $prompt = CSDT_AI_Dispatcher::call_openai_text( $system_msg, $user_msg, 600, $prompt_model );
                     break;
                 case 'anthropic':
-                    $prompt = CSDT_AI_Dispatcher::call( $system_msg, $user_msg, $prompt_model, 300, 'anthropic' );
+                    $prompt = CSDT_AI_Dispatcher::call( $system_msg, $user_msg, $prompt_model, 600, 'anthropic' );
                     break;
                 case 'gemini':
-                    $prompt = CSDT_AI_Dispatcher::call( $system_msg, $user_msg, $prompt_model, 300, 'gemini' );
+                    $prompt = CSDT_AI_Dispatcher::call( $system_msg, $user_msg, $prompt_model, 600, 'gemini' );
                     break;
                 default:
-                    $prompt = "Professional blog header image for an article titled \"{$title}\". Wide landscape format, no text or typography.";
+                    $prompt = "Professional blog header image for an article titled \"{$title}\". High-quality, wide landscape format.";
                     break;
             }
         } catch ( \RuntimeException $e ) {
@@ -2054,31 +2074,31 @@ STRICT RULES:
             $excerpt    = $post->post_excerpt ?: wp_trim_words( $content, 80 );
             $categories = implode( ', ', wp_list_pluck( get_the_category( $post_id ), 'name' ) );
             $tags       = implode( ', ', wp_list_pluck( get_the_tags( $post_id ) ?: [], 'name' ) );
-            $intro      = mb_substr( $content, 0, 600 );
+            $full_body  = mb_substr( $content, 0, 4000 );
 
             $context_parts = [ "Post title: \"{$title}\"" ];
             if ( $categories ) { $context_parts[] = "Categories: {$categories}"; }
             if ( $tags )       { $context_parts[] = "Tags: {$tags}"; }
-            $context_parts[] = "Excerpt: \"{$excerpt}\"";
-            if ( $intro && strlen( $intro ) > strlen( $excerpt ) ) { $context_parts[] = "Article intro: \"{$intro}\""; }
-            $context_str = implode( "\n", $context_parts );
+            if ( $excerpt )    { $context_parts[] = "Excerpt: \"{$excerpt}\""; }
+            $context_parts[] = "Article content:\n{$full_body}";
+            $context_str = implode( "\n\n", $context_parts );
 
             $system_msg = (string) get_option( 'csdt_devtools_img_system_prompt', self::DEFAULT_IMG_SYSTEM_PROMPT );
-            $user_msg   = "{$context_str}\n\nWrite a DALL-E 3 prompt for a 1792×1024 professional blog post header image. Under 150 words.";
+            $user_msg   = "{$context_str}\n\nWrite the DALL-E 3 prompt for this article's header image.";
 
             try {
                 switch ( $prompt_vendor ) {
                     case 'openai':
-                        $prompt = CSDT_AI_Dispatcher::call_openai_text( $system_msg, $user_msg, 300, $prompt_model );
+                        $prompt = CSDT_AI_Dispatcher::call_openai_text( $system_msg, $user_msg, 600, $prompt_model );
                         break;
                     case 'anthropic':
-                        $prompt = CSDT_AI_Dispatcher::call( $system_msg, $user_msg, $prompt_model, 300, 'anthropic' );
+                        $prompt = CSDT_AI_Dispatcher::call( $system_msg, $user_msg, $prompt_model, 600, 'anthropic' );
                         break;
                     case 'gemini':
-                        $prompt = CSDT_AI_Dispatcher::call( $system_msg, $user_msg, $prompt_model, 300, 'gemini' );
+                        $prompt = CSDT_AI_Dispatcher::call( $system_msg, $user_msg, $prompt_model, 600, 'gemini' );
                         break;
                     default:
-                        $prompt = "Professional blog header image for an article titled \"{$title}\". High-quality, wide landscape format, no text or typography.";
+                        $prompt = "Professional blog header image for an article titled \"{$title}\". High-quality, wide landscape format.";
                         break;
                 }
             } catch ( \RuntimeException $e ) {
@@ -2126,8 +2146,8 @@ STRICT RULES:
 
             $options[] = [
                 'attach_id' => $attach_id,
-                'thumb_url' => wp_get_attachment_image_url( $attach_id, 'medium' ),
-                'full_url'  => wp_get_attachment_image_url( $attach_id, 'large' ),
+                'thumb_url' => wp_get_attachment_image_url( $attach_id, 'large' ),
+                'full_url'  => wp_get_attachment_url( $attach_id ),
             ];
         }
 

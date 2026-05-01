@@ -1210,6 +1210,12 @@
             .replace( />/g, '&gt;' ).replace( /"/g, '&quot;' );
     }
 
+    function decodeHtml( str ) {
+        const el = document.createElement( 'textarea' );
+        el.innerHTML = str;
+        return el.value;
+    }
+
     function init() {
         const saveKeyBtn = document.getElementById( 'cs-ai-img-save-key' );
         const scanBtn    = document.getElementById( 'cs-ai-img-scan-btn' );
@@ -1219,9 +1225,9 @@
 
         // ── Vendor / model / key setup ────────────────────────────────────
         const MODELS = {
-            openai:    [ { value: 'gpt-4o-mini', label: 'GPT-4o mini (fast, recommended)' }, { value: 'gpt-4o', label: 'GPT-4o (best quality)' } ],
-            anthropic: [ { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (fast)' }, { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' }, { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (latest)' } ],
-            gemini:    [ { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (fast)' }, { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' } ],
+            openai:    [ { value: '_auto', label: 'Automatic (best)' }, { value: 'gpt-4o-mini', label: 'GPT-4o mini (fast)' }, { value: 'gpt-4o', label: 'GPT-4o' } ],
+            anthropic: [ { value: '_auto', label: 'Automatic (best)' }, { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (fast)' }, { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' }, { value: 'claude-opus-4-7', label: 'Claude Opus 4.7 (best)' } ],
+            gemini:    [ { value: '_auto', label: 'Automatic (best)' }, { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (fast)' }, { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' } ],
             none:      [],
         };
         const KEY_HINTS = {
@@ -1256,9 +1262,10 @@
             if ( keyLabel ) keyLabel.textContent = vendor === 'openai' ? 'OpenAI API Key:' : vendor === 'anthropic' ? 'Anthropic API Key:' : vendor === 'gemini' ? 'Google API Key:' : 'API Key:';
             if ( keyHint  ) keyHint.textContent  = KEY_HINTS[ vendor ] || '';
             if ( keyInput ) {
+                const wasVisible     = keyInput.type === 'text';
                 keyInput.placeholder = KEY_PLACEHOLDERS[ vendor ] || '';
                 keyInput.value       = storedKeys[ vendor ] || '';
-                keyInput.type        = 'password';
+                keyInput.type        = wasVisible ? 'text' : 'password';
             }
             if ( keyStatus ) keyStatus.innerHTML = storedKeys[ vendor ] ? '<span style="color:#2e7d32">✓ Key saved</span>' : '';
 
@@ -1399,7 +1406,25 @@
         const sortEl      = document.getElementById( 'cs-ai-img-sort' );
         const withImgBtn  = document.getElementById( 'cs-ai-img-scan-with-btn' );
         const styleEl     = document.getElementById( 'cs-ai-img-style' );
+        const qualityEl   = document.getElementById( 'cs-ai-img-quality' );
+        const dualEl      = document.getElementById( 'cs-ai-img-dual' );
         let   activeMode  = 'missing';
+
+        // Initialise style / quality / dual from saved PHP values.
+        if ( styleEl   && window.csdtImgStyle   ) { styleEl.value     = window.csdtImgStyle; }
+        if ( qualityEl && window.csdtImgQuality  ) { qualityEl.value   = window.csdtImgQuality; }
+        if ( dualEl    && window.csdtImgDual     ) { dualEl.checked    = true; }
+
+        // Auto-save style / quality / dual whenever they change.
+        function saveSettings() {
+            const style   = styleEl?.value   || 'auto';
+            const quality = qualityEl?.value || 'hd';
+            const dual    = dualEl?.checked  ? '1' : '0';
+            post( 'csdt_devtools_ai_image_save_settings', { style, quality, dual } );
+        }
+        if ( styleEl   ) { styleEl.addEventListener(   'change', saveSettings ); }
+        if ( qualityEl ) { qualityEl.addEventListener( 'change', saveSettings ); }
+        if ( dualEl    ) { dualEl.addEventListener(    'change', saveSettings ); }
 
         if ( sortEl ) {
             sortEl.addEventListener( 'change', () => {
@@ -1514,17 +1539,17 @@
                     ? `<img src="${esc(p.thumb_url)}" style="width:80px;height:42px;object-fit:cover;border-radius:3px;border:1px solid #ddd">`
                     : '';
                 html += `
-                <div id="cs-ai-row-${esc(String(p.post_id))}" style="display:flex;align-items:center;gap:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 12px;flex-wrap:wrap">
-                    <div style="flex:1;min-width:120px">
-                        <a href="${esc(p.post_url)}" target="_blank" style="font-size:13px;font-weight:600;color:#1565c0;text-decoration:none;display:block;margin-bottom:2px">${esc(p.title)}</a>
+                <div id="cs-ai-row-${esc(String(p.post_id))}" style="display:flex;align-items:stretch;gap:0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">
+                    <div style="flex:1;padding:10px 12px;min-width:0">
+                        <a href="${esc(p.post_url)}" target="_blank" style="font-size:13px;font-weight:600;color:#1565c0;text-decoration:none;display:block;margin-bottom:2px">${esc(decodeHtml(p.title))}</a>
                         ${meta}
+                        <span id="cs-ai-status-${esc(String(p.post_id))}" style="display:block;font-size:11px;color:#555;word-break:break-word;margin-top:4px"></span>
                     </div>
-                    <div id="cs-ai-thumb-${esc(String(p.post_id))}" style="width:80px;flex-shrink:0">${existingThumb}</div>
+                    <div id="cs-ai-thumb-${esc(String(p.post_id))}" style="flex-shrink:0;align-self:center;padding:0 6px">${existingThumb}</div>
                     <button type="button" class="cs-btn-primary cs-ai-gen-btn" data-post-id="${esc(String(p.post_id))}"
-                            style="font-size:12px;padding:5px 12px;white-space:nowrap">
+                            style="font-size:12px;padding:0 14px;white-space:nowrap;border-radius:0;flex-shrink:0;min-width:90px">
                         ${btnLabel}
                     </button>
-                    <span id="cs-ai-status-${esc(String(p.post_id))}" style="font-size:12px;color:#555;min-width:80px"></span>
                 </div>`;
             }
             html += '</div>';
@@ -1568,13 +1593,16 @@
                         </div>` ).join( '' ) +
                       `</div>`
                     : `<div style="padding:24px 20px 12px;text-align:center">
-                          <img src="${esc(options[0].thumb_url)}" style="max-width:100%;max-height:420px;border-radius:6px;border:1px solid #e2e8f0;object-fit:contain;box-shadow:0 4px 24px rgba(0,0,0,.15)">
+                          <a href="${esc(options[0].full_url || options[0].thumb_url)}" target="_blank" rel="noopener" title="Tap to view full size (1792×1024)">
+                              <img src="${esc(options[0].thumb_url)}" style="max-width:100%;border-radius:6px;border:1px solid #e2e8f0;object-fit:contain;box-shadow:0 4px 24px rgba(0,0,0,.15);cursor:zoom-in;display:block">
+                          </a>
+                          <p style="margin:6px 0 0;font-size:11px;color:#94a3b8">Tap image to view full size (1792×1024)</p>
                        </div>`;
                 const promptHtml = dallePrompt
-                    ? `<details style="margin:0 20px 12px;font-size:11px;color:#64748b">
-                           <summary style="cursor:pointer;user-select:none;color:#94a3b8">DALL-E prompt sent ▸</summary>
-                           <p style="margin:6px 0 0;padding:8px;background:#f1f5f9;border-radius:4px;font-family:monospace;font-size:11px;line-height:1.5;white-space:pre-wrap;color:#334155">${esc(dallePrompt)}</p>
-                       </details>`
+                    ? `<div style="margin:0 20px 14px">
+                           <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px">DALL-E prompt used</p>
+                           <p style="margin:0;padding:10px;background:#f1f5f9;border-radius:4px;font-family:monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;color:#334155;border:1px solid #e2e8f0">${esc(dallePrompt)}</p>
+                       </div>`
                     : '';
                 const footerBtns = isMult
                     ? `<button type="button" class="cs-modal-regen"  style="background:#6366f1;color:#fff;border:none;border-radius:5px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer">↺ Regenerate both</button>
@@ -1679,10 +1707,8 @@
                     }
                     const writtenPrompt = res.data?.prompt || '';
 
-                    // Step 2 — show prompt for review/edit, then generate image.
-                    promptReviewModal.open( writtenPrompt, {
-                        onCancel: () => { if ( statusEl ) statusEl.textContent = ''; },
-                        onGenerate: ( editedPrompt ) => {
+                    // Step 2 — send directly to DALL-E (no review modal).
+                    ( ( editedPrompt ) => {
                             btn.disabled    = true;
                             btn.textContent = dual === '1' ? '⏳ Generating 2 options…' : '⏳ Generating…';
                             if ( statusEl ) statusEl.innerHTML = '<span style="color:#94a3b8;font-size:11px">⏳ Generating…</span>';
@@ -1737,18 +1763,17 @@
                                         onCancel:     () => { doDiscard(); btn.textContent = '✨ Generate'; if ( statusEl ) statusEl.textContent = ''; },
                                     }, dallePrompt );
                                 } )
-                                .catch( () => {
+                                .catch( e => {
                                     btn.disabled    = false;
                                     btn.textContent = '✨ Generate';
-                                    if ( statusEl ) statusEl.innerHTML = '<span style="color:#c62828">✗ Error</span>';
+                                    if ( statusEl ) statusEl.innerHTML = '<span style="color:#c62828;font-size:11px" title="' + esc( e?.message || '' ) + '">✗ ' + esc( e?.message || 'Request failed' ) + '</span>';
                                 } );
-                        },
-                    } );
+                    } )( writtenPrompt );
                 } )
-                .catch( () => {
+                .catch( e => {
                     btn.disabled    = false;
                     btn.textContent = '✨ Generate';
-                    if ( statusEl ) statusEl.innerHTML = '<span style="color:#c62828">✗ Error</span>';
+                    if ( statusEl ) statusEl.innerHTML = '<span style="color:#c62828;font-size:11px" title="' + esc( e?.message || '' ) + '">✗ ' + esc( e?.message || 'Request failed' ) + '</span>';
                 } );
         }
     }
