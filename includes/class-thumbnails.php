@@ -410,8 +410,12 @@ class CSDT_Thumbnails {
                     </div>
                 </div>
 
-                <div style="margin:16px 0 12px">
+                <div style="margin:16px 0 12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
                     <button type="button" class="cs-btn-primary" id="cs-ai-img-scan-btn">🔍 <?php esc_html_e( 'Find posts without featured image', 'cloudscale-devtools' ); ?></button>
+                    <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:#475569">
+                        <input type="checkbox" id="cs-ai-img-show-all" style="width:16px;height:16px">
+                        <?php esc_html_e( 'Show all posts (including those with images)', 'cloudscale-devtools' ); ?>
+                    </label>
                 </div>
                 <div id="cs-ai-img-results" style="display:none;margin-top:4px"></div>
             </div>
@@ -1735,7 +1739,8 @@ class CSDT_Thumbnails {
             wp_send_json_error( 'Unauthorized', 403 );
         }
 
-        $sort = isset( $_POST['sort'] ) ? sanitize_key( wp_unslash( $_POST['sort'] ) ) : 'newest';
+        $sort     = isset( $_POST['sort'] )     ? sanitize_key( wp_unslash( $_POST['sort'] ) )                      : 'newest';
+        $show_all = isset( $_POST['show_all'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['show_all'] ) );
 
         // All known view-count meta keys — checked in priority order.
         $view_meta_keys = [
@@ -1745,17 +1750,19 @@ class CSDT_Thumbnails {
             'views_counter', 'hit_count',
         ];
 
-        // Fetch ALL published posts that have no thumbnail in one query.
         $date_order = ( 'oldest' === $sort ) ? 'ASC' : 'DESC';
-        $posts = get_posts( [
+        $query_args = [
             'post_type'      => 'post',
             'post_status'    => 'publish',
             'posts_per_page' => 500,
             'orderby'        => 'date',
             'order'          => $date_order,
             'fields'         => 'ids',
-            'meta_query'     => [ [ 'key' => '_thumbnail_id', 'compare' => 'NOT EXISTS' ] ],
-        ] );
+        ];
+        if ( ! $show_all ) {
+            $query_args['meta_query'] = [ [ 'key' => '_thumbnail_id', 'compare' => 'NOT EXISTS' ] ];
+        }
+        $posts = get_posts( $query_args );
 
         $results = [];
 
@@ -1775,6 +1782,9 @@ class CSDT_Thumbnails {
                 ? str_word_count( wp_strip_all_tags( $post_obj->post_content ) )
                 : 0;
 
+            $thumb_id  = (int) get_post_thumbnail_id( $post_id );
+            $thumb_url = $thumb_id ? wp_get_attachment_image_url( $thumb_id, 'thumbnail' ) : null;
+
             $results[] = [
                 'post_id'       => $post_id,
                 'title'         => get_the_title( $post_id ),
@@ -1784,6 +1794,8 @@ class CSDT_Thumbnails {
                 'comment_count' => (int) ( $post_obj ? $post_obj->comment_count : 0 ),
                 'view_count'    => $view_count,
                 'word_count'    => $word_count,
+                'has_thumb'     => (bool) $thumb_id,
+                'thumb_url'     => $thumb_url ?: null,
             ];
         }
 
@@ -1829,10 +1841,27 @@ class CSDT_Thumbnails {
 
         $title   = $post->post_title;
         $content = wp_strip_all_tags( $post->post_content );
-        $excerpt = $post->post_excerpt ?: wp_trim_words( $content, 50 );
+        $excerpt = $post->post_excerpt ?: wp_trim_words( $content, 80 );
 
-        $system_msg = 'You write precise DALL-E 3 image generation prompts for WordPress blog post header images. Output only the prompt, nothing else. No explanations.';
-        $user_msg   = "Post title: \"{$title}\"\nExcerpt: \"{$excerpt}\"\n\nWrite a DALL-E 3 prompt for a 1792x1024 professional blog post header image. No text or typography in the image. Photorealistic or clean editorial illustration style. Under 180 words.";
+        $categories = implode( ', ', wp_list_pluck( get_the_category( $post_id ), 'name' ) );
+        $tags       = implode( ', ', wp_list_pluck( get_the_tags( $post_id ) ?: [], 'name' ) );
+        $intro      = mb_substr( $content, 0, 600 );
+
+        $context_parts = [ "Post title: \"{$title}\"" ];
+        if ( $categories ) {
+            $context_parts[] = "Categories: {$categories}";
+        }
+        if ( $tags ) {
+            $context_parts[] = "Tags: {$tags}";
+        }
+        $context_parts[] = "Excerpt: \"{$excerpt}\"";
+        if ( $intro && strlen( $intro ) > strlen( $excerpt ) ) {
+            $context_parts[] = "Article intro: \"{$intro}\"";
+        }
+        $context_str = implode( "\n", $context_parts );
+
+        $system_msg = 'You write precise DALL-E 3 image generation prompts for WordPress blog post header images. Output only the prompt, nothing else. No explanations. The image must be specific to the exact topic described — never use generic server rooms, abstract tech backgrounds, or stock-photo clichés. If the post is about a specific database, cloud service, programming language, or technology, the image must visually represent that specific thing.';
+        $user_msg   = "{$context_str}\n\nWrite a DALL-E 3 prompt for a 1792x1024 professional blog post header image. No text or typography in the image. Photorealistic or clean editorial illustration style. Under 180 words.";
 
         try {
             switch ( $prompt_writer ) {
@@ -1927,6 +1956,20 @@ class CSDT_Thumbnails {
         }
 
         set_post_thumbnail( $post_id, $attach_id );
+
+        // Ensure all registered WP image sizes exist for this attachment.
+        $attach_file = get_attached_file( $attach_id );
+        if ( $attach_file && file_exists( $attach_file ) ) {
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+            $meta = wp_generate_attachment_metadata( $attach_id, $attach_file );
+            if ( $meta ) {
+                wp_update_attachment_metadata( $attach_id, $meta );
+            }
+        }
+
+        // Trigger social-format generation (Facebook, Twitter, etc.) without
+        // requiring a full post save — same logic as on_post_saved hook.
+        self::generate_social_formats_for_post( $post_id );
 
         foreach ( $discard as $did ) {
             if ( $did !== $attach_id ) {

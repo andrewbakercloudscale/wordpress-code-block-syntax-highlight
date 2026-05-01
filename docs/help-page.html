@@ -1,97 +1,52 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><title>CloudScale Cyber and Devtools - Free WordPress Security, AI Penetration Testing &amp; Developer Toolkit — Help</title></head><body>
 <!-- wp:html -->
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"CloudScale Cyber and Devtools","applicationCategory":"SecurityApplication","operatingSystem":"WordPress","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Free WordPress security plugin powered by Anthropic Claude and Google Gemini AI. Features: AI-powered penetration testing, brute-force protection, two-factor authentication, passkeys (WebAuthn), hide login URL, AI site audit, AI debugging assistant, PHP-FPM monitoring, performance panel, SMTP mailer, SQL tool, server logs, plugin vulnerability scanner, Cloudflare uptime monitor with readiness probe, and syntax-highlighted code blocks.","url":"https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-cyber-devtools-help/","downloadUrl":"https://your-s3-bucket.s3.af-south-1.amazonaws.com/cloudscale-devtools.zip","softwareVersion":"1.9.574","author":{"@type":"Person","name":"Andrew Baker","url":"https://andrewbaker.ninja"},"isAccessibleForFree":true,"license":"https://www.gnu.org/licenses/gpl-2.0.html"}</script>
-<!-- /wp:html -->
-
-<!-- wp:html -->
-<style>
-.cs-help-docs{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1a202c;line-height:1.7;max-width:900px;}
-.cs-breadcrumb{font-size:.9em;margin-bottom:24px;color:#64748b;}.cs-breadcrumb a{color:#2563eb;text-decoration:none;font-weight:500;}.cs-breadcrumb a:hover{text-decoration:underline;}
-.cs-help-docs a{color:#2563eb;}
-.cs-help-docs code{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:1px 6px;font-size:.88em;}
-.cs-hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#0e6b8f 100%);color:#fff;border-radius:12px;padding:48px 40px;margin-bottom:40px;position:relative;overflow:hidden;}
-.cs-hero h1{font-size:2.2em;font-weight:800;margin:0 0 12px;letter-spacing:-.02em;color:#fff;}
-.cs-hero p{font-size:1.1em;margin:0;opacity:.85;max-width:680px;}
-.cs-hero .cs-badge{display:inline-block;background:rgba(255,255,255,.15);border-radius:20px;padding:4px 14px;font-size:.8em;font-weight:600;margin-bottom:16px;letter-spacing:.05em;text-transform:uppercase;transition:transform .15s ease,box-shadow .15s ease,background .15s ease;}
-.cs-hero a.cs-badge:hover{transform:translateY(-4px) scale(1.06);box-shadow:0 12px 28px rgba(0,0,0,.45);background:rgba(255,255,255,.3);color:#fff!important;text-decoration:none!important;}
-.cs-download-btn{display:inline-block;background:#16a34a;color:#fff!important;padding:12px 26px;border-radius:8px;text-decoration:none!important;font-size:1em;font-weight:700;letter-spacing:.01em;transition:transform .15s ease,box-shadow .15s ease;}
-.cs-download-btn:hover{transform:translateY(-6px) scale(1.04);box-shadow:0 20px 48px rgba(0,0,0,.55);color:#fff!important;text-decoration:none!important;}
-.cs-wporg-btn{display:inline-block;background:#3858e9;color:#fff!important;padding:12px 26px;border-radius:8px;text-decoration:none!important;font-size:1em;font-weight:700;letter-spacing:.01em;transition:transform .15s ease,box-shadow .15s ease;}
-.cs-wporg-btn:hover{transform:translateY(-6px) scale(1.04);box-shadow:0 20px 48px rgba(0,0,0,.55);color:#fff!important;text-decoration:none!important;}
-.cs-github-btn{display:inline-block;background:#24292f;color:#fff!important;padding:12px 26px;border-radius:8px;text-decoration:none!important;font-size:1em;font-weight:700;letter-spacing:.01em;transition:transform .15s ease,box-shadow .15s ease;}
-.cs-github-btn:hover{transform:translateY(-6px) scale(1.04);box-shadow:0 20px 48px rgba(0,0,0,.55);color:#fff!important;text-decoration:none!important;}
-.cs-toc{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:28px 36px;margin:32px 0;}
-.cs-toc-title{font-size:1em;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin:0 0 16px;}
-.cs-toc ol{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px 32px;margin:0;padding-left:24px;}
-.cs-toc li a{color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;}
-.cs-tab-section{margin:56px 0 0;}
-.cs-tab-heading{font-size:2em;font-weight:800;color:#0f172a;padding:0 0 16px;border-bottom:3px solid #0e6b8f;margin:0 0 8px;}
-.cs-tab-intro{color:#475569;font-size:1.05em;margin:10px 0 32px;}
-.cs-panel-section{margin:36px 0 0;}
-.cs-panel-intro{font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;}
-.cs-panel-heading{font-size:1.45em!important;font-weight:700!important;color:#1e293b!important;margin:0 0 16px!important;padding:0 0 10px!important;border-bottom:2px solid #e2e8f0!important;border-left:none!important;border-top:none!important;border-right:none!important;display:flex!important;align-items:center!important;gap:10px!important;background:transparent!important;}
-.cs-panel-heading::before{content:""!important;display:inline-block!important;width:4px!important;height:1.2em!important;background:#0e6b8f!important;border-radius:2px!important;flex-shrink:0!important;}
-.cs-screenshot{margin:20px 0 24px;}
-.cs-screenshot img{max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;}
-.cs-panel-body{color:#334155;}
-.cs-panel-body p{margin:0 0 12px;}
-.cs-panel-body ul,.cs-panel-body ol{padding-left:22px;margin:8px 0 16px;}
-.cs-panel-body li{margin:6px 0;}
-.cs-panel-body strong{color:#1e293b;}
-.cs-divider{border:none;border-top:1px solid #e2e8f0;margin:40px 0;}
-/* Reset WordPress theme overrides for bare headings inside help doc content areas */
-.cs-panel-body h2,.cs-panel-body h3,.cs-panel-body h4,
-.cs-plugin-about h2,.cs-plugin-about h3,.cs-plugin-about h4{background:transparent!important;background-color:transparent!important;color:#1e293b!important;border-left:none!important;border-right:none!important;border-top:none!important;padding-left:0!important;padding-right:0!important;}
-.cs-panel-body h3,.cs-plugin-about h3{font-size:1.1em!important;font-weight:700!important;padding:10px 0 6px!important;border-bottom:1px solid #e2e8f0!important;margin:20px 0 10px!important;}
-.cs-panel-body h2,.cs-plugin-about h2{font-size:1.2em!important;font-weight:700!important;padding:0 0 8px!important;margin:0 0 12px!important;border-bottom:none!important;}
-</style>
-<div class="cs-help-docs" style="max-width:900px;margin:0 auto;">
-<p class="cs-breadcrumb"><a href="/wordpress-plugin-help/">&#8592; CloudScale WordPress Plugins</a></p>
-<div class="cs-hero">
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a202c;line-height:1.7;max-width:900px;margin:0 auto;">
+<p style="font-size:.9em;margin-bottom:24px;color:#64748b;"><a href="/wordpress-plugin-help/" style="color:#2563eb;text-decoration:none;font-weight:500;">&#8592; CloudScale WordPress Plugins</a></p>
+<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#0e6b8f 100%);color:#fff;border-radius:12px;padding:48px 40px;margin-bottom:40px;position:relative;overflow:hidden;">
 <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px;">
 <div style="flex:1;min-width:0;">
-<a class="cs-badge" href="https://github.com/andrewbakercloudscale/cloudscale-cyber-devtools" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;">Free &amp; Open Source</a>
-<h1 style="margin-bottom:0;">CloudScale Cyber and Devtools - Free WordPress Security, AI Penetration Testing &amp; Developer Toolkit</h1>
+<a href="https://github.com/andrewbakercloudscale/cloudscale-cyber-devtools" target="_blank" rel="noopener" style="display:inline-block;background:rgba(255,255,255,.15);border-radius:20px;padding:4px 14px;font-size:.8em;font-weight:600;margin-bottom:16px;letter-spacing:.05em;text-transform:uppercase;color:#fff;text-decoration:none;">Free &amp; Open Source</a>
+<h1 style="font-size:2.2em;font-weight:800;margin:0 0 12px;letter-spacing:-.02em;color:#fff;background:transparent;padding:0;border:none;">CloudScale Cyber and Devtools - Free WordPress Security, AI Penetration Testing &amp; Developer Toolkit</h1>
 </div>
-<img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/CloudScaleCyberDevtools-18.jpeg" alt="" style="flex-shrink:0;width:96px;height:96px;border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,.4);object-fit:cover;">
+<img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/CloudScaleCyberDevtools.jpeg" alt="" style="flex-shrink:0;width:96px;height:96px;border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,.4);object-fit:cover;">
 </div>
-<p>Most security and devtools plugins charge $49–$199/year each, and you need at least 8 of them to cover what CloudScale DevTools gives you free. The plugin runs a full AI penetration test of your WordPress site using Anthropic Claude 4 or Google Gemini 2.5 Pro: the same models security consultants charge thousands to access. Security features include brute-force login protection, hidden login URL with random slug rotation, two-factor authentication (TOTP, email, and passkeys/WebAuthn), configurable session duration, SSH brute-force log monitoring, and a live threat monitor dashboard. Developer tools include a read-only SQL query tool, server log viewer, syntax-highlighted code block editor with a legacy content migrator, PHP-FPM and OPcache monitors, plugin stack CVE scanner, update risk scorer, and a Cloudflare uptime monitor with deep readiness probe covering DB, FPM, and WP health. Also included: SMTP mailer with full email activity log, Test Account Manager for automated testing workflows, Thumbnails and Open Graph image audit, and an AI site auditor for content quality checks. No subscription, no SaaS, no data leaving your server.</p>
-<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:20px;"><a class="cs-download-btn" href="https://your-s3-bucket.s3.af-south-1.amazonaws.com/cloudscale-devtools.zip">⬇ Download Latest Version (.zip)</a><a class="cs-github-btn" href="https://github.com/andrewbakercloudscale/cloudscale-cyber-devtools" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle;margin-right:6px;"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> View on GitHub</a></div>
-</div>
-
-<div class="cs-toc">
-<div class="cs-toc-title">Contents</div>
-<ol><li><a href="#home">Home Dashboard</a></li>
-<li><a href="#hide-login">Hide Login URL</a></li>
-<li><a href="#2fa">Two-Factor Auth</a></li>
-<li><a href="#passkeys">Passkeys (WebAuthn)</a></li>
-<li><a href="#session">Session Duration</a></li>
-<li><a href="#brute-force">Brute-Force Protection</a></li>
-<li><a href="#ssh-monitor">SSH Brute-Force Monitor</a></li>
-<li><a href="#security">AI Cyber Audit</a></li>
-<li><a href="#site-audit">AI Site Auditor</a></li>
-<li><a href="#threat-monitor">Threat Monitor</a></li>
-<li><a href="#code-block">Code Block</a></li>
-<li><a href="#migrator">Code Block Migrator</a></li>
-<li><a href="#sql-tool">SQL Query Tool</a></li>
-<li><a href="#server-logs">Server Logs</a></li>
-<li><a href="#optimizer">Plugin Optimizer</a></li>
-<li><a href="#plugin-stack">Plugin Stack Scanner</a></li>
-<li><a href="#update-risk">Update Risk Scorer</a></li>
-<li><a href="#uptime-monitor">Uptime Monitor</a></li>
-<li><a href="#cs-monitor">CS Monitor</a></li>
-<li><a href="#fpm-monitor">FPM Monitor</a></li>
-<li><a href="#test-accounts">Test Account Manager</a></li>
-<li><a href="#opcache">OPcache Monitor</a></li>
-<li><a href="#smtp">SMTP Mailer</a></li>
-<li><a href="#email-log">Email Activity Log</a></li>
-<li><a href="#thumbnails">Thumbnails & Open Graph</a></li></ol>
+<p style="font-size:1.1em;margin:0 0 20px;opacity:.85;max-width:680px;">Most security and devtools plugins charge $49–$199/year each, and you need at least 8 of them to cover what CloudScale DevTools gives you free. The plugin runs a full AI penetration test of your WordPress site using Anthropic Claude 4 or Google Gemini 2.5 Pro: the same models security consultants charge thousands to access. Security features include brute-force login protection, hidden login URL with random slug rotation, two-factor authentication (TOTP, email, and passkeys/WebAuthn), configurable session duration, SSH brute-force log monitoring, and a live threat monitor dashboard. Developer tools include a read-only SQL query tool, server log viewer, syntax-highlighted code block editor with a legacy content migrator, PHP-FPM and OPcache monitors, plugin stack CVE scanner, update risk scorer, and a Cloudflare uptime monitor with deep readiness probe covering DB, FPM, and WP health. Also included: SMTP mailer with full email activity log, Test Account Manager for automated testing workflows, Thumbnails and Open Graph image audit, and an AI site auditor for content quality checks. No subscription, no SaaS, no data leaving your server.</p>
+<div style="display:flex;flex-wrap:wrap;gap:12px;"><a href="https://andrewninjawordpress.s3.af-south-1.amazonaws.com/cloudscale-devtools.zip" style="display:inline-block;background:#16a34a;color:#fff;padding:12px 26px;border-radius:8px;text-decoration:none;font-size:1em;font-weight:700;letter-spacing:.01em;">&#11015; Download Latest Version (.zip)</a><a href="https://github.com/andrewbakercloudscale/cloudscale-cyber-devtools" target="_blank" rel="noopener" style="display:inline-block;background:#24292f;color:#fff;padding:12px 26px;border-radius:8px;text-decoration:none;font-size:1em;font-weight:700;letter-spacing:.01em;"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle;margin-right:6px;"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> View on GitHub</a></div>
 </div>
 
-<hr class="cs-divider"/>
+<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:28px 36px;margin:32px 0;">
+<div style="font-size:1em;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin:0 0 16px;">Contents</div>
+<ol style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px 32px;margin:0;padding-left:24px;"><li><a href="#home" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Home Dashboard</a></li>
+<li><a href="#hide-login" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Hide Login URL</a></li>
+<li><a href="#2fa" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Two-Factor Auth</a></li>
+<li><a href="#passkeys" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Passkeys (WebAuthn)</a></li>
+<li><a href="#session" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Session Duration</a></li>
+<li><a href="#brute-force" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Brute-Force Protection</a></li>
+<li><a href="#ssh-monitor" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">SSH Brute-Force Monitor</a></li>
+<li><a href="#security" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">AI Cyber Audit</a></li>
+<li><a href="#site-audit" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">AI Site Auditor</a></li>
+<li><a href="#threat-monitor" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Threat Monitor</a></li>
+<li><a href="#code-block" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Code Block</a></li>
+<li><a href="#migrator" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Code Block Migrator</a></li>
+<li><a href="#sql-tool" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">SQL Query Tool</a></li>
+<li><a href="#server-logs" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Server Logs</a></li>
+<li><a href="#optimizer" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Plugin Optimizer</a></li>
+<li><a href="#plugin-stack" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Plugin Stack Scanner</a></li>
+<li><a href="#update-risk" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Update Risk Scorer</a></li>
+<li><a href="#uptime-monitor" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Uptime Monitor</a></li>
+<li><a href="#cs-monitor" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">CS Monitor</a></li>
+<li><a href="#fpm-monitor" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">FPM Monitor</a></li>
+<li><a href="#test-accounts" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Test Account Manager</a></li>
+<li><a href="#opcache" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">OPcache Monitor</a></li>
+<li><a href="#smtp" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">SMTP Mailer</a></li>
+<li><a href="#email-log" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Email Activity Log</a></li>
+<li><a href="#thumbnails" style="color:#2563eb;text-decoration:none;font-weight:500;font-size:.97em;">Thumbnails & Open Graph</a></li></ol>
+</div>
 
-<div class="cs-plugin-about" style="margin:0 0 40px;">
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
+
+<div style="margin:0 0 40px;">
 
 <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#1e3a5f 100%);border-radius:12px;padding:40px 36px 36px;margin:0 0 36px;color:#fff;position:relative;overflow:hidden;">
 <div style="position:absolute;top:-40px;right:-40px;width:260px;height:260px;background:rgba(99,102,241,.15);border-radius:50%;pointer-events:none;"></div>
@@ -120,35 +75,35 @@
 <span style="font-size:.8em;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.07em;">After CloudScale</span>
 </div>
 <div style="display:flex;flex-direction:column;gap:10px;">
-<div style="display:grid;grid-template-columns:24px 1fr 1fr;gap:10px;align-items:center;background:#fff;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
-<span style="font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">1</span>
-<span style="color:#dc2626;font-size:.92em;line-height:1.5;">8 separate plugins to manage and update</span>
-<span style="color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">One plugin, one place to manage</span>
+<div style="display:flex;align-items:flex-start;gap:10px;background:#fff;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
+<span style="flex-shrink:0;width:24px;font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">1</span>
+<span style="flex:1;min-width:0;color:#dc2626;font-size:.92em;line-height:1.5;">8 separate plugins to manage and update</span>
+<span style="flex:1;min-width:0;color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">One plugin, one place to manage</span>
 </div>
-<div style="display:grid;grid-template-columns:24px 1fr 1fr;gap:10px;align-items:center;background:#f8fafc;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
-<span style="font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">2</span>
-<span style="color:#dc2626;font-size:.92em;line-height:1.5;">$300–$400/year in premium licenses</span>
-<span style="color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Free forever. No premium tier.</span>
+<div style="display:flex;align-items:flex-start;gap:10px;background:#f8fafc;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
+<span style="flex-shrink:0;width:24px;font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">2</span>
+<span style="flex:1;min-width:0;color:#dc2626;font-size:.92em;line-height:1.5;">$300–$400/year in premium licenses</span>
+<span style="flex:1;min-width:0;color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Free forever. No premium tier.</span>
 </div>
-<div style="display:grid;grid-template-columns:24px 1fr 1fr;gap:10px;align-items:center;background:#fff;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
-<span style="font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">3</span>
-<span style="color:#dc2626;font-size:.92em;line-height:1.5;">Conflicts between overlapping plugin features</span>
-<span style="color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Built as a system - designed to work together</span>
+<div style="display:flex;align-items:flex-start;gap:10px;background:#fff;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
+<span style="flex-shrink:0;width:24px;font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">3</span>
+<span style="flex:1;min-width:0;color:#dc2626;font-size:.92em;line-height:1.5;">Conflicts between overlapping plugin features</span>
+<span style="flex:1;min-width:0;color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Built as a system - designed to work together</span>
 </div>
-<div style="display:grid;grid-template-columns:24px 1fr 1fr;gap:10px;align-items:center;background:#f8fafc;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
-<span style="font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">4</span>
-<span style="color:#dc2626;font-size:.92em;line-height:1.5;">CDN scripts on every page (hurts Core Web Vitals)</span>
-<span style="color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Everything runs on your own server, zero external calls</span>
+<div style="display:flex;align-items:flex-start;gap:10px;background:#f8fafc;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
+<span style="flex-shrink:0;width:24px;font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">4</span>
+<span style="flex:1;min-width:0;color:#dc2626;font-size:.92em;line-height:1.5;">CDN scripts on every page (hurts Core Web Vitals)</span>
+<span style="flex:1;min-width:0;color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Everything runs on your own server, zero external calls</span>
 </div>
-<div style="display:grid;grid-template-columns:24px 1fr 1fr;gap:10px;align-items:center;background:#fff;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
-<span style="font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">5</span>
-<span style="color:#dc2626;font-size:.92em;line-height:1.5;">Site data routed through vendor servers</span>
-<span style="color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Data goes direct to the AI API you choose</span>
+<div style="display:flex;align-items:flex-start;gap:10px;background:#fff;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
+<span style="flex-shrink:0;width:24px;font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">5</span>
+<span style="flex:1;min-width:0;color:#dc2626;font-size:.92em;line-height:1.5;">Site data routed through vendor servers</span>
+<span style="flex:1;min-width:0;color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">Data goes direct to the AI API you choose</span>
 </div>
-<div style="display:grid;grid-template-columns:24px 1fr 1fr;gap:10px;align-items:center;background:#f8fafc;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
-<span style="font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">6</span>
-<span style="color:#dc2626;font-size:.92em;line-height:1.5;">Security audit = expensive consultant or nothing</span>
-<span style="color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">AI security audit in 60 seconds, on demand</span>
+<div style="display:flex;align-items:flex-start;gap:10px;background:#f8fafc;border-radius:8px;padding:12px 16px;border:1px solid #f1f5f9;">
+<span style="flex-shrink:0;width:24px;font-weight:800;color:#94a3b8;font-size:.85em;text-align:center;">6</span>
+<span style="flex:1;min-width:0;color:#dc2626;font-size:.92em;line-height:1.5;">Security audit = expensive consultant or nothing</span>
+<span style="flex:1;min-width:0;color:#16a34a;font-size:.92em;line-height:1.5;font-weight:600;">AI security audit in 60 seconds, on demand</span>
 </div>
 </div>
 </div>
@@ -282,7 +237,7 @@
 <h2 style="margin:0 0 10px;font-size:1.4em;font-weight:800;color:#fff;background:transparent!important;padding:0!important;border:none!important;">Ready to protect your site?</h2>
 <p style="margin:0 0 24px;color:#94a3b8;font-size:1em;line-height:1.6;">Free, open-source, and installed in under 5 minutes. Google Gemini's free tier means zero cost for daily AI security scans.</p>
 <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;">
-<a href="https://your-s3-bucket.s3.af-south-1.amazonaws.com/cloudscale-devtools.zip" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;font-weight:700;font-size:.95em;padding:14px 32px;border-radius:8px;">⬇ Download Free Plugin</a>
+<a href="https://andrewninjawordpress.s3.af-south-1.amazonaws.com/cloudscale-devtools.zip" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;font-weight:700;font-size:.95em;padding:14px 32px;border-radius:8px;">⬇ Download Free Plugin</a>
 <a href="https://github.com/andrewbakercloudscale/cloudscale-cyber-devtools" target="_blank" rel="noopener" style="display:inline-block;background:rgba(255,255,255,.12);color:#fff;text-decoration:none;font-weight:600;font-size:.95em;padding:14px 32px;border-radius:8px;border:1px solid rgba(255,255,255,.2);">View on GitHub →</a>
 </div>
 </div>
@@ -431,12 +386,12 @@
 <p style="margin:0 0 12px;color:#374151;font-size:.93em;line-height:1.7;">You deploy sites for clients. Every additional plugin is a support burden, a potential conflict, and an update to manage across dozens of installs. Your clients ask why their security isn't working and you're the one who has to answer.</p>
 <p style="margin:0;color:#374151;font-size:.93em;line-height:1.7;">CloudScale replaces the entire standard stack in one install. One plugin to update, one changelog to read, one place to look when something goes wrong.</p>
 </div>
-</div></div><hr class="cs-divider"/>
+</div></div><hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="home">Home Dashboard</h3>
-<p class="cs-panel-intro">The Home tab is the starting point for every CloudScale session. Configure your AI provider and API key here, enable scheduled background scans, and set up email and push alert notifications. Everything in the plugin - the AI Cyber Audit, site audit, and debugging tools - flows from the credentials you enter on this tab.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-home-11-scaled.jpg" alt="CloudScale Cyber Devtools home dashboard showing AI provider setup with Claude and Gemini API key configuration" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="home" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Home Dashboard</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">The Home tab is the starting point for every CloudScale session. Configure your AI provider and API key here, enable scheduled background scans, and set up email and push alert notifications. Everything in the plugin - the AI Cyber Audit, site audit, and debugging tools - flows from the credentials you enter on this tab.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-home-scaled.jpg" alt="CloudScale Cyber Devtools home dashboard showing AI provider setup with Claude and Gemini API key configuration" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:10px;padding:22px 26px;margin-bottom:24px;color:#fff;">
 <h2 style="margin:0 0 8px;font-size:1.2em;font-weight:800;color:#fff;background:transparent!important;padding:0!important;border:none!important;">Start Here: Configure Your AI Provider</h2>
 <p style="margin:0;color:#cbd5e1;line-height:1.7;">Every CloudScale AI feature - the security audit, site audit, and code analysis - runs through the AI provider you configure on this tab. You supply your own API key; your data goes directly from your server to the provider with no CloudScale middleman.</p>
@@ -459,12 +414,12 @@
 <li><strong>ntfy.sh push:</strong> enter any ntfy.sh topic URL to receive instant push notifications on your phone. Free and open-source. No account required - just install the ntfy app and create a topic.</li>
 </ul></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="hide-login">Hide Login URL</h3>
-<p class="cs-panel-intro">Moves your WordPress login page from the default <code>/wp-login.php</code> to a secret URL you choose. Bots and automated attack scripts probe the default path thousands of times a day - if they can't find the login form, they can't attack it.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-hide-login-19.jpg" alt="WordPress Hide Login URL settings panel - move wp-login.php to a secret URL to block automated bot attacks" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="hide-login" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Hide Login URL</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Moves your WordPress login page from the default <code>/wp-login.php</code> to a secret URL you choose. Bots and automated attack scripts probe the default path thousands of times a day - if they can't find the login form, they can't attack it.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-hide-login.jpg" alt="WordPress Hide Login URL settings panel - move wp-login.php to a secret URL to block automated bot attacks" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🔐 Stop Bots Before They Even See Your Login Page</h2>
 <p style="margin:0 0 10px;color:#374151;">Every WordPress site on the internet is probed by bots testing <code>/wp-login.php</code> around the clock. These are not targeted attacks against you specifically - they are automated credential-stuffing scripts running against millions of sites simultaneously, trying breached username and password combinations at scale. If they can reach your login form, they will keep trying indefinitely. Hide Login URL removes the form from the default URL entirely: bots get a 404 and move on to easier targets.</p>
@@ -499,12 +454,12 @@
 <p style="margin:8px 0 0;color:#374151;line-height:1.7;">Or query your database directly: <code>SELECT option_value FROM wp_options WHERE option_name = 'csdt_devtools_login_slug'</code>. If you cannot access the server at all, temporarily disabling the plugin via FTP (rename the plugin folder) will re-enable the default <code>/wp-login.php</code> path.</p>
 </div></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="2fa">Two-Factor Auth</h3>
-<p class="cs-panel-intro">Adds a second authentication step after the password so a stolen or leaked password alone is never enough to break in. Supports email OTP, authenticator apps (TOTP), and passkeys - all three methods included free.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-2fa-18.jpg" alt="WordPress two-factor authentication settings with email OTP, TOTP authenticator app, and passkeys" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="2fa" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Two-Factor Auth</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Adds a second authentication step after the password so a stolen or leaked password alone is never enough to break in. Supports email OTP, authenticator apps (TOTP), and passkeys - all three methods included free.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-2fa.jpg" alt="WordPress two-factor authentication settings with email OTP, TOTP authenticator app, and passkeys" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#fdf4ff;border-left:4px solid #9333ea;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🔑 A Stolen Password Should Never Be Enough to Break In</h2>
 <p style="margin:0 0 10px;color:#374151;">Passwords get leaked in data breaches, reused across sites, and phished out of users. Two-factor authentication (2FA) means an attacker who has your password still cannot log in. They also need physical access to your phone, email inbox, or hardware key. For WordPress admins, 2FA is the single most effective account protection you can add.</p>
@@ -546,12 +501,12 @@
 <p style="margin:8px 0 0;color:#374151;line-height:1.7;">To clear all lockouts at once: <code>DELETE FROM wp_options WHERE option_name LIKE 'csdt_login_attempts_%'</code> via the SQL Query Tool on the Debug tab, or via phpMyAdmin.</p>
 </div></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="passkeys">Passkeys (WebAuthn)</h3>
-<p class="cs-panel-intro">Replace passwords entirely with biometric login: Face ID, Touch ID, Windows Hello, or a hardware security key. Passkeys are cryptographically bound to your exact domain - unlike TOTP codes, they cannot be phished by a fake login page.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-passkeys-18.jpg" alt="WordPress passkeys WebAuthn registration supporting Face ID, Touch ID and hardware security key login" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="passkeys" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Passkeys (WebAuthn)</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Replace passwords entirely with biometric login: Face ID, Touch ID, Windows Hello, or a hardware security key. Passkeys are cryptographically bound to your exact domain - unlike TOTP codes, they cannot be phished by a fake login page.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-passkeys.jpg" alt="WordPress passkeys WebAuthn registration supporting Face ID, Touch ID and hardware security key login" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#fff7ed;border-left:4px solid #ea580c;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🪪 The Most Secure WordPress Login Method Available. And It's Free.</h2>
 <p style="margin:0 0 10px;color:#374151;">Even TOTP codes can be phished: a fake login page captures your password and OTP code in real time and replays them instantly. Passkeys cannot be phished this way. They are cryptographically bound to your site's exact domain; a fake domain simply cannot trigger your passkey. This is the authentication standard used by Apple, Google, and Microsoft for their own products, now available for your WordPress site at no cost.</p>
@@ -567,12 +522,12 @@
 </ol>
 <p><strong>Browser support:</strong> Chrome 108+, Safari 16+, Edge 108+, Firefox 122+. If a browser doesn't support passkeys, the login flow falls back to email OTP automatically, so no user is ever locked out.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="session">Session Duration</h3>
-<p class="cs-panel-intro">Controls how long WordPress login sessions remain valid before users must re-authenticate. The default is 2 days. Shorten this for high-security admin accounts or extend it for trusted internal teams who find frequent re-login disruptive.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-session-12.jpg" alt="WordPress session duration settings controlling how long login cookies remain valid" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="session" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Session Duration</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Controls how long WordPress login sessions remain valid before users must re-authenticate. The default is 2 days. Shorten this for high-security admin accounts or extend it for trusted internal teams who find frequent re-login disruptive.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-session.jpg" alt="WordPress session duration settings controlling how long login cookies remain valid" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#f0f9ff;border-left:4px solid #0e6b8f;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">⏱ How Long Should a Login Session Last?</h2>
 <p style="margin:0;color:#374151;">WordPress's default is 2 days. That's a reasonable balance between security (re-authenticate regularly) and convenience (don't interrupt a working developer). Adjust this to match your team's workflow and your site's security posture.</p>
@@ -590,12 +545,12 @@
 
 <p><strong>Important:</strong> changing this setting only affects new logins. Users who are already logged in keep their current session until it expires or they log out manually. If you need to force a full re-login for all users immediately (e.g. after a suspected credential compromise), use the <strong>Log Out All Users</strong> option in the WordPress Users settings, or run <code>wp user session destroy --all</code> via WP-CLI.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="brute-force">Brute-Force Protection</h3>
-<p class="cs-panel-intro">Locks an account temporarily after a configurable number of consecutive failed login attempts. Protection is per-username rather than per-IP, so distributed attacks spread across thousands of IP addresses are blocked just as effectively as single-source attacks.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-brute-force-11.jpg" alt="WordPress brute force login protection with account lockout and username enumeration blocking" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="brute-force" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Brute-Force Protection</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Locks an account temporarily after a configurable number of consecutive failed login attempts. Protection is per-username rather than per-IP, so distributed attacks spread across thousands of IP addresses are blocked just as effectively as single-source attacks.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-brute-force.jpg" alt="WordPress brute force login protection with account lockout and username enumeration blocking" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#fff5f5;border-left:4px solid #dc2626;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🔒 Stop Credential-Stuffing Attacks at the Login Form</h2>
 <p style="margin:0;color:#374151;">Automated bots try thousands of username/password combinations against every reachable WordPress login page. Brute-force protection locks an account after a configurable number of failed attempts, making mass credential-stuffing attacks economically unviable - the attacker's bot moves on to the next target.</p>
@@ -615,12 +570,12 @@
 <code style="background:#f8fafc;border:1px solid #e5e7eb;padding:8px 12px;border-radius:4px;font-size:.88em;display:block;margin:8px 0;">DELETE FROM wp_options WHERE option_name LIKE 'csdt_devtools_lockout_%'</code>
 <p>This clears all active lockouts. To clear a specific username: replace <code>%</code> with the exact username (e.g. <code>csdt_devtools_lockout_johndoe</code>).</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="ssh-monitor">SSH Brute-Force Monitor</h3>
-<p class="cs-panel-intro">Reads your server's auth.log every 60 seconds to count SSH failed login attempts. When the count exceeds your threshold in a rolling window, it fires an instant alert via email and push notification. Works alongside fail2ban - this plugin detects and alerts; fail2ban does the blocking.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-ssh-monitor-11.jpg" alt="WordPress SSH brute force monitor reading auth.log with email and ntfy.sh push notifications" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="ssh-monitor" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>SSH Brute-Force Monitor</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Reads your server's auth.log every 60 seconds to count SSH failed login attempts. When the count exceeds your threshold in a rolling window, it fires an instant alert via email and push notification. Works alongside fail2ban - this plugin detects and alerts; fail2ban does the blocking.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-ssh-monitor.jpg" alt="WordPress SSH brute force monitor reading auth.log with email and ntfy.sh push notifications" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#fff5f5;border-left:4px solid #dc2626;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🖥️ Know the Moment Your SSH Port Is Under Attack</h2>
 <p style="margin:0;color:#374151;">A server with SSH port 22 open to the internet will be targeted by automated scanners within minutes of going online. Most sites never know they're under attack because these attempts are silent unless you're watching the auth log. The SSH monitor brings that visibility to your WordPress dashboard.</p>
@@ -640,12 +595,12 @@
 <code style="background:#f8fafc;border:1px solid #e5e7eb;padding:8px 12px;border-radius:4px;font-size:.88em;display:block;margin:8px 0;">sudo apt install fail2ban &amp;&amp; sudo systemctl enable fail2ban</code>
 <p>With fail2ban's default configuration, an IP is banned for 10 minutes after 5 failed SSH attempts. The CloudScale monitor shows you when attacks are happening at a volume that exceeds even fail2ban's tolerance - a sign that you're under a sustained, distributed attack that warrants additional action (firewall rules, port change, or contacting your hosting provider).</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="security">AI Cyber Audit</h3>
-<p class="cs-panel-intro">Uses frontier AI - Anthropic Claude or Google Gemini - to analyse your entire WordPress installation and return a prioritised, scored security report in under 60 seconds. Unlike signature-based scanners, the AI reasons from first principles: it reads your actual configuration and code, identifies risk combinations no database can match, and gives you specific fix steps for your exact setup.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-security-18.jpg" alt="WordPress AI security audit showing a perfect score with Claude 4 and Gemini 2.5 Pro on a free security plugin" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="security" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>AI Cyber Audit</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Uses frontier AI - Anthropic Claude or Google Gemini - to analyse your entire WordPress installation and return a prioritised, scored security report in under 60 seconds. Unlike signature-based scanners, the AI reasons from first principles: it reads your actual configuration and code, identifies risk combinations no database can match, and gives you specific fix steps for your exact setup.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-security.jpg" alt="WordPress AI security audit showing a perfect score with Claude 4 and Gemini 2.5 Pro on a free security plugin" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#fff5f5;border-left:4px solid #c0392b;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🛡️ A Security Consultant in Your WordPress Dashboard, for Free</h2>
 <p style="margin:0 0 10px;color:#374151;">A professional WordPress security audit costs $500–$5,000 and takes days to schedule. Generic security checklists from free plugins tell you what to check but not what it means for your specific site. CloudScale connects directly to the world's most capable AI models: <strong>Anthropic Claude 4</strong> and <strong>Google Gemini 2.5 Pro</strong>. It analyses your entire WordPress installation and delivers a scored, prioritised report with specific remediation steps in under 60 seconds. The same class of AI used by enterprise security teams, working on your site.</p>
@@ -727,12 +682,12 @@
 <p style="margin:12px 0 0;color:#92400e;font-size:.9em;"><strong>Note:</strong> Google does not cut off API access when a budget alert fires; it only sends a notification. To hard-cap spend, enable the <em>"Actions"</em> option in the budget and select "Disable billing" (use cautiously, as this will break any Google Cloud services in the project).</p>
 </div></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="site-audit">AI Site Auditor</h3>
-<p class="cs-panel-intro">One button scans all your published content and database, then returns a prioritised list of SEO gaps, thin content, missing images, database bloat, and security misconfigurations - each with a specific fix instruction. No external crawlers, no data sent to third parties, no Screaming Frog licence required.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-site-audit-18-scaled.jpg" alt="WordPress AI site auditor scanning SEO, content, performance, and database health with prioritised findings" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="site-audit" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>AI Site Auditor</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">One button scans all your published content and database, then returns a prioritised list of SEO gaps, thin content, missing images, database bloat, and security misconfigurations - each with a specific fix instruction. No external crawlers, no data sent to third parties, no Screaming Frog licence required.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-site-audit-scaled.jpg" alt="WordPress AI site auditor scanning SEO, content, performance, and database health with prioritised findings" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border-left:4px solid #10b981;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🔍 Your Entire Site Audited in Under 60 Seconds</h2>
 <p style="margin:0 0 10px;color:#374151;">One button. CloudScale scans all your published content and your database, then uses AI to return a prioritised list of issues scored by impact - SEO gaps, thin content, missing images, database bloat, inactive plugins, security misconfigurations. No external crawlers, no data sent to third parties, no Screaming Frog licence required.</p>
@@ -774,12 +729,12 @@
 <p style="margin:0;color:#374151;line-height:1.7;">Run the Site Audit before a major plugin change or cleanup sprint to establish a baseline. After making fixes, run it again and compare the scorecards. This is especially useful before and after cleaning up database bloat - the autoloaded options KB figure should drop measurably after removing redundant plugin data. Save a screenshot of the findings list before a sprint and compare it to the results afterwards to confirm the improvements are real.</p>
 </div></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="threat-monitor">Threat Monitor</h3>
-<p class="cs-panel-intro">Runs three passive background checks every 5 minutes: file integrity monitoring (detects unexpected changes to WordPress core files), new administrator alerts (fires the instant an admin account is created or promoted), and web probe detection (counts requests to sensitive endpoints and alerts on sudden spikes).</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-threat-monitor-11.jpg" alt="WordPress threat monitor showing file integrity checking, new admin alerts, and web probe detection" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="threat-monitor" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Threat Monitor</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Runs three passive background checks every 5 minutes: file integrity monitoring (detects unexpected changes to WordPress core files), new administrator alerts (fires the instant an admin account is created or promoted), and web probe detection (counts requests to sensitive endpoints and alerts on sudden spikes).</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-threat-monitor.jpg" alt="WordPress threat monitor showing file integrity checking, new admin alerts, and web probe detection" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#fff5f5;border-left:4px solid #dc2626;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🔎 Passive Threat Detection That Runs While You Sleep</h2>
 <p style="margin:0;color:#374151;">The AI Cyber Audit gives you an on-demand snapshot. The Threat Monitor runs in the background 24/7, watching for the specific events that indicate an active compromise: a core file being modified, a new admin account appearing, or a wave of probe requests hitting your login page.</p>
@@ -796,12 +751,12 @@
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Web Probe Detection</h3>
 <p>Reads the web server access log (byte-offset tracking, so only new entries are processed each check). Counts requests to sensitive endpoints: <code>wp-login.php</code>, <code>xmlrpc.php</code>, <code>wp-config.php</code>, <code>.env</code>, <code>.git/</code>, and shell-injection patterns. When the count exceeds the threshold (default: 25 in 5 minutes), an alert fires. Throttled to at most once per hour to prevent alert floods during sustained scans.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="code-block">Code Block</h3>
-<p class="cs-panel-intro">Syntax-highlighted code blocks powered by highlight.js, running entirely on your own server with zero CDN calls. Supports 190+ languages and 14 professional colour themes - completely free, with no impact on your Core Web Vitals score.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-code-block-19.jpg" alt="WordPress syntax-highlighted code block settings with 190 languages, 14 themes, no CDN, completely free" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="code-block" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Code Block</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Syntax-highlighted code blocks powered by highlight.js, running entirely on your own server with zero CDN calls. Supports 190+ languages and 14 professional colour themes - completely free, with no impact on your Core Web Vitals score.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-code-block.jpg" alt="WordPress syntax-highlighted code block settings with 190 languages, 14 themes, no CDN, completely free" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#f0f9ff;border-left:4px solid #0e6b8f;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">💻 Beautiful Code Blocks Without Paying $50/Year or Slowing Your Site Down</h2>
 <p style="margin:0 0 10px;color:#374151;">Most WordPress code highlighting plugins have one of two problems: they load scripts from an external CDN (adding 100–300ms to every page load, hurting your Core Web Vitals score, and breaking if the CDN goes down), or they charge $30–$50/year for features that should be free. <strong>Enlighter</strong> loads from their own servers. <strong>SyntaxHighlighter Evolved</strong> loads from WordPress.com's CDN. <strong>Prismatic</strong> charges $29/year for a theme switcher.</p>
@@ -813,12 +768,12 @@
 <p><strong>Copy to clipboard</strong> with one click. Line numbers are rendered via CSS counter so they are never included when someone copies the code.</p>
 <p><strong>INI/TOML auto-repair:</strong> Gutenberg breaks INI and TOML files at bare <code>[section]</code> headers by treating them as block delimiters. CloudScale detects this silently and reassembles the fragments, showing a brief toast so you know it happened.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="migrator">Code Block Migrator</h3>
-<p class="cs-panel-intro">Converts all posts using legacy code block formats - WordPress core blocks, SyntaxHighlighter, Enlighter shortcodes - to CloudScale blocks in a single batch operation. Scan → preview the diff per post → migrate everything in one click, with no manual post editing.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-migrator-19.jpg" alt="WordPress code block migrator for batch converting from Enlighter, SyntaxHighlighter, and other plugins" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="migrator" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Code Block Migrator</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Converts all posts using legacy code block formats - WordPress core blocks, SyntaxHighlighter, Enlighter shortcodes - to CloudScale blocks in a single batch operation. Scan → preview the diff per post → migrate everything in one click, with no manual post editing.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-migrator.jpg" alt="WordPress code block migrator for batch converting from Enlighter, SyntaxHighlighter, and other plugins" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#fefce8;border-left:4px solid #ca8a04;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🔄 Switch Plugins Without Touching 100 Posts by Hand</h2>
 <p style="margin:0 0 10px;color:#374151;">Switching code highlighting plugins normally means opening every post, finding the old block or shortcode, deleting it, re-inserting the new one, and republishing, for every single post on your site. On a blog with 100 posts, that's hours of tedious work with plenty of room for mistakes.</p>
@@ -839,12 +794,12 @@
 </ol>
 <p>⚠ The migrator writes directly to <code>post_content</code>. Always take a database backup first. Use the CloudScale Backup &amp; Restore plugin for a one-click snapshot before you begin.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="sql-tool">SQL Query Tool</h3>
-<p class="cs-panel-intro">A read-only SQL query interface inside wp-admin - inspect tables, check row counts, trace slow queries, and find database bloat without phpMyAdmin, SSH access, or exposing your database port. Architecturally impossible to delete or modify data.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-sql-tool-19.jpg" alt="WordPress read-only SQL query tool for safe database inspection inside wp-admin without phpMyAdmin" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="sql-tool" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>SQL Query Tool</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">A read-only SQL query interface inside wp-admin - inspect tables, check row counts, trace slow queries, and find database bloat without phpMyAdmin, SSH access, or exposing your database port. Architecturally impossible to delete or modify data.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-sql-tool.jpg" alt="WordPress read-only SQL query tool for safe database inspection inside wp-admin without phpMyAdmin" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#f8fafc;border-left:4px solid #64748b;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🗄️ Query Your Live Database Safely, Without phpMyAdmin or SSH</h2>
 <p style="margin:0 0 10px;color:#374151;">phpMyAdmin is powerful but complex to install securely, and leaving it exposed is a serious vulnerability. Adminer is a single PHP file that attackers actively scan for. Desktop tools like TablePlus require you to open a database port to your laptop. For WordPress administrators who just need to check table sizes, find orphaned data, or troubleshoot a slow query, those options are overkill or a security liability.</p>
@@ -860,12 +815,12 @@
 </ul>
 <p><strong>Keyboard shortcuts:</strong> <kbd>Enter</kbd> or <kbd>Ctrl+Enter</kbd> runs the query. <kbd>Shift+Enter</kbd> inserts a newline for multi-line queries.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="server-logs">Server Logs</h3>
-<p class="cs-panel-intro">Browse your PHP error log, WordPress debug log, and web server logs directly in the dashboard - with live search, severity filtering, and auto-refresh tail mode. No SSH, no cPanel, no asking your hosting provider to email you a file.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-server-logs-18.jpg" alt="WordPress server log viewer for PHP error logs, debug logs, and web server logs without SSH access" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="server-logs" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Server Logs</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Browse your PHP error log, WordPress debug log, and web server logs directly in the dashboard - with live search, severity filtering, and auto-refresh tail mode. No SSH, no cPanel, no asking your hosting provider to email you a file.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-server-logs.jpg" alt="WordPress server log viewer for PHP error logs, debug logs, and web server logs without SSH access" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#f0fdf4;border-left:4px solid #15803d;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">📋 Read Your Server Logs Without Leaving WordPress</h2>
 <p style="margin:0 0 10px;color:#374151;">When something breaks on a WordPress site, the answer is almost always in a log file. But accessing logs normally means SSH access (which many hosting plans don't provide), navigating a cPanel file manager, or asking your hosting provider to email you a file. For agency developers, that means waiting. For site owners on shared hosting, that means never seeing the logs at all.</p>
@@ -884,12 +839,12 @@
 <p style="margin:0;color:#374151;line-height:1.7;">For growth and marketing teams: the auth log source (where SSH brute-force attempts are recorded) gives you a real-time picture of attack traffic against your server - useful context for understanding infrastructure load and the value of the protection CloudScale provides.</p>
 </div></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="optimizer">Plugin Optimizer</h3>
-<p class="cs-panel-intro">Two tools in one tab: a plugin stack scanner that maps your installed plugins against everything CloudScale already replaces (so you know exactly which ones to remove), and an AI debugging assistant that diagnoses PHP errors, stack traces, and WordPress warnings instantly with step-by-step fix instructions.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-optimizer-18.jpg" alt="WordPress plugin stack scanner showing which plugins CloudScale replaces with AI debugging assistant" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="optimizer" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Plugin Optimizer</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Two tools in one tab: a plugin stack scanner that maps your installed plugins against everything CloudScale already replaces (so you know exactly which ones to remove), and an AI debugging assistant that diagnoses PHP errors, stack traces, and WordPress warnings instantly with step-by-step fix instructions.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-optimizer.jpg" alt="WordPress plugin stack scanner showing which plugins CloudScale replaces with AI debugging assistant" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:linear-gradient(135deg,#f0f4ff,#f5f3ff);border-left:4px solid #6366f1;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🔧 Reduce Your Plugin Stack. Fix Errors Faster.</h2>
 <p style="margin:0 0 10px;color:#374151;">The average WordPress site runs 17 active plugins. Each one adds HTTP requests, CSS, JavaScript, and potential conflict vectors to every page load. The Optimizer tab gives you two tools to fight back: a plugin scanner that finds redundancy, and an AI assistant that diagnoses errors instantly.</p>
@@ -943,12 +898,12 @@
 </div>
 <p style="margin-top:16px;"><strong>Requires an AI API key.</strong> Add one on the Security tab under AI Settings. Google Gemini's free tier works perfectly for debugging queries - a single debugging session uses a fraction of the free daily quota.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="plugin-stack">Plugin Stack Scanner</h3>
-<p class="cs-panel-intro">Scans your installed plugins against a curated list of functionality that CloudScale already provides - security scanners, 2FA plugins, SMTP mailers, code highlighting, SQL tools, and log viewers. Shows exactly which plugins are now redundant and safe to remove, reducing your attack surface and update burden.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-plugin-stack-11.jpg" alt="WordPress plugin stack scanner showing redundant plugins that CloudScale replaces with fewer attack surface" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="plugin-stack" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Plugin Stack Scanner</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Scans your installed plugins against a curated list of functionality that CloudScale already provides - security scanners, 2FA plugins, SMTP mailers, code highlighting, SQL tools, and log viewers. Shows exactly which plugins are now redundant and safe to remove, reducing your attack surface and update burden.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-plugin-stack.jpg" alt="WordPress plugin stack scanner showing redundant plugins that CloudScale replaces with fewer attack surface" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#f0f9ff;border-left:4px solid #1e6fd9;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🔍 Fewer Plugins = Smaller Attack Surface</h2>
 <p style="margin:0;color:#374151;">Every plugin you run is a piece of code you trust to not get hacked, not conflict with anything, and not slow your site down. CloudScale already replaces entire categories of plugins. The Plugin Stack Scanner tells you exactly which of your current plugins are now redundant.</p>
@@ -965,12 +920,12 @@
 </ul>
 <p>Each flagged plugin shows why it's redundant and which CloudScale feature replaces it. Inactive plugins are flagged with an extra warning: inactive plugins still load autoloaded code on every page request and are still scanned for vulnerabilities - deactivate and delete, don't just deactivate.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="update-risk">Update Risk Scorer</h3>
-<p class="cs-panel-intro">Uses AI to read each pending plugin update's changelog from WordPress.org and classify it as Patch (safe to apply now), Minor (new features, review first), or Breaking (major changes, test on staging). Prevents the most common cause of site breakage: blindly applying all updates at once.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-update-risk-11.jpg" alt="WordPress AI update risk scorer rating pending plugin updates as Patch, Minor or Breaking before applying them" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="update-risk" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Update Risk Scorer</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Uses AI to read each pending plugin update's changelog from WordPress.org and classify it as Patch (safe to apply now), Minor (new features, review first), or Breaking (major changes, test on staging). Prevents the most common cause of site breakage: blindly applying all updates at once.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-update-risk.jpg" alt="WordPress AI update risk scorer rating pending plugin updates as Patch, Minor or Breaking before applying them" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🔄 Know What You're Applying Before You Apply It</h2>
 <p style="margin:0;color:#374151;">Blindly applying all pending plugin updates is the most common cause of WordPress site breakage. A "minor" version bump can contain breaking API changes. A patch release can contain schema migrations. The Update Risk Scorer reads the changelog and tells you which updates are safe to apply right now and which need staging first.</p>
@@ -987,12 +942,12 @@
 
 <p>Requires an AI API key configured on the Home tab. Uses your configured provider (Claude or Gemini) to read and assess each changelog. The assessment runs locally on your server - no update decisions are sent to or logged by CloudScale.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="uptime-monitor">Uptime Monitor</h3>
-<p class="cs-panel-intro">Deploys a Cloudflare Worker that probes a deep readiness endpoint every 60 seconds from the Cloudflare edge. Unlike basic uptime monitors that only check for a 200 response, this endpoint verifies database connectivity, PHP-FPM worker saturation, and WordPress boot. Alerts fire via push notification even if your server is completely offline.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-uptime-monitor-11.jpg" alt="WordPress Cloudflare uptime monitor showing deep readiness probe with database and PHP-FPM health checks" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="uptime-monitor" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Uptime Monitor</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Deploys a Cloudflare Worker that probes a deep readiness endpoint every 60 seconds from the Cloudflare edge. Unlike basic uptime monitors that only check for a 200 response, this endpoint verifies database connectivity, PHP-FPM worker saturation, and WordPress boot. Alerts fire via push notification even if your server is completely offline.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-uptime-monitor.jpg" alt="WordPress Cloudflare uptime monitor showing deep readiness probe with database and PHP-FPM health checks" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border-left:4px solid #16a34a;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">⏱ Deep Uptime Monitoring - From the Cloudflare Edge</h2>
 <p style="margin:0 0 10px;color:#374151;">Traditional uptime monitors check whether your site returns a 200 status code. That tells you nothing about whether WordPress is actually healthy - your site can return 200 while the database is failing, PHP-FPM workers are exhausted, or the application is silently broken.</p>
@@ -1087,12 +1042,12 @@ wrangler deploy</pre>
 <p>The readiness endpoint is public (accessible without a WordPress login) but protected by a Bearer token. All token comparisons use <code>hash_equals()</code> to prevent timing attacks. Requests with a missing or incorrect token return <code>401</code> and log the time of the attempt as <strong>Last Failed Query</strong> - visible in the uptime panel. If you see unexpected failed queries, regenerate your token using the <strong>Generate Token</strong> button and re-deploy the Worker.</p>
 <p>The endpoint does not expose sensitive data - it only returns health check pass/fail status and version numbers.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="cs-monitor">CS Monitor</h3>
-<p class="cs-panel-intro">A floating DevTools-style performance panel that appears on every WordPress admin screen and frontend page for logged-in administrators. Surfaces database queries, HTTP calls, hook timings, PHP errors, assets, and template resolution in one overlay - without switching tools or tailing log files.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-cs-monitor-18.jpg" alt="CS Monitor floating performance panel showing DB queries, hooks, HTTP calls, and PHP errors on every WordPress page" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="cs-monitor" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>CS Monitor</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">A floating DevTools-style performance panel that appears on every WordPress admin screen and frontend page for logged-in administrators. Surfaces database queries, HTTP calls, hook timings, PHP errors, assets, and template resolution in one overlay - without switching tools or tailing log files.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-cs-monitor.jpg" alt="CS Monitor floating performance panel showing DB queries, hooks, HTTP calls, and PHP errors on every WordPress page" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:linear-gradient(135deg,#f0f4ff,#fdf4ff);border-left:4px solid #6366f1;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">⚡ A DevTools-Style Performance Panel, Built Into Every WordPress Page</h2>
 <p style="margin:0 0 10px;color:#374151;">Query Monitor shows database queries. Debug Bar surfaces WP_DEBUG output. Neither one shows you everything happening on a single page request - HTTP calls, hook timings, PHP errors, asset inventory, transients, and template resolution - in one panel without switching tools or reading raw logs. CS Monitor does.</p>
@@ -1124,12 +1079,12 @@ wrangler deploy</pre>
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Performance Impact</h3>
 <p>CS Monitor adds a small overhead from hooking into <code>SAVEQUERIES</code> and the WordPress <code>shutdown</code> action to collect data. This overhead is only incurred for logged-in administrators - regular visitors are completely unaffected. The panel can be disabled globally under <strong>Tools → Cyber and Devtools → Code Settings → Show the CS Monitor performance panel</strong>, or closed on a per-page basis using its close button.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="fpm-monitor">FPM Monitor</h3>
-<p class="cs-panel-intro">PHP-FPM (FastCGI Process Manager) is the process pool that serves every WordPress page request. When all workers are occupied - during a traffic spike, a slow database query, or a runaway loop - new requests queue and the site freezes. The FPM Monitor shows live worker counts and memory usage, and alerts you the moment saturation builds - running as a host-level script outside PHP so it fires even when every PHP worker is consumed.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-fpm-monitor-18.jpg" alt="PHP-FPM saturation monitor showing live worker counts and memory usage with auto-restart and ntfy alerts" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="fpm-monitor" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>FPM Monitor</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">PHP-FPM (FastCGI Process Manager) is the process pool that serves every WordPress page request. When all workers are occupied - during a traffic spike, a slow database query, or a runaway loop - new requests queue and the site freezes. The FPM Monitor shows live worker counts and memory usage, and alerts you the moment saturation builds - running as a host-level script outside PHP so it fires even when every PHP worker is consumed.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-fpm-monitor.jpg" alt="PHP-FPM saturation monitor showing live worker counts and memory usage with auto-restart and ntfy alerts" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:linear-gradient(135deg,#0f172a,#1e293b);border-left:4px solid #60a5fa;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#e2e8f0;background:transparent!important;padding:0!important;border:none!important;">🖥️ Know When Your PHP Workers Are Exhausted - Before Your Site Goes Down</h2>
 <p style="margin:0 0 10px;color:#94a3b8;">PHP-FPM (FastCGI Process Manager) maintains a fixed pool of worker processes. When all workers are busy - during a traffic spike, a slow query holding workers open, or a runaway loop - new requests queue and the site freezes. WP-Cron can't alert you when this happens because WP-Cron itself runs inside PHP-FPM. The FPM Monitor runs as a shell script on the host OS, outside Docker, so it fires even when every PHP worker is consumed.</p>
@@ -1162,12 +1117,12 @@ wrangler deploy</pre>
 <p>Configure the settings in the panel, then copy the <strong>crontab line</strong> and <strong>config.env snippet</strong> from the Host Cron Setup section. The config includes the callback URL and a secret token that authenticates events back to this panel. Add the crontab line to your host's crontab with <code>crontab -e</code>, and source the config.env from your cron script. The monitor starts detecting saturation immediately.</p>
 <p><strong>Auto-restart:</strong> when enabled, the script issues <code>docker restart {container}</code> after declaring saturation. Use with care on production - a restart drops all in-flight requests. The restart cooldown (default: 20 minutes) prevents the script from restarting more than once per incident.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="test-accounts">Test Account Manager</h3>
-<p class="cs-panel-intro">Creates dedicated WordPress test users for Playwright and automated testing. Provides a session API that generates temporary admin cookies without triggering 2FA - so your test suite can log in as a real administrator without disabling the two-factor authentication protecting your live site.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-test-accounts-13.jpg" alt="WordPress Playwright test account manager showing shared secret session API and test user list with active sessions" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="test-accounts" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Test Account Manager</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Creates dedicated WordPress test users for Playwright and automated testing. Provides a session API that generates temporary admin cookies without triggering 2FA - so your test suite can log in as a real administrator without disabling the two-factor authentication protecting your live site.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-test-accounts.jpg" alt="WordPress Playwright test account manager showing shared secret session API and test user list with active sessions" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:linear-gradient(135deg,#f0f4ff,#f5f3ff);border-left:4px solid #6366f1;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🤖 Playwright Testing on a Live Site Without Disabling 2FA</h2>
 <p style="margin:0 0 10px;color:#374151;">Automated end-to-end testing with Playwright requires logging in as a real WordPress user. But if 2FA is enabled on your admin accounts (which it should be), your test suite cannot log in using a username and password alone. The standard workarounds - disabling 2FA for testing, creating a permanent admin account with weak credentials, or patching the login flow - all introduce real security risks on your production site.</p>
@@ -1213,12 +1168,12 @@ CSDT_TEST_LOGOUT_URL=https://yoursite.com/wp-json/csdt/v1/test-logout-{token}</p
 <p style="margin:0;color:#374151;line-height:1.7;">Test sessions created via the API are real WordPress sessions with full role permissions. Keep TTLs short (1200 seconds is the recommended default for most test runs) and always call the logout endpoint at the end of your suite. The test users list shows active session counts so you can spot stale sessions and kill them manually.</p>
 </div></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="opcache">OPcache Monitor</h3>
-<p class="cs-panel-intro">Displays the current PHP OPcache status: memory usage, hit rate, and the number of cached vs. uncached scripts. A hit rate below 90% or a full cache means PHP is recompiling scripts on every request, significantly slowing your site. Includes a one-click Reset button to flush the cache after code deployments.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-opcache-11.jpg" alt="PHP OPcache status monitor showing memory usage, hit rate and cached script count in WordPress admin" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="opcache" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>OPcache Monitor</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Displays the current PHP OPcache status: memory usage, hit rate, and the number of cached vs. uncached scripts. A hit rate below 90% or a full cache means PHP is recompiling scripts on every request, significantly slowing your site. Includes a one-click Reset button to flush the cache after code deployments.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-opcache.jpg" alt="PHP OPcache status monitor showing memory usage, hit rate and cached script count in WordPress admin" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#f0f9ff;border-left:4px solid #0e6b8f;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">PHP OPcache: the Single Biggest PHP Performance Win</h2>
 <p style="margin:0;color:#374151;">PHP compiles source code to bytecode every time a script runs - unless OPcache is enabled. With OPcache, the bytecode is compiled once and stored in shared memory. Every subsequent request skips compilation entirely. On a WordPress site with 200+ PHP files loading per request, this typically cuts PHP execution time by 30-50%.</p>
@@ -1235,12 +1190,12 @@ CSDT_TEST_LOGOUT_URL=https://yoursite.com/wp-json/csdt/v1/test-logout-{token}</p
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Reset button</h3>
 <p>After deploying code changes (new plugin versions, theme updates, custom code), the cached bytecode may no longer match the files on disk. Click <strong>Reset OPcache</strong> to flush all cached scripts. WordPress will recompile them on the next few requests. The site remains available during the reset - there's no downtime.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="smtp">SMTP Mailer</h3>
-<p class="cs-panel-intro">Replaces WordPress's unreliable PHP mail() function with authenticated SMTP delivery. Supports Gmail, Outlook, Amazon SES, Mailgun, and any standard SMTP server. Includes a test-send button and a persistent activity log showing every outgoing message with delivery status.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-smtp-11.jpg" alt="WordPress SMTP mailer settings replacing PHP mail with authenticated Gmail Outlook or Mailgun delivery" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="smtp" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>SMTP Mailer</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Replaces WordPress's unreliable PHP mail() function with authenticated SMTP delivery. Supports Gmail, Outlook, Amazon SES, Mailgun, and any standard SMTP server. Includes a test-send button and a persistent activity log showing every outgoing message with delivery status.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-smtp.jpg" alt="WordPress SMTP mailer settings replacing PHP mail with authenticated Gmail Outlook or Mailgun delivery" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">📧 Stop Losing Emails to the Spam Folder</h2>
 <p style="margin:0;color:#374151;">By default, WordPress sends email via PHP's <code>mail()</code> function. Email sent this way - directly from your server's IP with no authentication - is rejected by Gmail, Outlook, and most modern mail services, or silently dropped into spam. Authenticated SMTP delivery solves this permanently.</p>
@@ -1260,12 +1215,12 @@ CSDT_TEST_LOGOUT_URL=https://yoursite.com/wp-json/csdt/v1/test-logout-{token}</p
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Test before you save</h3>
 <p>Use the <strong>Send Test Email</strong> button to confirm delivery before saving. The test sends a real email to your WordPress admin address. Check the Email Log tab if you don't receive it within a few minutes - the log shows whether the send was attempted and what error (if any) was returned.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="email-log">Email Activity Log</h3>
-<p class="cs-panel-intro">Logs every email sent by WordPress - regardless of whether SMTP is enabled - with the subject, recipient, timestamp, and delivery status. Click any row to view the full email body. Invaluable for debugging WooCommerce order notifications, password reset failures, and contact form delivery issues.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-email-log-11.jpg" alt="WordPress email activity log showing all sent emails with subject, recipient and delivery status in admin" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="email-log" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Email Activity Log</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Logs every email sent by WordPress - regardless of whether SMTP is enabled - with the subject, recipient, timestamp, and delivery status. Click any row to view the full email body. Invaluable for debugging WooCommerce order notifications, password reset failures, and contact form delivery issues.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-email-log.jpg" alt="WordPress email activity log showing all sent emails with subject, recipient and delivery status in admin" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#fdf4ff;border-left:4px solid #9333ea;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">📬 See Every Email WordPress Has Sent</h2>
 <p style="margin:0;color:#374151;">The email activity log captures every outgoing email regardless of delivery method - PHP mail(), SMTP, or any third-party mailer that hooks into wp_mail(). If a user says they didn't receive a password reset or a WooCommerce order notification, this is the first place to look.</p>
@@ -1283,12 +1238,12 @@ CSDT_TEST_LOGOUT_URL=https://yoursite.com/wp-json/csdt/v1/test-logout-{token}</p
 
 <p>The log retains the last 200 entries. Use the <strong>Clear Log</strong> button to reset it after debugging.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 
-<div class="cs-panel-section">
-<h3 class="cs-panel-heading" id="thumbnails">Thumbnails & Open Graph</h3>
-<p class="cs-panel-intro">Diagnoses social sharing thumbnail failures: checks your Open Graph meta tags and featured image setup, scans recent posts for missing images, and audits your Cloudflare image caching configuration. Social media platforms and link preview tools (Slack, Teams, WhatsApp) rely on Open Graph tags to generate preview cards - when these are wrong, links share as plain text with no image.</p><figure class="cs-screenshot"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/04/panel-thumbnails-11.jpg" alt="WordPress Open Graph thumbnail diagnostics checking social sharing images, Cloudflare caching and media library" loading="lazy" /></figure>
-<div class="cs-panel-body">
+<div style="margin:36px 0 0;">
+<h3 id="thumbnails" style="font-size:1.45em;font-weight:700;color:#1e293b;margin:0 0 16px;padding:0 0 10px;border-bottom:2px solid #e2e8f0;border-left:none;border-top:none;border-right:none;display:flex;align-items:center;gap:10px;background:transparent;"><span style="display:inline-block;width:4px;height:1.2em;background:#0e6b8f;border-radius:2px;flex-shrink:0;"></span>Thumbnails & Open Graph</h3>
+<p style="font-size:1.05em;color:#475569;line-height:1.7;margin:0 0 16px;">Diagnoses social sharing thumbnail failures: checks your Open Graph meta tags and featured image setup, scans recent posts for missing images, and audits your Cloudflare image caching configuration. Social media platforms and link preview tools (Slack, Teams, WhatsApp) rely on Open Graph tags to generate preview cards - when these are wrong, links share as plain text with no image.</p><figure style="margin:20px 0 24px;padding:0;"><img src="https://andrewbaker.ninja/wp-content/uploads/2026/05/panel-thumbnails.jpg" alt="WordPress Open Graph thumbnail diagnostics checking social sharing images, Cloudflare caching and media library" loading="lazy" style="max-width:100%;border-radius:8px;border:1px solid #d1d5db;box-shadow:0 4px 20px rgba(0,0,0,.10);display:block;" /></figure>
+<div style="color:#334155;">
 <div style="background:#fefce8;border-left:4px solid #d97706;padding:18px 22px;border-radius:0 8px 8px 0;margin-bottom:24px;">
 <h2 style="margin:0 0 8px;font-size:1.25em;color:#0f172a;background:transparent!important;padding:0!important;border:none!important;">🖼️ Why Your Links Share Without a Preview Image</h2>
 <p style="margin:0;color:#374151;">When someone shares a WordPress post link on Slack, Twitter, WhatsApp, or LinkedIn, the platform fetches your page to build a preview card. That card is driven entirely by Open Graph meta tags - specifically <code>og:image</code>. If the tag is missing, wrong, or pointing to an image that Cloudflare is caching with a wrong content-type, the link shares as bare text. This diagnostic panel finds and fixes those problems.</p>
@@ -1306,7 +1261,7 @@ CSDT_TEST_LOGOUT_URL=https://yoursite.com/wp-json/csdt/v1/test-logout-{token}</p
 <h3 style="font-size:1.1em;font-weight:700;color:#0f172a;margin:24px 0 10px;background:transparent!important;padding:0!important;border:none!important;">Media Library Audit</h3>
 <p>Lists orphaned attachment records in your database - images that exist in wp_posts as attachments but whose files are missing from the uploads directory. These cause 404 errors when social crawlers try to fetch the referenced og:image. The audit lets you identify and clean up broken attachment records.</p></div>
 </div>
-<hr class="cs-divider"/>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0;"/>
 </div>
 <!-- /wp:html -->
 </body></html>

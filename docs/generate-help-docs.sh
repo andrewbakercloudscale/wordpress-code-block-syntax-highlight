@@ -4,7 +4,7 @@ set -euo pipefail
 PLUGIN_REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PLUGIN_LABEL="CloudScale Cyber and Devtools"
 
-source REPO_BASE/shared-help-docs/help-runner.sh
+source /Users/cp363412/Desktop/github/shared-help-docs/help-runner.sh
 
 echo "--- Disabling CS Monitor for screenshots..."
 run_wp "option update csdt_devtools_perf_monitor_enabled 0 --path=${WP_PATH}"

@@ -1300,8 +1300,9 @@
                 } );
         } );
 
-        // ── Auto re-scan when sort changes and results are visible ───────
-        const sortEl = document.getElementById( 'cs-ai-img-sort' );
+        // ── Auto re-scan when sort or show-all changes and results visible ─
+        const sortEl    = document.getElementById( 'cs-ai-img-sort' );
+        const showAllEl = document.getElementById( 'cs-ai-img-show-all' );
         if ( sortEl ) {
             sortEl.addEventListener( 'change', () => {
                 if ( results && results.style.display !== 'none' && results.innerHTML.trim() ) {
@@ -1309,62 +1310,87 @@
                 }
             } );
         }
+        if ( showAllEl ) {
+            showAllEl.addEventListener( 'change', () => {
+                updateScanBtnLabel();
+                if ( results && results.style.display !== 'none' && results.innerHTML.trim() ) {
+                    scanBtn.click();
+                }
+            } );
+        }
 
-        // ── Scan for posts without featured images ────────────────────────
+        function updateScanBtnLabel() {
+            const all = showAllEl?.checked;
+            scanBtn.textContent = all ? '🔍 Find all posts' : '🔍 Find posts without featured image';
+        }
+
+        // ── Scan for posts ────────────────────────────────────────────────
         scanBtn.addEventListener( 'click', () => {
-            const sort = document.getElementById( 'cs-ai-img-sort' )?.value || 'newest';
+            const sort     = document.getElementById( 'cs-ai-img-sort' )?.value || 'newest';
+            const show_all = showAllEl?.checked ? '1' : '0';
             scanBtn.disabled    = true;
             scanBtn.textContent = 'Scanning…';
             if ( results ) {
                 results.style.display = 'block';
-                results.innerHTML     = '<p style="color:#555;font-size:13px">⏳ Finding posts without featured images…</p>';
+                results.innerHTML     = '<p style="color:#555;font-size:13px">⏳ Scanning posts…</p>';
             }
 
-            post( 'csdt_devtools_ai_image_scan', { sort } )
+            post( 'csdt_devtools_ai_image_scan', { sort, show_all } )
                 .then( res => {
-                    scanBtn.disabled    = false;
-                    scanBtn.textContent = '🔍 Find posts without featured image';
+                    scanBtn.disabled = false;
+                    updateScanBtnLabel();
                     if ( ! res.success ) {
                         if ( results ) results.innerHTML = '<p style="color:#c62828">Error: ' + esc( res.data?.message || 'Scan failed.' ) + '</p>';
                         return;
                     }
-                    const posts  = res.data?.posts || [];
-                    const sortBy = res.data?.sort  || 'newest';
+                    const posts    = res.data?.posts || [];
+                    const sortBy   = res.data?.sort  || 'newest';
+                    const showingAll = show_all === '1';
                     if ( ! posts.length ) {
-                        if ( results ) results.innerHTML = '<p style="color:#2e7d32;font-size:13px">✓ All posts have a featured image.</p>';
+                        if ( results ) results.innerHTML = showingAll
+                            ? '<p style="color:#555;font-size:13px">No published posts found.</p>'
+                            : '<p style="color:#2e7d32;font-size:13px">✓ All posts have a featured image.</p>';
                         return;
                     }
-                    renderPostList( posts, sortBy );
+                    renderPostList( posts, sortBy, showingAll );
                 } )
                 .catch( () => {
-                    scanBtn.disabled    = false;
-                    scanBtn.textContent = '🔍 Find posts without featured image';
+                    scanBtn.disabled = false;
+                    updateScanBtnLabel();
                     if ( results ) results.innerHTML = '<p style="color:#c62828">Request failed.</p>';
                 } );
         } );
 
         // ── Render post list ──────────────────────────────────────────────
-        function renderPostList( posts, sortBy ) {
+        function renderPostList( posts, sortBy, showingAll ) {
             if ( ! results ) return;
             const sortLabel = sortBy === 'popular' ? 'by popularity' : sortBy === 'oldest' ? 'oldest first' : sortBy === 'longest' ? 'longest first' : 'newest first';
-            let html = `<p style="font-size:13px;color:#555;margin-bottom:10px">Found <strong>${esc(String(posts.length))}</strong> post(s) without a featured image <span style="color:#94a3b8">(${esc(sortLabel)})</span>:</p>`;
+            const missingCount = posts.filter( p => ! p.has_thumb ).length;
+            const headerText = showingAll
+                ? `Found <strong>${esc(String(posts.length))}</strong> post(s) — <strong>${esc(String(missingCount))}</strong> without a featured image <span style="color:#94a3b8">(${esc(sortLabel)})</span>`
+                : `Found <strong>${esc(String(posts.length))}</strong> post(s) without a featured image <span style="color:#94a3b8">(${esc(sortLabel)})</span>`;
+            let html = `<p style="font-size:13px;color:#555;margin-bottom:10px">${headerText}:</p>`;
             html += '<div style="display:flex;flex-direction:column;gap:8px">';
             for ( const p of posts ) {
-                const viewCount = ( p.view_count !== null && p.view_count !== undefined ) ? p.view_count : 0;
-                const wordCount = ( p.word_count !== null && p.word_count !== undefined ) ? p.word_count : 0;
+                const viewCount  = ( p.view_count !== null && p.view_count !== undefined ) ? p.view_count : 0;
+                const wordCount  = ( p.word_count !== null && p.word_count !== undefined ) ? p.word_count : 0;
                 const viewsBadge = `<span style="font-size:11px;color:#94a3b8;margin-left:8px">👁 ${esc(String(viewCount))}</span>`;
                 const wordsBadge = wordCount > 0 ? `<span style="font-size:11px;color:#94a3b8;margin-left:8px">📝 ${esc(wordCount.toLocaleString())} words</span>` : '';
-                const meta = `<span style="font-size:11px;color:#94a3b8">${esc(p.date)}</span>${viewsBadge}${wordsBadge}`;
+                const meta       = `<span style="font-size:11px;color:#94a3b8">${esc(p.date)}</span>${viewsBadge}${wordsBadge}`;
+                const btnLabel   = p.has_thumb ? '↺ Regenerate' : '✨ Generate';
+                const existingThumb = p.has_thumb && p.thumb_url
+                    ? `<img src="${esc(p.thumb_url)}" style="width:80px;height:42px;object-fit:cover;border-radius:3px;border:1px solid #ddd">`
+                    : '';
                 html += `
                 <div id="cs-ai-row-${esc(String(p.post_id))}" style="display:flex;align-items:center;gap:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 12px;flex-wrap:wrap">
                     <div style="flex:1;min-width:120px">
                         <a href="${esc(p.post_url)}" target="_blank" style="font-size:13px;font-weight:600;color:#1565c0;text-decoration:none;display:block;margin-bottom:2px">${esc(p.title)}</a>
                         ${meta}
                     </div>
-                    <div id="cs-ai-thumb-${esc(String(p.post_id))}" style="width:80px;flex-shrink:0"></div>
+                    <div id="cs-ai-thumb-${esc(String(p.post_id))}" style="width:80px;flex-shrink:0">${existingThumb}</div>
                     <button type="button" class="cs-btn-primary cs-ai-gen-btn" data-post-id="${esc(String(p.post_id))}"
                             style="font-size:12px;padding:5px 12px;white-space:nowrap">
-                        ✨ Generate
+                        ${btnLabel}
                     </button>
                     <span id="cs-ai-status-${esc(String(p.post_id))}" style="font-size:12px;color:#555;min-width:80px"></span>
                 </div>`;

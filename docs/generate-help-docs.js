@@ -1,6 +1,6 @@
 'use strict';
 const fs      = require('fs');
-const helpLib = require('REPO_BASE/shared-help-docs/help-lib.js');
+const helpLib = require('/Users/cp363412/Desktop/github/shared-help-docs/help-lib.js');
 
 // Read current version from plugin header so it never goes stale
 const _phpHeader    = fs.readFileSync(`${__dirname}/../cs-code-block.php`, 'utf8');
@@ -28,7 +28,7 @@ helpLib.run({
         'offers': { '@type': 'Offer', 'price': '0', 'priceCurrency': 'USD' },
         'description': 'Free WordPress security plugin powered by Anthropic Claude and Google Gemini AI. Features: AI-powered penetration testing, brute-force protection, two-factor authentication, passkeys (WebAuthn), hide login URL, AI site audit, AI debugging assistant, PHP-FPM monitoring, performance panel, SMTP mailer, SQL tool, server logs, plugin vulnerability scanner, Cloudflare uptime monitor with readiness probe, and syntax-highlighted code blocks.',
         'url': 'https://andrewbaker.ninja/wordpress-plugin-help/cloudscale-cyber-devtools-help/',
-        'downloadUrl': 'https://your-s3-bucket.s3.af-south-1.amazonaws.com/cloudscale-devtools.zip',
+        'downloadUrl': 'https://andrewninjawordpress.s3.af-south-1.amazonaws.com/cloudscale-devtools.zip',
         'softwareVersion': _pluginVersion,
         'author': { '@type': 'Person', 'name': 'Andrew Baker', 'url': 'https://andrewbaker.ninja' },
         'isAccessibleForFree': true,
@@ -36,7 +36,7 @@ helpLib.run({
     },
     pageTitle:  'CloudScale Cyber & Devtools - Free AI Penetration Testing & WordPress Security Plugin',
     pageSlug:   'cloudscale-cyber-devtools-help',
-    downloadUrl: 'https://your-s3-bucket.s3.af-south-1.amazonaws.com/cloudscale-devtools.zip',
+    downloadUrl: 'https://andrewninjawordpress.s3.af-south-1.amazonaws.com/cloudscale-devtools.zip',
     repoUrl:     'https://github.com/andrewbakercloudscale/cloudscale-cyber-devtools',
     adminUrl:   `${process.env.WP_BASE_URL}/wp-admin/tools.php?page=cloudscale-devtools`,
 
@@ -234,7 +234,7 @@ helpLib.run({
 <h2 style="margin:0 0 10px;font-size:1.4em;font-weight:800;color:#fff;background:transparent!important;padding:0!important;border:none!important;">Ready to protect your site?</h2>
 <p style="margin:0 0 24px;color:#94a3b8;font-size:1em;line-height:1.6;">Free, open-source, and installed in under 5 minutes. Google Gemini's free tier means zero cost for daily AI security scans.</p>
 <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;">
-<a href="https://your-s3-bucket.s3.af-south-1.amazonaws.com/cloudscale-devtools.zip" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;font-weight:700;font-size:.95em;padding:14px 32px;border-radius:8px;">⬇ Download Free Plugin</a>
+<a href="https://andrewninjawordpress.s3.af-south-1.amazonaws.com/cloudscale-devtools.zip" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;font-weight:700;font-size:.95em;padding:14px 32px;border-radius:8px;">⬇ Download Free Plugin</a>
 <a href="https://github.com/andrewbakercloudscale/cloudscale-cyber-devtools" target="_blank" rel="noopener" style="display:inline-block;background:rgba(255,255,255,.12);color:#fff;text-decoration:none;font-weight:600;font-size:.95em;padding:14px 32px;border-radius:8px;border:1px solid rgba(255,255,255,.2);">View on GitHub →</a>
 </div>
 </div>

@@ -679,7 +679,22 @@ class CSDT_Monitor {
             if ( ! current_user_can( 'manage_options' ) ) { wp_send_json_error( 'Unauthorized', 403 ); }
         }
 
-        $ok = function_exists( 'opcache_reset' ) && opcache_reset();
+        // Use per-file invalidation instead of opcache_reset() to avoid acquiring the
+        // global OPcache write-lock, which blocks all workers simultaneously and causes
+        // a brief upstream timeout visible to users as ERR_CONNECTION_FAILED.
+        $ok = false;
+        if ( function_exists( 'opcache_invalidate' ) && function_exists( 'opcache_get_status' ) ) {
+            $status = opcache_get_status( false );
+            if ( ! empty( $status['scripts'] ) ) {
+                foreach ( array_keys( $status['scripts'] ) as $cached_file ) {
+                    opcache_invalidate( $cached_file, true );
+                }
+                $ok = true;
+            }
+        }
+        if ( ! $ok ) {
+            $ok = function_exists( 'opcache_reset' ) && opcache_reset();
+        }
         update_option( 'csdt_opcache_last_flush', time(), false );
 
         wp_send_json_success( [
