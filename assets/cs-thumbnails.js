@@ -1217,13 +1217,101 @@
 
         if ( ! saveKeyBtn ) return;
 
-        // ── Copy API key to clipboard ─────────────────────────────────────
+        // ── Vendor / model / key setup ────────────────────────────────────
+        const MODELS = {
+            openai:    [ { value: 'gpt-4o-mini', label: 'GPT-4o mini (fast, recommended)' }, { value: 'gpt-4o', label: 'GPT-4o (best quality)' } ],
+            anthropic: [ { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (fast)' }, { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' }, { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (latest)' } ],
+            gemini:    [ { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (fast)' }, { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' } ],
+            none:      [],
+        };
+        const KEY_HINTS = {
+            openai:    'platform.openai.com → API keys → Create new secret key. Also used for DALL-E image generation.',
+            anthropic: 'console.anthropic.com → API Keys → Create Key. Starts with sk-ant-…',
+            gemini:    'aistudio.google.com → Get API Key. Or Google Cloud Console → Credentials.',
+            none:      '',
+        };
+        const KEY_PLACEHOLDERS = { openai: 'sk-proj-…', anthropic: 'sk-ant-api03-…', gemini: 'AIzaSy…', none: '' };
+
+        const vendorEl   = document.getElementById( 'cs-ai-img-vendor' );
+        const modelEl    = document.getElementById( 'cs-ai-img-model' );
+        const modelRow   = document.getElementById( 'cs-ai-img-model-row' );
+        const keyRow     = document.getElementById( 'cs-ai-img-key-row' );
+        const keyLabel   = document.getElementById( 'cs-ai-img-key-label' );
+        const keyInput   = document.getElementById( 'cs-ai-img-openai-key' );
+        const keyHint    = document.getElementById( 'cs-ai-img-key-hint' );
+        const dalleRow   = document.getElementById( 'cs-ai-img-dalle-key-row' );
+        const keyStatus  = document.getElementById( 'cs-ai-img-key-status' );
+
+        // Keys and initial vendor/model from PHP inline script.
+        const storedKeys  = window.csdtImgKeys  || {};
+        let   curVendor   = window.csdtImgVendor || 'openai';
+        let   curModel    = window.csdtImgModel  || 'gpt-4o-mini';
+
+        function applyVendor( vendor ) {
+            curVendor = vendor;
+            const isNone = vendor === 'none';
+            if ( modelRow ) modelRow.style.display = isNone ? 'none' : '';
+            if ( keyRow )   keyRow.style.display   = isNone ? 'none' : '';
+            if ( dalleRow ) dalleRow.style.display  = ( vendor === 'openai' || isNone ) ? 'none' : '';
+            if ( keyLabel ) keyLabel.textContent = vendor === 'openai' ? 'OpenAI API Key:' : vendor === 'anthropic' ? 'Anthropic API Key:' : vendor === 'gemini' ? 'Google API Key:' : 'API Key:';
+            if ( keyHint  ) keyHint.textContent  = KEY_HINTS[ vendor ] || '';
+            if ( keyInput ) {
+                keyInput.placeholder = KEY_PLACEHOLDERS[ vendor ] || '';
+                keyInput.value       = storedKeys[ vendor ] || '';
+                keyInput.type        = 'password';
+            }
+            if ( keyStatus ) keyStatus.innerHTML = storedKeys[ vendor ] ? '<span style="color:#2e7d32">✓ Key saved</span>' : '';
+
+            // Rebuild model options.
+            if ( modelEl ) {
+                modelEl.innerHTML = '';
+                ( MODELS[ vendor ] || [] ).forEach( m => {
+                    const opt = document.createElement( 'option' );
+                    opt.value = m.value;
+                    opt.textContent = m.label;
+                    if ( m.value === curModel ) opt.selected = true;
+                    modelEl.appendChild( opt );
+                } );
+                if ( modelEl.options.length && ! modelEl.value ) modelEl.selectedIndex = 0;
+                curModel = modelEl.value || curModel;
+            }
+        }
+
+        applyVendor( curVendor );
+        if ( vendorEl ) vendorEl.value = curVendor;
+
+        if ( vendorEl ) {
+            vendorEl.addEventListener( 'change', () => applyVendor( vendorEl.value ) );
+        }
+        if ( modelEl ) {
+            modelEl.addEventListener( 'change', () => { curModel = modelEl.value; } );
+        }
+
+        // ── Eye toggle ────────────────────────────────────────────────────
+        const keyToggleBtn = document.getElementById( 'cs-ai-img-key-toggle' );
+        if ( keyToggleBtn ) {
+            keyToggleBtn.addEventListener( 'click', () => {
+                if ( ! keyInput ) return;
+                keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
+                keyToggleBtn.style.opacity = keyInput.type === 'text' ? '1' : '0.4';
+            } );
+        }
+        const dalleToggle = document.getElementById( 'cs-ai-img-dalle-key-toggle' );
+        if ( dalleToggle ) {
+            dalleToggle.addEventListener( 'click', () => {
+                const di = document.getElementById( 'cs-ai-img-dalle-key' );
+                if ( ! di ) return;
+                di.type = di.type === 'password' ? 'text' : 'password';
+                dalleToggle.style.opacity = di.type === 'text' ? '1' : '0.4';
+            } );
+        }
+
+        // ── Copy API key ──────────────────────────────────────────────────
         const copyKeyBtn = document.getElementById( 'cs-ai-img-copy-key' );
         if ( copyKeyBtn ) {
             copyKeyBtn.addEventListener( 'click', () => {
-                const keyInput = document.getElementById( 'cs-ai-img-openai-key' );
                 const val = ( keyInput?.value || '' ).trim();
-                if ( ! val ) { return; }
+                if ( ! val ) return;
                 navigator.clipboard.writeText( val ).then( () => {
                     const orig = copyKeyBtn.innerHTML;
                     copyKeyBtn.textContent = '✔ Copied';
@@ -1236,58 +1324,41 @@
             } );
         }
 
-        // ── Eye toggle for API key ────────────────────────────────────────
-        const keyToggleBtn = document.getElementById( 'cs-ai-img-key-toggle' );
-        if ( keyToggleBtn ) {
-            keyToggleBtn.addEventListener( 'click', () => {
-                const keyInput = document.getElementById( 'cs-ai-img-openai-key' );
-                if ( ! keyInput ) return;
-                keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
-                keyToggleBtn.style.opacity = keyInput.type === 'text' ? '1' : '0.4';
-            } );
-        }
-
-        // ── Test OpenAI key ───────────────────────────────────────────────
+        // ── Test key ──────────────────────────────────────────────────────
         const testKeyBtn = document.getElementById( 'cs-ai-img-test-key' );
         if ( testKeyBtn ) {
             testKeyBtn.addEventListener( 'click', () => {
-                const keyStatus = document.getElementById( 'cs-ai-img-key-status' );
                 testKeyBtn.disabled    = true;
                 testKeyBtn.textContent = '⏳ Testing…';
-                post( 'csdt_devtools_ai_image_test_key', {} )
+                post( 'csdt_devtools_ai_image_test_key', { vendor: curVendor } )
                     .then( res => {
                         testKeyBtn.disabled    = false;
                         testKeyBtn.textContent = 'Test';
-                        if ( keyStatus ) {
-                            keyStatus.innerHTML = res.success
-                                ? '<span style="color:#2e7d32">' + esc( res.data.message ) + '</span>'
-                                : '<span style="color:#c62828">✗ ' + esc( res.data?.message || 'Test failed.' ) + '</span>';
-                        }
+                        if ( keyStatus ) keyStatus.innerHTML = res.success
+                            ? '<span style="color:#2e7d32">' + esc( res.data.message ) + '</span>'
+                            : '<span style="color:#c62828">✗ ' + esc( res.data?.message || 'Test failed.' ) + '</span>';
                     } )
                     .catch( () => {
                         testKeyBtn.disabled    = false;
                         testKeyBtn.textContent = 'Test';
-                        if ( keyStatus ) keyStatus.innerHTML = '<span style="color:#c62828">✗ Request failed — try refreshing the page</span>';
+                        if ( keyStatus ) keyStatus.innerHTML = '<span style="color:#c62828">✗ Request failed</span>';
                     } );
             } );
         }
 
-        // ── Save OpenAI key ───────────────────────────────────────────────
+        // ── Save prompt-writer key ────────────────────────────────────────
         saveKeyBtn.addEventListener( 'click', () => {
-            const keyInput  = document.getElementById( 'cs-ai-img-openai-key' );
-            const keyStatus = document.getElementById( 'cs-ai-img-key-status' );
-            const rawKey    = ( keyInput?.value || '' ).trim();
-            if ( ! rawKey ) { alert( 'Enter an OpenAI API key first.' ); return; }
-
+            const rawKey = ( keyInput?.value || '' ).trim();
+            if ( ! rawKey ) { alert( 'Enter an API key first.' ); return; }
             saveKeyBtn.disabled    = true;
             saveKeyBtn.textContent = 'Saving…';
-
-            post( 'csdt_devtools_ai_image_save_key', { openai_key: rawKey } )
+            post( 'csdt_devtools_ai_image_save_key', { vendor: curVendor, key: rawKey, prompt_vendor: curVendor, prompt_model: modelEl?.value || curModel } )
                 .then( res => {
                     saveKeyBtn.disabled    = false;
                     saveKeyBtn.textContent = 'Save Key';
                     if ( res.success ) {
-                        if ( keyInput ) keyInput.value = res.data.key || '';
+                        storedKeys[ curVendor ] = res.data.key || rawKey;
+                        if ( keyInput ) keyInput.value = storedKeys[ curVendor ];
                         if ( keyStatus ) keyStatus.innerHTML = '<span style="color:#2e7d32">✓ Key saved</span>';
                     } else {
                         if ( keyStatus ) keyStatus.innerHTML = '<span style="color:#c62828">✗ ' + esc( res.data?.message || 'Save failed.' ) + '</span>';
@@ -1300,74 +1371,135 @@
                 } );
         } );
 
-        // ── Auto re-scan when sort or show-all changes and results visible ─
-        const sortEl    = document.getElementById( 'cs-ai-img-sort' );
-        const showAllEl = document.getElementById( 'cs-ai-img-show-all' );
+        // ── Save DALL-E key (OpenAI, shown when non-OpenAI vendor) ────────
+        const dalleSaveBtn = document.getElementById( 'cs-ai-img-dalle-save-key' );
+        if ( dalleSaveBtn ) {
+            dalleSaveBtn.addEventListener( 'click', () => {
+                const di = document.getElementById( 'cs-ai-img-dalle-key' );
+                const ds = document.getElementById( 'cs-ai-img-dalle-key-status' );
+                const rawKey = ( di?.value || '' ).trim();
+                if ( ! rawKey ) { alert( 'Enter your OpenAI key for DALL-E.' ); return; }
+                dalleSaveBtn.disabled    = true;
+                dalleSaveBtn.textContent = 'Saving…';
+                post( 'csdt_devtools_ai_image_save_key', { vendor: 'openai', key: rawKey } )
+                    .then( res => {
+                        dalleSaveBtn.disabled    = false;
+                        dalleSaveBtn.textContent = 'Save DALL-E Key';
+                        storedKeys.openai = rawKey;
+                        if ( ds ) ds.innerHTML = res.success ? '<span style="color:#2e7d32">✓ Key saved</span>' : '<span style="color:#c62828">✗ Failed</span>';
+                    } )
+                    .catch( () => {
+                        dalleSaveBtn.disabled    = false;
+                        dalleSaveBtn.textContent = 'Save DALL-E Key';
+                    } );
+            } );
+        }
+
+        // ── Auto re-scan when sort changes and results are visible ───────
+        const sortEl      = document.getElementById( 'cs-ai-img-sort' );
+        const withImgBtn  = document.getElementById( 'cs-ai-img-scan-with-btn' );
+        const styleEl     = document.getElementById( 'cs-ai-img-style' );
+        let   activeMode  = 'missing';
+
         if ( sortEl ) {
             sortEl.addEventListener( 'change', () => {
                 if ( results && results.style.display !== 'none' && results.innerHTML.trim() ) {
-                    scanBtn.click();
-                }
-            } );
-        }
-        if ( showAllEl ) {
-            showAllEl.addEventListener( 'change', () => {
-                updateScanBtnLabel();
-                if ( results && results.style.display !== 'none' && results.innerHTML.trim() ) {
-                    scanBtn.click();
+                    doScan( activeMode );
                 }
             } );
         }
 
-        function updateScanBtnLabel() {
-            const all = showAllEl?.checked;
-            scanBtn.textContent = all ? '🔍 Find all posts' : '🔍 Find posts without featured image';
-        }
-
-        // ── Scan for posts ────────────────────────────────────────────────
-        scanBtn.addEventListener( 'click', () => {
-            const sort     = document.getElementById( 'cs-ai-img-sort' )?.value || 'newest';
-            const show_all = showAllEl?.checked ? '1' : '0';
-            scanBtn.disabled    = true;
-            scanBtn.textContent = 'Scanning…';
+        function doScan( mode ) {
+            activeMode = mode;
+            const sort = document.getElementById( 'cs-ai-img-sort' )?.value || 'newest';
+            const isMissingMode = mode === 'missing';
+            const activeBtn  = isMissingMode ? scanBtn : withImgBtn;
+            const inactiveBtn = isMissingMode ? withImgBtn : scanBtn;
+            if ( activeBtn )   { activeBtn.disabled = true;  activeBtn.textContent = 'Scanning…'; }
+            if ( inactiveBtn ) { inactiveBtn.disabled = true; }
             if ( results ) {
                 results.style.display = 'block';
                 results.innerHTML     = '<p style="color:#555;font-size:13px">⏳ Scanning posts…</p>';
             }
 
-            post( 'csdt_devtools_ai_image_scan', { sort, show_all } )
+            post( 'csdt_devtools_ai_image_scan', { sort, mode } )
                 .then( res => {
-                    scanBtn.disabled = false;
-                    updateScanBtnLabel();
+                    if ( activeBtn )   { activeBtn.disabled = false;  activeBtn.textContent = isMissingMode ? '🔍 Find posts without featured image' : '🖼 Find posts with featured image'; }
+                    if ( inactiveBtn ) { inactiveBtn.disabled = false; }
                     if ( ! res.success ) {
                         if ( results ) results.innerHTML = '<p style="color:#c62828">Error: ' + esc( res.data?.message || 'Scan failed.' ) + '</p>';
                         return;
                     }
-                    const posts    = res.data?.posts || [];
-                    const sortBy   = res.data?.sort  || 'newest';
-                    const showingAll = show_all === '1';
+                    const posts  = res.data?.posts || [];
+                    const sortBy = res.data?.sort  || 'newest';
+                    const retMode = res.data?.mode || mode;
                     if ( ! posts.length ) {
-                        if ( results ) results.innerHTML = showingAll
-                            ? '<p style="color:#555;font-size:13px">No published posts found.</p>'
+                        if ( results ) results.innerHTML = retMode === 'with_image'
+                            ? '<p style="color:#555;font-size:13px">No posts with a featured image found.</p>'
                             : '<p style="color:#2e7d32;font-size:13px">✓ All posts have a featured image.</p>';
                         return;
                     }
-                    renderPostList( posts, sortBy, showingAll );
+                    renderPostList( posts, sortBy, retMode );
                 } )
                 .catch( () => {
-                    scanBtn.disabled = false;
-                    updateScanBtnLabel();
+                    if ( activeBtn )   { activeBtn.disabled = false;  activeBtn.textContent = isMissingMode ? '🔍 Find posts without featured image' : '🖼 Find posts with featured image'; }
+                    if ( inactiveBtn ) { inactiveBtn.disabled = false; }
                     if ( results ) results.innerHTML = '<p style="color:#c62828">Request failed.</p>';
                 } );
-        } );
+        }
+
+        // ── Scan buttons ──────────────────────────────────────────────────
+        scanBtn.addEventListener( 'click', () => doScan( 'missing' ) );
+        if ( withImgBtn ) withImgBtn.addEventListener( 'click', () => doScan( 'with_image' ) );
+
+        // ── System prompt save / reset ────────────────────────────────────
+        const saveSyspromptBtn  = document.getElementById( 'cs-ai-img-save-sysprompt' );
+        const resetSyspromptBtn = document.getElementById( 'cs-ai-img-reset-sysprompt' );
+        const syspromptStatus   = document.getElementById( 'cs-ai-img-sysprompt-status' );
+        const syspromptEl       = document.getElementById( 'cs-ai-img-system-prompt' );
+
+        if ( saveSyspromptBtn ) {
+            saveSyspromptBtn.addEventListener( 'click', () => {
+                const text = syspromptEl?.value || '';
+                saveSyspromptBtn.disabled = true;
+                post( 'csdt_devtools_ai_image_save_sysprompt', { system_prompt: text } )
+                    .then( res => {
+                        saveSyspromptBtn.disabled = false;
+                        if ( syspromptStatus ) {
+                            syspromptStatus.innerHTML = res.success
+                                ? '<span style="color:#2e7d32">✓ Saved</span>'
+                                : '<span style="color:#c62828">✗ ' + esc( res.data?.message || 'Error' ) + '</span>';
+                            setTimeout( () => { if ( syspromptStatus ) syspromptStatus.innerHTML = ''; }, 3000 );
+                        }
+                    } ).catch( () => {
+                        saveSyspromptBtn.disabled = false;
+                        if ( syspromptStatus ) syspromptStatus.innerHTML = '<span style="color:#c62828">✗ Error</span>';
+                    } );
+            } );
+        }
+
+        if ( resetSyspromptBtn ) {
+            resetSyspromptBtn.addEventListener( 'click', () => {
+                if ( ! confirm( 'Reset to the default system prompt?' ) ) return;
+                post( 'csdt_devtools_ai_image_save_sysprompt', { system_prompt: '' } )
+                    .then( res => {
+                        if ( res.success ) {
+                            if ( syspromptEl ) syspromptEl.value = window.csdtImgDefaultSysprompt || '';
+                            if ( syspromptStatus ) {
+                                syspromptStatus.innerHTML = '<span style="color:#2e7d32">✓ Reset to default</span>';
+                                setTimeout( () => { if ( syspromptStatus ) syspromptStatus.innerHTML = ''; }, 3000 );
+                            }
+                        }
+                    } );
+            } );
+        }
 
         // ── Render post list ──────────────────────────────────────────────
-        function renderPostList( posts, sortBy, showingAll ) {
+        function renderPostList( posts, sortBy, mode ) {
             if ( ! results ) return;
             const sortLabel = sortBy === 'popular' ? 'by popularity' : sortBy === 'oldest' ? 'oldest first' : sortBy === 'longest' ? 'longest first' : 'newest first';
-            const missingCount = posts.filter( p => ! p.has_thumb ).length;
-            const headerText = showingAll
-                ? `Found <strong>${esc(String(posts.length))}</strong> post(s) — <strong>${esc(String(missingCount))}</strong> without a featured image <span style="color:#94a3b8">(${esc(sortLabel)})</span>`
+            const headerText = mode === 'with_image'
+                ? `Found <strong>${esc(String(posts.length))}</strong> post(s) with a featured image <span style="color:#94a3b8">(${esc(sortLabel)})</span> — click Regenerate to replace`
                 : `Found <strong>${esc(String(posts.length))}</strong> post(s) without a featured image <span style="color:#94a3b8">(${esc(sortLabel)})</span>`;
             let html = `<p style="font-size:13px;color:#555;margin-bottom:10px">${headerText}:</p>`;
             html += '<div style="display:flex;flex-direction:column;gap:8px">';
@@ -1417,7 +1549,7 @@
             overlay.addEventListener( 'click', e => { if ( e.target === overlay ) _cancel(); } );
             document.addEventListener( 'keydown', e => { if ( e.key === 'Escape' && overlay.style.display !== 'none' ) _cancel(); } );
             function _cancel() { overlay.style.display = 'none'; if ( _cb.onCancel ) _cb.onCancel(); }
-            function open( options, callbacks ) {
+            function open( options, callbacks, dallePrompt ) {
                 _cb = callbacks || {};
                 const isMult = options.length > 1;
                 const titleText = isMult
@@ -1438,6 +1570,12 @@
                     : `<div style="padding:24px 20px 12px;text-align:center">
                           <img src="${esc(options[0].thumb_url)}" style="max-width:100%;max-height:420px;border-radius:6px;border:1px solid #e2e8f0;object-fit:contain;box-shadow:0 4px 24px rgba(0,0,0,.15)">
                        </div>`;
+                const promptHtml = dallePrompt
+                    ? `<details style="margin:0 20px 12px;font-size:11px;color:#64748b">
+                           <summary style="cursor:pointer;user-select:none;color:#94a3b8">DALL-E prompt sent ▸</summary>
+                           <p style="margin:6px 0 0;padding:8px;background:#f1f5f9;border-radius:4px;font-family:monospace;font-size:11px;line-height:1.5;white-space:pre-wrap;color:#334155">${esc(dallePrompt)}</p>
+                       </details>`
+                    : '';
                 const footerBtns = isMult
                     ? `<button type="button" class="cs-modal-regen"  style="background:#6366f1;color:#fff;border:none;border-radius:5px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer">↺ Regenerate both</button>
                        <button type="button" class="cs-modal-cancel" style="background:#fff;color:#64748b;border:1px solid #cbd5e1;border-radius:5px;padding:8px 18px;font-size:13px;cursor:pointer">✕ Cancel</button>`
@@ -1450,6 +1588,7 @@
                         <button class="cs-modal-close-x" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;padding:0 4px">&times;</button>
                     </div>
                     ${imagesHtml}
+                    ${promptHtml}
                     <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:12px 20px;border-top:1px solid #e2e8f0;background:#f8fafc">
                         ${footerBtns}
                     </div>`;
@@ -1474,66 +1613,136 @@
             return { open };
         } )();
 
+        // ── Prompt review modal (step 1 of 2) ────────────────────────────
+        const promptReviewModal = ( () => {
+            const overlay = document.createElement( 'div' );
+            overlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:100000;overflow-y:auto;padding:32px 16px;box-sizing:border-box';
+            const box = document.createElement( 'div' );
+            box.style.cssText = 'background:#fff;border-radius:10px;max-width:640px;margin:0 auto;box-shadow:0 16px 56px rgba(0,0,0,.5);overflow:hidden';
+            overlay.appendChild( box );
+            document.body.appendChild( overlay );
+            let _cb = {};
+            overlay.addEventListener( 'click', e => { if ( e.target === overlay ) _close(); } );
+            document.addEventListener( 'keydown', e => { if ( e.key === 'Escape' && overlay.style.display !== 'none' ) _close(); } );
+            function _close() { overlay.style.display = 'none'; }
+            function open( promptText, callbacks ) {
+                _cb = callbacks || {};
+                box.innerHTML = `
+                    <div style="background:#0d7377;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
+                        <strong style="font-size:14px">✏ Review DALL-E Prompt</strong>
+                        <button class="cs-prm-close" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;padding:0 4px">&times;</button>
+                    </div>
+                    <div style="padding:20px">
+                        <p style="margin:0 0 10px;font-size:13px;color:#555">The AI wrote this prompt based on your post content and system instructions. Edit it freely before generating.</p>
+                        <textarea id="cs-prompt-review-text" rows="8"
+                            style="width:100%;box-sizing:border-box;font-family:monospace;font-size:12px;line-height:1.6;border:1px solid #cbd5e1;border-radius:6px;padding:10px;resize:vertical;color:#334155">${esc( promptText )}</textarea>
+                    </div>
+                    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 20px;border-top:1px solid #e2e8f0;background:#f8fafc">
+                        <button type="button" class="cs-prm-gen" style="background:#16a34a;color:#fff;border:none;border-radius:5px;padding:8px 22px;font-size:13px;font-weight:600;cursor:pointer">🎨 Generate Image</button>
+                        <button type="button" class="cs-prm-cancel" style="background:#fff;color:#64748b;border:1px solid #cbd5e1;border-radius:5px;padding:8px 18px;font-size:13px;cursor:pointer">✕ Cancel</button>
+                    </div>`;
+                overlay.style.display = 'block';
+                box.querySelector( '.cs-prm-close' )?.addEventListener( 'click', () => { _close(); if ( _cb.onCancel ) _cb.onCancel(); } );
+                box.querySelector( '.cs-prm-cancel' )?.addEventListener( 'click', () => { _close(); if ( _cb.onCancel ) _cb.onCancel(); } );
+                box.querySelector( '.cs-prm-gen' )?.addEventListener( 'click', () => {
+                    const edited = document.getElementById( 'cs-prompt-review-text' )?.value || promptText;
+                    _close();
+                    if ( _cb.onGenerate ) _cb.onGenerate( edited );
+                } );
+            }
+            return { open };
+        } )();
+
         function triggerGenerate( btn ) {
             const postId       = btn.dataset.postId;
             const statusEl     = document.getElementById( 'cs-ai-status-' + postId );
             const thumbEl      = document.getElementById( 'cs-ai-thumb-'  + postId );
-            const quality      = document.getElementById( 'cs-ai-img-quality' )?.value       || 'standard';
-            const promptWriter = document.getElementById( 'cs-ai-img-prompt-writer' )?.value || 'chatgpt';
+            const quality      = document.getElementById( 'cs-ai-img-quality' )?.value || 'standard';
+            const promptVendor = curVendor  || 'openai';
+            const promptModel  = ( modelEl?.value || curModel || 'gpt-4o-mini' );
+            const promptStyle  = styleEl?.value || 'auto';
             const dual         = document.getElementById( 'cs-ai-img-dual' )?.checked ? '1' : '0';
 
             btn.disabled    = true;
-            btn.textContent = dual === '1' ? '⏳ Generating 2 options…' : '⏳ Generating…';
+            btn.textContent = '⏳ Writing prompt…';
             if ( statusEl ) statusEl.textContent = '';
             if ( thumbEl )  { thumbEl.innerHTML = ''; thumbEl.style.width = ''; }
 
-            post( 'csdt_devtools_ai_image_generate', { post_id: postId, quality, prompt_writer: promptWriter, dual } )
+            // Step 1 — ask AI to write the DALL-E prompt.
+            post( 'csdt_devtools_ai_image_write_prompt', { post_id: postId, prompt_vendor: promptVendor, prompt_model: promptModel, prompt_style: promptStyle } )
                 .then( res => {
-                    btn.disabled = false;
+                    btn.disabled    = false;
+                    btn.textContent = '✨ Generate';
                     if ( ! res.success ) {
-                        btn.textContent = '✨ Generate';
-                        if ( statusEl ) statusEl.innerHTML = '<span style="color:#c62828;font-size:11px">✗ ' + esc( res.data?.message || 'Failed' ) + '</span>';
+                        if ( statusEl ) statusEl.innerHTML = '<span style="color:#c62828;font-size:11px">✗ ' + esc( res.data?.message || 'Failed to write prompt' ) + '</span>';
                         return;
                     }
-                    const options = res.data.options || [];
-                    if ( ! options.length ) {
-                        btn.textContent = '✨ Generate';
-                        if ( statusEl ) statusEl.innerHTML = '<span style="color:#c62828">✗ No images returned</span>';
-                        return;
-                    }
-                    btn.textContent = '↺ Regenerate';
-                    const allIds = options.map( o => String( o.attach_id ) );
+                    const writtenPrompt = res.data?.prompt || '';
 
-                    function doAccept( chosenId ) {
-                        const discard = allIds.filter( id => id !== String( chosenId ) ).join( ',' );
-                        if ( statusEl ) statusEl.innerHTML = '<span style="color:#94a3b8;font-size:11px">⏳ Setting…</span>';
-                        post( 'csdt_devtools_ai_image_pick', { post_id: postId, attach_id: chosenId, discard } )
-                            .then( pickRes => {
-                                if ( pickRes.success ) {
-                                    if ( thumbEl ) {
-                                        thumbEl.style.width = '80px';
-                                        thumbEl.innerHTML = `<img src="${esc(pickRes.data.thumb_url)}" style="width:80px;height:42px;object-fit:cover;border-radius:3px;border:1px solid #ddd;cursor:pointer" title="Click to view larger" class="cs-ai-thumb-preview" data-full-url="${esc(pickRes.data.thumb_url)}">`;
-                                        thumbEl.querySelector( '.cs-ai-thumb-preview' )?.addEventListener( 'click', function () {
-                                            imageModal.open( [ { thumb_url: this.dataset.fullUrl, attach_id: chosenId } ], {
-                                                onAccept: () => {},
-                                                onRegenerate: () => { btn.textContent = '✨ Generate'; triggerGenerate( btn ); },
-                                                onCancel: () => {},
-                                            } );
-                                        } );
+                    // Step 2 — show prompt for review/edit, then generate image.
+                    promptReviewModal.open( writtenPrompt, {
+                        onCancel: () => { if ( statusEl ) statusEl.textContent = ''; },
+                        onGenerate: ( editedPrompt ) => {
+                            btn.disabled    = true;
+                            btn.textContent = dual === '1' ? '⏳ Generating 2 options…' : '⏳ Generating…';
+                            if ( statusEl ) statusEl.innerHTML = '<span style="color:#94a3b8;font-size:11px">⏳ Generating…</span>';
+
+                            post( 'csdt_devtools_ai_image_generate', { post_id: postId, quality, prompt_vendor: promptVendor, prompt_model: promptModel, dual, prompt: editedPrompt } )
+                                .then( genRes => {
+                                    btn.disabled = false;
+                                    if ( ! genRes.success ) {
+                                        btn.textContent = '✨ Generate';
+                                        if ( statusEl ) statusEl.innerHTML = '<span style="color:#c62828;font-size:11px">✗ ' + esc( genRes.data?.message || 'Failed' ) + '</span>';
+                                        return;
                                     }
-                                    if ( statusEl ) statusEl.innerHTML = '<span style="color:#2e7d32">✓ Set</span>';
-                                }
-                            } );
-                    }
+                                    const options     = genRes.data.options || [];
+                                    const dallePrompt = genRes.data.prompt  || editedPrompt;
+                                    if ( ! options.length ) {
+                                        btn.textContent = '✨ Generate';
+                                        if ( statusEl ) statusEl.innerHTML = '<span style="color:#c62828">✗ No images returned</span>';
+                                        return;
+                                    }
+                                    btn.textContent = '↺ Regenerate';
+                                    const allIds = options.map( o => String( o.attach_id ) );
 
-                    function doDiscard() {
-                        post( 'csdt_devtools_ai_image_discard', { attach_ids: allIds.join( ',' ) } ).catch( () => {} );
-                    }
+                                    function doAccept( chosenId ) {
+                                        const discard = allIds.filter( id => id !== String( chosenId ) ).join( ',' );
+                                        if ( statusEl ) statusEl.innerHTML = '<span style="color:#94a3b8;font-size:11px">⏳ Setting…</span>';
+                                        post( 'csdt_devtools_ai_image_pick', { post_id: postId, attach_id: chosenId, discard } )
+                                            .then( pickRes => {
+                                                if ( pickRes.success ) {
+                                                    if ( thumbEl ) {
+                                                        thumbEl.style.width = '80px';
+                                                        thumbEl.innerHTML = `<img src="${esc(pickRes.data.thumb_url)}" style="width:80px;height:42px;object-fit:cover;border-radius:3px;border:1px solid #ddd;cursor:pointer" title="Click to view larger" class="cs-ai-thumb-preview" data-full-url="${esc(pickRes.data.thumb_url)}">`;
+                                                        thumbEl.querySelector( '.cs-ai-thumb-preview' )?.addEventListener( 'click', function () {
+                                                            imageModal.open( [ { thumb_url: this.dataset.fullUrl, attach_id: chosenId } ], {
+                                                                onAccept: () => {},
+                                                                onRegenerate: () => { btn.textContent = '✨ Generate'; triggerGenerate( btn ); },
+                                                                onCancel: () => {},
+                                                            }, dallePrompt );
+                                                        } );
+                                                    }
+                                                    if ( statusEl ) statusEl.innerHTML = '<span style="color:#2e7d32">✓ Set</span>';
+                                                }
+                                            } );
+                                    }
 
-                    imageModal.open( options, {
-                        onAccept:     ( chosenId ) => doAccept( chosenId ),
-                        onRegenerate: () => { doDiscard(); btn.textContent = '✨ Generate'; triggerGenerate( btn ); },
-                        onCancel:     () => { doDiscard(); btn.textContent = '✨ Generate'; if ( statusEl ) statusEl.textContent = ''; },
+                                    function doDiscard() {
+                                        post( 'csdt_devtools_ai_image_discard', { attach_ids: allIds.join( ',' ) } ).catch( () => {} );
+                                    }
+
+                                    imageModal.open( options, {
+                                        onAccept:     ( chosenId ) => doAccept( chosenId ),
+                                        onRegenerate: () => { doDiscard(); btn.textContent = '✨ Generate'; triggerGenerate( btn ); },
+                                        onCancel:     () => { doDiscard(); btn.textContent = '✨ Generate'; if ( statusEl ) statusEl.textContent = ''; },
+                                    }, dallePrompt );
+                                } )
+                                .catch( () => {
+                                    btn.disabled    = false;
+                                    btn.textContent = '✨ Generate';
+                                    if ( statusEl ) statusEl.innerHTML = '<span style="color:#c62828">✗ Error</span>';
+                                } );
+                        },
                     } );
                 } )
                 .catch( () => {

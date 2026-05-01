@@ -317,63 +317,119 @@ class CSDT_Thumbnails {
 
     // ─── Featured Images tab ─────────────────────────────────────────────────
 
+    private const DEFAULT_IMG_SYSTEM_PROMPT = 'You write DALL-E 3 prompts for WordPress blog post header images. Output ONLY the prompt — no preamble, no explanations.
+
+STRICT RULES:
+1. First identify the CORE HUMAN SUBJECT of the article (what is it *actually* about at a conceptual level?). A "Technology Leadership" article is about LEADERSHIP AND PEOPLE — not servers. A "PostgreSQL tuning" article is about DATABASE INTERNALS — not a generic data centre. A "Stablecoins" article is about DIGITAL CURRENCY — not abstract circuits.
+2. NEVER generate: server racks, data centres, network cables, circuit boards, women standing in server rooms, generic glowing blue/green tech atmospheres, or any "person at a laptop" stock-photo clichés.
+3. Match the visual style to the topic:
+   - Leadership / strategy / HR → editorial photography of people, teams, boardrooms, or conceptual metaphors (chess, maps, compasses)
+   - Specific databases or open-source tools → the tool\'s actual visual identity (e.g. PostgreSQL elephant, Redis cube) in a clean technical context
+   - Finance / crypto / economics → currency concepts, clean financial charts, gold/silver tones
+   - Self-assessment / learning / growth → reflection metaphors, radar charts, upward journeys, growth visuals
+   - Security / vulnerability → shields, locks, fortress concepts — NOT server rooms
+   - Cloud infrastructure → abstract architecture diagrams, sky/cloud metaphors — NOT cable-filled data centres
+4. Prefer clean editorial illustration or conceptual art over generic photorealism.
+5. No text or typography anywhere in the image.';
+
     public static function render_ai_images_panel(): void {
-        $openai_key = (string) get_option( 'csdt_devtools_openai_key', '' );
+        $openai_key    = (string) get_option( 'csdt_devtools_openai_key', '' );
+        $anthropic_key = (string) get_option( 'csdt_devtools_anthropic_key', '' );
+        $gemini_key    = (string) get_option( 'csdt_devtools_gemini_key', '' );
+        $saved_vendor  = (string) get_option( 'csdt_devtools_prompt_vendor', 'openai' );
+        $saved_model   = (string) get_option( 'csdt_devtools_prompt_model', 'gpt-4o-mini' );
+        $system_prompt = (string) get_option( 'csdt_devtools_img_system_prompt', self::DEFAULT_IMG_SYSTEM_PROMPT );
+        $keys_json     = wp_json_encode( [
+            'openai'    => $openai_key,
+            'anthropic' => $anthropic_key,
+            'gemini'    => $gemini_key,
+        ] );
         ?>
         <div class="cs-panel" id="cs-panel-ai-image-gen">
             <div class="cs-section-header" style="background:linear-gradient(135deg,#0d7377,#14a085);">
                 <span>🎨 FEATURED IMAGE GENERATOR</span>
                 <span class="cs-header-hint"><?php esc_html_e( 'Generate DALL-E 3 featured images for posts that have none', 'cloudscale-devtools' ); ?></span>
                 <?php CloudScale_DevTools::render_explain_btn( 'ai-image-gen', 'AI Image Generator', [
-                    [ 'name' => 'What it does',          'rec' => 'Overview',             'html' => 'Finds your published posts that have no featured image, then uses DALL-E 3 (OpenAI) to generate a 1792×1024 landscape header image tailored to each post title. The generated image is automatically uploaded to your Media Library and set as the featured image.' ],
-                    [ 'name' => 'How to set up ChatGPT', 'rec' => 'Step-by-step',         'html' => '<strong>Step 1:</strong> Go to <a href="https://platform.openai.com" target="_blank" rel="noopener">platform.openai.com</a> and sign in (or create a free account).<br><strong>Step 2:</strong> Click your profile icon (top-right) → <strong>API keys</strong> → <strong>Create new secret key</strong>. Copy the key — it starts with <code>sk-proj-…</code><br><strong>Step 3:</strong> Click <strong>Billing</strong> in the left menu → <strong>Add payment method</strong> and add at least <strong>$5</strong> of prepaid credit (DALL-E 3 is $0.04/image so $5 = ~125 images).<br><strong>Step 4:</strong> Paste your key into the <strong>OpenAI API Key</strong> field above and click <strong>Save Key</strong>.' ],
-                    [ 'name' => 'Prompt writer',          'rec' => 'Recommended: ChatGPT', 'html' => 'The prompt writer is the AI that reads your post title and excerpt and writes a detailed DALL-E 3 image description.<br><strong>ChatGPT (GPT-4o mini)</strong> — uses your OpenAI key. Fast, cheap (~$0.001 per prompt), great results. Recommended default.<br><strong>Anthropic Claude / Google Gemini</strong> — uses the key you configured on the Security tab. Use these if you prefer a different model for prompts.<br><strong>None</strong> — skips the prompt writer and sends the post title directly to DALL-E. Quick but produces less tailored images.' ],
-                    [ 'name' => 'Image quality',          'rec' => 'Standard recommended', 'html' => '<strong>Standard</strong> — $0.04 per image (1792×1024 px). Good quality for blog header use cases.<br><strong>HD</strong> — $0.08 per image. More detail and sharpness, better for hero or portfolio images.' ],
-                    [ 'name' => 'Cost estimate',          'rec' => 'Info',                 'html' => 'With ChatGPT as prompt writer + Standard quality: ~<strong>$0.041 per image</strong> ($0.001 prompt + $0.040 image). A $5 top-up covers roughly 120 posts. Costs are billed directly to your OpenAI account — this plugin has no subscription fee.' ],
-                    [ 'name' => 'After generation',       'rec' => 'Info',                 'html' => 'The image is uploaded as a standard WordPress attachment and set as the post featured image. You can replace it from the post editor at any time. The Social Format auto-generator will then create platform-optimised versions for Facebook, Twitter, WhatsApp, and LinkedIn automatically.' ],
+                    [ 'name' => 'What it does',     'rec' => 'Overview',         'html' => 'Finds your published posts that have no featured image, then uses DALL-E 3 (OpenAI) to generate a 1792×1024 landscape header image tailored to each post. The image is automatically uploaded to your Media Library and set as the featured image.' ],
+                    [ 'name' => 'How to set up',    'rec' => 'Step-by-step',     'html' => '<strong>Step 1: Pick a vendor</strong> — choose which AI writes the prompt description sent to DALL-E. OpenAI (ChatGPT) is recommended as it shares your billing account.<br><strong>Step 2: Pick a model</strong> — GPT-4o mini is fast and cheap (~$0.001/prompt). Use a larger model for better prompt quality.<br><strong>Step 3: Enter your API key</strong> for that vendor and click Save Key.<br><strong>Note:</strong> DALL-E 3 always uses OpenAI for image generation. If you choose Anthropic or Google as your prompt writer, you also need to enter an OpenAI key in the DALL-E row.' ],
+                    [ 'name' => 'Image quality',    'rec' => 'Standard recommended', 'html' => '<strong>Standard</strong> — $0.04 per image (1792×1024 px).<br><strong>HD</strong> — $0.08 per image. More detail.' ],
+                    [ 'name' => 'Cost estimate',    'rec' => 'Info',             'html' => 'With GPT-4o mini as prompt writer + Standard quality: ~<strong>$0.041 per image</strong>. A $5 top-up covers ~120 posts.' ],
+                    [ 'name' => 'After generation', 'rec' => 'Info',             'html' => 'The image is uploaded as a WordPress attachment and set as the featured image. Social format crops (Facebook, Twitter, etc.) are generated immediately.' ],
                 ] ); ?>
             </div>
             <div class="cs-panel-body">
+
+                <script>
+                var csdtImgKeys = <?php echo $keys_json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON-encoded ?>;
+                var csdtImgVendor = <?php echo wp_json_encode( $saved_vendor ); ?>;
+                var csdtImgModel  = <?php echo wp_json_encode( $saved_model ); ?>;
+                var csdtImgDefaultSysprompt = <?php echo wp_json_encode( self::DEFAULT_IMG_SYSTEM_PROMPT ); ?>;
+                </script>
+
+                <!-- Prompt writer vendor -->
                 <div class="cs-sec-row">
-                    <span class="cs-sec-label"><?php esc_html_e( 'OpenAI API Key:', 'cloudscale-devtools' ); ?></span>
+                    <span class="cs-sec-label"><?php esc_html_e( 'Prompt writer:', 'cloudscale-devtools' ); ?></span>
+                    <div class="cs-sec-control">
+                        <select id="cs-ai-img-vendor" class="cs-sec-select">
+                            <option value="openai"    <?php selected( $saved_vendor, 'openai' ); ?>><?php esc_html_e( 'OpenAI (ChatGPT)', 'cloudscale-devtools' ); ?></option>
+                            <option value="anthropic" <?php selected( $saved_vendor, 'anthropic' ); ?>><?php esc_html_e( 'Anthropic (Claude)', 'cloudscale-devtools' ); ?></option>
+                            <option value="gemini"    <?php selected( $saved_vendor, 'gemini' ); ?>><?php esc_html_e( 'Google (Gemini)', 'cloudscale-devtools' ); ?></option>
+                            <option value="none"      <?php selected( $saved_vendor, 'none' ); ?>><?php esc_html_e( 'None — use post title only', 'cloudscale-devtools' ); ?></option>
+                        </select>
+                        <span class="cs-hint"><?php esc_html_e( 'The AI that reads your post content and writes the DALL-E image description. OpenAI is recommended — it shares the same billing account as DALL-E.', 'cloudscale-devtools' ); ?></span>
+                    </div>
+                </div>
+
+                <!-- Model (hidden when vendor = none) -->
+                <div class="cs-sec-row" id="cs-ai-img-model-row">
+                    <span class="cs-sec-label"><?php esc_html_e( 'Model:', 'cloudscale-devtools' ); ?></span>
+                    <div class="cs-sec-control">
+                        <select id="cs-ai-img-model" class="cs-sec-select">
+                            <!-- populated by JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- API key for selected vendor (hidden when vendor = none) -->
+                <div class="cs-sec-row" id="cs-ai-img-key-row">
+                    <span class="cs-sec-label" id="cs-ai-img-key-label"><?php esc_html_e( 'API Key:', 'cloudscale-devtools' ); ?></span>
                     <div class="cs-sec-control">
                         <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
                             <div style="position:relative;display:flex;align-items:center;width:100%;max-width:480px">
                                 <input type="password" id="cs-ai-img-openai-key" class="cs-text-input cs-sec-key-input"
                                        autocomplete="off" placeholder="sk-proj-…"
-                                       style="padding-right:36px;width:100%;box-sizing:border-box"
-                                       value="<?php echo esc_attr( $openai_key ); ?>">
-                                <button type="button" id="cs-ai-img-key-toggle"
-                                        title="Show / hide key"
+                                       style="padding-right:36px;width:100%;box-sizing:border-box">
+                                <button type="button" id="cs-ai-img-key-toggle" title="Show / hide key"
                                         style="position:absolute;right:8px;background:none;border:none;cursor:pointer;padding:0;line-height:1;font-size:16px;color:#94a3b8">👁</button>
                             </div>
                             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                                 <button type="button" class="cs-btn-secondary" id="cs-ai-img-save-key"><?php esc_html_e( 'Save Key', 'cloudscale-devtools' ); ?></button>
                                 <button type="button" id="cs-ai-img-test-key" style="background:#16a34a;color:#fff;border:1px solid #15803d;border-radius:4px;padding:5px 14px;font-size:13px;font-weight:600;cursor:pointer"><?php esc_html_e( 'Test', 'cloudscale-devtools' ); ?></button>
                                 <button type="button" id="cs-ai-img-copy-key" style="background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;border-radius:4px;padding:5px 14px;font-size:13px;font-weight:600;cursor:pointer" title="Copy key to clipboard">📋 <?php esc_html_e( 'Copy', 'cloudscale-devtools' ); ?></button>
-                                <span id="cs-ai-img-key-status" class="cs-sec-key-status"><?php echo $openai_key ? '<span style="color:#2e7d32">✓ Key saved</span>' : ''; ?></span>
+                                <span id="cs-ai-img-key-status" class="cs-sec-key-status"></span>
                             </div>
                         </div>
-                        <span class="cs-hint"><?php echo wp_kses(
-                            __( 'Sign in at <a href="https://platform.openai.com" target="_blank" rel="noopener">platform.openai.com</a> → profile icon → <strong>API keys</strong> → <strong>Create new secret key</strong>. Add billing credit under <strong>Billing → Add payment method</strong> ($5 minimum). Key starts with <code>sk-proj-…</code>', 'cloudscale-devtools' ),
-                            [ 'a' => [ 'href' => [], 'target' => [], 'rel' => [] ], 'strong' => [], 'code' => [] ]
-                        ); ?></span>
+                        <span class="cs-hint" id="cs-ai-img-key-hint"></span>
                     </div>
                 </div>
 
-                <div class="cs-sec-row">
-                    <span class="cs-sec-label"><?php esc_html_e( 'Prompt writer:', 'cloudscale-devtools' ); ?></span>
+                <!-- DALL-E key (OpenAI) — only shown when prompt writer vendor ≠ openai -->
+                <div class="cs-sec-row" id="cs-ai-img-dalle-key-row" style="display:none">
+                    <span class="cs-sec-label"><?php esc_html_e( 'DALL-E key (OpenAI):', 'cloudscale-devtools' ); ?></span>
                     <div class="cs-sec-control">
-                        <select id="cs-ai-img-prompt-writer" class="cs-sec-select">
-                            <option value="chatgpt"><?php esc_html_e( 'ChatGPT (GPT-4o mini)', 'cloudscale-devtools' ); ?></option>
-                            <option value="anthropic"><?php esc_html_e( 'Anthropic Claude', 'cloudscale-devtools' ); ?></option>
-                            <option value="gemini"><?php esc_html_e( 'Google Gemini', 'cloudscale-devtools' ); ?></option>
-                            <option value="none"><?php esc_html_e( 'None — use post title only', 'cloudscale-devtools' ); ?></option>
-                        </select>
-                        <span class="cs-hint"><?php echo wp_kses(
-                            __( '<strong>ChatGPT</strong> uses your OpenAI key above (recommended — same account as DALL-E, ~$0.001/prompt). <strong>Claude / Gemini</strong> use the keys from the Security tab. <strong>None</strong> sends the post title directly to DALL-E without any prompt improvement.', 'cloudscale-devtools' ),
-                            [ 'strong' => [] ]
-                        ); ?></span>
+                        <div style="position:relative;display:flex;align-items:center;width:100%;max-width:480px">
+                            <input type="password" id="cs-ai-img-dalle-key" class="cs-text-input cs-sec-key-input"
+                                   autocomplete="off" placeholder="sk-proj-…"
+                                   style="padding-right:36px;width:100%;box-sizing:border-box"
+                                   value="<?php echo esc_attr( $openai_key ); ?>">
+                            <button type="button" id="cs-ai-img-dalle-key-toggle" title="Show / hide key"
+                                    style="position:absolute;right:8px;background:none;border:none;cursor:pointer;padding:0;line-height:1;font-size:16px;color:#94a3b8">👁</button>
+                        </div>
+                        <div style="margin-top:6px;display:flex;align-items:center;gap:8px">
+                            <button type="button" id="cs-ai-img-dalle-save-key" class="cs-btn-secondary"><?php esc_html_e( 'Save DALL-E Key', 'cloudscale-devtools' ); ?></button>
+                            <span id="cs-ai-img-dalle-key-status" class="cs-sec-key-status"><?php echo $openai_key ? '<span style="color:#2e7d32">✓ Key saved</span>' : ''; ?></span>
+                        </div>
+                        <span class="cs-hint"><?php esc_html_e( 'DALL-E 3 always uses OpenAI for image generation regardless of your prompt writer choice.', 'cloudscale-devtools' ); ?></span>
                     </div>
                 </div>
 
@@ -410,12 +466,43 @@ class CSDT_Thumbnails {
                     </div>
                 </div>
 
-                <div style="margin:16px 0 12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-                    <button type="button" class="cs-btn-primary" id="cs-ai-img-scan-btn">🔍 <?php esc_html_e( 'Find posts without featured image', 'cloudscale-devtools' ); ?></button>
-                    <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:#475569">
-                        <input type="checkbox" id="cs-ai-img-show-all" style="width:16px;height:16px">
-                        <?php esc_html_e( 'Show all posts (including those with images)', 'cloudscale-devtools' ); ?>
-                    </label>
+                <!-- Image style preset -->
+                <div class="cs-sec-row">
+                    <span class="cs-sec-label"><?php esc_html_e( 'Image style:', 'cloudscale-devtools' ); ?></span>
+                    <div class="cs-sec-control">
+                        <select id="cs-ai-img-style" class="cs-sec-select">
+                            <option value="auto"><?php esc_html_e( 'Auto (system prompt decides)', 'cloudscale-devtools' ); ?></option>
+                            <option value="technical_infographic"><?php esc_html_e( 'Technical infographic', 'cloudscale-devtools' ); ?></option>
+                            <option value="photorealistic"><?php esc_html_e( 'Photorealistic', 'cloudscale-devtools' ); ?></option>
+                            <option value="editorial"><?php esc_html_e( 'Editorial photography', 'cloudscale-devtools' ); ?></option>
+                            <option value="abstract"><?php esc_html_e( 'Abstract / geometric art', 'cloudscale-devtools' ); ?></option>
+                            <option value="cartoon"><?php esc_html_e( 'Cartoon / illustration', 'cloudscale-devtools' ); ?></option>
+                            <option value="dali"><?php esc_html_e( 'Surrealist (Salvador Dali)', 'cloudscale-devtools' ); ?></option>
+                            <option value="minimalist"><?php esc_html_e( 'Minimalist', 'cloudscale-devtools' ); ?></option>
+                        </select>
+                        <span class="cs-hint"><?php esc_html_e( 'Override the visual style. "Auto" defers to your system prompt instructions below.', 'cloudscale-devtools' ); ?></span>
+                    </div>
+                </div>
+
+                <!-- System prompt editor -->
+                <div class="cs-sec-row">
+                    <span class="cs-sec-label" style="padding-top:4px"><?php esc_html_e( 'Prompt instructions:', 'cloudscale-devtools' ); ?></span>
+                    <div class="cs-sec-control">
+                        <textarea id="cs-ai-img-system-prompt" rows="10"
+                                  style="width:100%;max-width:560px;font-size:12px;font-family:monospace;padding:8px;border:1px solid #cbd5e1;border-radius:4px;box-sizing:border-box;resize:vertical;line-height:1.5"
+                                  placeholder="Instructions sent to the AI when writing the DALL-E prompt…"><?php echo esc_textarea( $system_prompt ); ?></textarea>
+                        <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                            <button type="button" id="cs-ai-img-save-sysprompt" class="cs-btn-secondary"><?php esc_html_e( 'Save Instructions', 'cloudscale-devtools' ); ?></button>
+                            <button type="button" id="cs-ai-img-reset-sysprompt" style="background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;border-radius:4px;padding:5px 12px;font-size:12px;cursor:pointer"><?php esc_html_e( 'Reset to default', 'cloudscale-devtools' ); ?></button>
+                            <span id="cs-ai-img-sysprompt-status" style="font-size:12px"></span>
+                        </div>
+                        <span class="cs-hint"><?php esc_html_e( 'These instructions tell the AI how to write the DALL-E description. Edit to enforce a consistent style (e.g. "dark technical infographic, no photorealism"). You can also edit each prompt individually before the image is generated.', 'cloudscale-devtools' ); ?></span>
+                    </div>
+                </div>
+
+                <div style="margin:16px 0 12px;display:flex;gap:10px;flex-wrap:wrap">
+                    <button type="button" class="cs-btn-primary" id="cs-ai-img-scan-btn" data-mode="missing">🔍 <?php esc_html_e( 'Find posts without featured image', 'cloudscale-devtools' ); ?></button>
+                    <button type="button" class="cs-btn-secondary" id="cs-ai-img-scan-with-btn" data-mode="with_image" style="background:#475569;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer">🖼 <?php esc_html_e( 'Find posts with featured image', 'cloudscale-devtools' ); ?></button>
                 </div>
                 <div id="cs-ai-img-results" style="display:none;margin-top:4px"></div>
             </div>
@@ -1688,44 +1775,66 @@ class CSDT_Thumbnails {
         ];
     }
 
-    // ─── AJAX: save OpenAI key ───────────────────────────────────────────
+    // ─── AJAX: save vendor API key ──────────────────────────────────────
 
     public static function ajax_ai_image_save_key(): void {
         check_ajax_referer( self::THUMB_NONCE, 'nonce' );
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_send_json_error( 'Unauthorized', 403 );
         }
-        $raw = isset( $_POST['openai_key'] ) ? sanitize_text_field( wp_unslash( $_POST['openai_key'] ) ) : '';
-        $key = trim( $raw );
+        $vendor = isset( $_POST['vendor'] ) ? sanitize_key( wp_unslash( $_POST['vendor'] ) ) : 'openai';
+        $raw    = isset( $_POST['key'] )    ? sanitize_text_field( wp_unslash( $_POST['key'] ) ) : '';
+        $key    = trim( $raw );
+
+        $option_map = [
+            'openai'    => 'csdt_devtools_openai_key',
+            'anthropic' => 'csdt_devtools_anthropic_key',
+            'gemini'    => 'csdt_devtools_gemini_key',
+        ];
+        $option = $option_map[ $vendor ] ?? 'csdt_devtools_openai_key';
         if ( $key !== '' ) {
-            update_option( 'csdt_devtools_openai_key', $key, false );
+            update_option( $option, $key, false );
         }
-        $saved = (string) get_option( 'csdt_devtools_openai_key', '' );
+
+        // Also persist the selected vendor+model so the panel remembers them.
+        if ( isset( $_POST['prompt_vendor'] ) ) {
+            update_option( 'csdt_devtools_prompt_vendor', sanitize_key( wp_unslash( $_POST['prompt_vendor'] ) ), false );
+        }
+        if ( isset( $_POST['prompt_model'] ) ) {
+            update_option( 'csdt_devtools_prompt_model', sanitize_key( wp_unslash( $_POST['prompt_model'] ) ), false );
+        }
+
+        $saved = (string) get_option( $option, '' );
         wp_send_json_success( [
-            'saved' => ! empty( $saved ),
-            'key'   => $saved,
+            'saved'  => ! empty( $saved ),
+            'key'    => $saved,
+            'vendor' => $vendor,
         ] );
     }
 
-    // ─── AJAX: test OpenAI API key ───────────────────────────────────────
+    // ─── AJAX: test vendor API key ───────────────────────────────────────
 
     public static function ajax_ai_image_test_key(): void {
         check_ajax_referer( self::THUMB_NONCE, 'nonce' );
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_send_json_error( 'Unauthorized', 403 );
         }
-        $key = (string) get_option( 'csdt_devtools_openai_key', '' );
-        if ( ! $key ) {
-            wp_send_json_error( [ 'message' => 'No API key saved. Enter and save your key first.' ] );
-            return;
-        }
+        $vendor = isset( $_POST['vendor'] ) ? sanitize_key( wp_unslash( $_POST['vendor'] ) ) : 'openai';
         try {
-            CSDT_AI_Dispatcher::call_openai_text(
-                'You are a test assistant.',
-                'Reply with the single word OK and nothing else.',
-                5
-            );
-            wp_send_json_success( [ 'message' => '✓ Key is valid and OpenAI is reachable.' ] );
+            switch ( $vendor ) {
+                case 'anthropic':
+                    CSDT_AI_Dispatcher::call( 'You are a test assistant.', 'Reply with the single word OK and nothing else.', '_auto', 5, 'anthropic' );
+                    wp_send_json_success( [ 'message' => '✓ Anthropic key is valid.' ] );
+                    break;
+                case 'gemini':
+                    CSDT_AI_Dispatcher::call( 'You are a test assistant.', 'Reply with the single word OK and nothing else.', '_auto', 5, 'gemini' );
+                    wp_send_json_success( [ 'message' => '✓ Google key is valid.' ] );
+                    break;
+                default:
+                    CSDT_AI_Dispatcher::call_openai_text( 'You are a test assistant.', 'Reply with the single word OK and nothing else.', 5 );
+                    wp_send_json_success( [ 'message' => '✓ OpenAI key is valid.' ] );
+                    break;
+            }
         } catch ( \RuntimeException $e ) {
             wp_send_json_error( [ 'message' => $e->getMessage() ] );
         }
@@ -1739,8 +1848,8 @@ class CSDT_Thumbnails {
             wp_send_json_error( 'Unauthorized', 403 );
         }
 
-        $sort     = isset( $_POST['sort'] )     ? sanitize_key( wp_unslash( $_POST['sort'] ) )                      : 'newest';
-        $show_all = isset( $_POST['show_all'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['show_all'] ) );
+        $sort = isset( $_POST['sort'] ) ? sanitize_key( wp_unslash( $_POST['sort'] ) ) : 'newest';
+        $mode = isset( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : 'missing';
 
         // All known view-count meta keys — checked in priority order.
         $view_meta_keys = [
@@ -1759,8 +1868,10 @@ class CSDT_Thumbnails {
             'order'          => $date_order,
             'fields'         => 'ids',
         ];
-        if ( ! $show_all ) {
+        if ( 'missing' === $mode ) {
             $query_args['meta_query'] = [ [ 'key' => '_thumbnail_id', 'compare' => 'NOT EXISTS' ] ];
+        } elseif ( 'with_image' === $mode ) {
+            $query_args['meta_query'] = [ [ 'key' => '_thumbnail_id', 'compare' => 'EXISTS' ] ];
         }
         $posts = get_posts( $query_args );
 
@@ -1813,21 +1924,39 @@ class CSDT_Thumbnails {
             } );
         }
 
-        wp_send_json_success( [ 'posts' => $results, 'sort' => $sort ] );
+        wp_send_json_success( [ 'posts' => $results, 'sort' => $sort, 'mode' => $mode ] );
     }
 
     // ─── AJAX: generate DALL-E image for a post (returns 2 options) ─────
 
-    public static function ajax_ai_image_generate(): void {
+    // ─── AJAX: save system prompt ────────────────────────────────────────
+
+    public static function ajax_ai_image_save_sysprompt(): void {
+        check_ajax_referer( self::THUMB_NONCE, 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+        $raw = isset( $_POST['system_prompt'] ) ? wp_unslash( $_POST['system_prompt'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+        $clean = sanitize_textarea_field( $raw );
+        if ( '' === $clean ) {
+            $clean = self::DEFAULT_IMG_SYSTEM_PROMPT;
+        }
+        update_option( 'csdt_devtools_img_system_prompt', $clean, false );
+        wp_send_json_success( [ 'saved' => true ] );
+    }
+
+    // ─── AJAX: write DALL-E prompt via AI (step 1 of 2) ─────────────────
+
+    public static function ajax_ai_image_write_prompt(): void {
         check_ajax_referer( self::THUMB_NONCE, 'nonce' );
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_send_json_error( 'Unauthorized', 403 );
         }
 
-        $post_id       = isset( $_POST['post_id'] )       ? (int) $_POST['post_id']                                   : 0;
-        $quality       = ( isset( $_POST['quality'] ) && $_POST['quality'] === 'hd' ) ? 'hd' : 'standard';
-        $prompt_writer = isset( $_POST['prompt_writer'] ) ? sanitize_key( wp_unslash( $_POST['prompt_writer'] ) ) : 'chatgpt';
-        $count         = ( isset( $_POST['dual'] ) && '1' === $_POST['dual'] ) ? 2 : 1;
+        $post_id       = isset( $_POST['post_id'] ) ? (int) $_POST['post_id'] : 0;
+        $prompt_vendor = isset( $_POST['prompt_vendor'] ) ? sanitize_key( wp_unslash( $_POST['prompt_vendor'] ) ) : 'openai';
+        $prompt_model  = isset( $_POST['prompt_model'] )  ? sanitize_text_field( wp_unslash( $_POST['prompt_model'] ) ) : 'gpt-4o-mini';
+        $style         = isset( $_POST['prompt_style'] )  ? sanitize_key( wp_unslash( $_POST['prompt_style'] ) ) : 'auto';
 
         if ( ! $post_id ) {
             wp_send_json_error( [ 'message' => 'Invalid post ID.' ] );
@@ -1839,43 +1968,47 @@ class CSDT_Thumbnails {
             return;
         }
 
-        $title   = $post->post_title;
-        $content = wp_strip_all_tags( $post->post_content );
-        $excerpt = $post->post_excerpt ?: wp_trim_words( $content, 80 );
-
+        $title      = $post->post_title;
+        $content    = wp_strip_all_tags( $post->post_content );
+        $excerpt    = $post->post_excerpt ?: wp_trim_words( $content, 80 );
         $categories = implode( ', ', wp_list_pluck( get_the_category( $post_id ), 'name' ) );
         $tags       = implode( ', ', wp_list_pluck( get_the_tags( $post_id ) ?: [], 'name' ) );
         $intro      = mb_substr( $content, 0, 600 );
 
         $context_parts = [ "Post title: \"{$title}\"" ];
-        if ( $categories ) {
-            $context_parts[] = "Categories: {$categories}";
-        }
-        if ( $tags ) {
-            $context_parts[] = "Tags: {$tags}";
-        }
+        if ( $categories )                                   { $context_parts[] = "Categories: {$categories}"; }
+        if ( $tags )                                         { $context_parts[] = "Tags: {$tags}"; }
         $context_parts[] = "Excerpt: \"{$excerpt}\"";
-        if ( $intro && strlen( $intro ) > strlen( $excerpt ) ) {
-            $context_parts[] = "Article intro: \"{$intro}\"";
-        }
+        if ( $intro && strlen( $intro ) > strlen( $excerpt ) ) { $context_parts[] = "Article intro: \"{$intro}\""; }
         $context_str = implode( "\n", $context_parts );
 
-        $system_msg = 'You write precise DALL-E 3 image generation prompts for WordPress blog post header images. Output only the prompt, nothing else. No explanations. The image must be specific to the exact topic described — never use generic server rooms, abstract tech backgrounds, or stock-photo clichés. If the post is about a specific database, cloud service, programming language, or technology, the image must visually represent that specific thing.';
-        $user_msg   = "{$context_str}\n\nWrite a DALL-E 3 prompt for a 1792x1024 professional blog post header image. No text or typography in the image. Photorealistic or clean editorial illustration style. Under 180 words.";
+        $style_map = [
+            'technical_infographic' => 'clean flat-design technical infographic, vector illustration aesthetic, no photorealism',
+            'photorealistic'        => 'cinematic photorealistic photography, ultra high quality, professional lighting',
+            'editorial'             => 'professional editorial photography, magazine quality, natural light',
+            'abstract'              => 'colourful abstract geometric art, vibrant creative composition',
+            'cartoon'               => 'bold cartoon illustration style, clear outlines, expressive and fun',
+            'dali'                  => 'surrealist dreamlike artwork inspired by Salvador Dali, melting forms, impossible juxtapositions',
+            'minimalist'            => 'clean minimalist design, ample white space, simple geometric shapes, muted pastel palette',
+        ];
+        $style_instruction = isset( $style_map[ $style ] ) ? " Required visual style: {$style_map[$style]}." : '';
+
+        $system_msg = (string) get_option( 'csdt_devtools_img_system_prompt', self::DEFAULT_IMG_SYSTEM_PROMPT );
+        $user_msg   = "{$context_str}\n\nWrite a DALL-E 3 prompt for a 1792×1024 professional blog post header image.{$style_instruction} Under 150 words.";
 
         try {
-            switch ( $prompt_writer ) {
-                case 'chatgpt':
-                    $prompt = CSDT_AI_Dispatcher::call_openai_text( $system_msg, $user_msg, 300 );
+            switch ( $prompt_vendor ) {
+                case 'openai':
+                    $prompt = CSDT_AI_Dispatcher::call_openai_text( $system_msg, $user_msg, 300, $prompt_model );
                     break;
                 case 'anthropic':
-                    $prompt = CSDT_AI_Dispatcher::call( $system_msg, $user_msg, '_auto', 300, 'anthropic' );
+                    $prompt = CSDT_AI_Dispatcher::call( $system_msg, $user_msg, $prompt_model, 300, 'anthropic' );
                     break;
                 case 'gemini':
-                    $prompt = CSDT_AI_Dispatcher::call( $system_msg, $user_msg, '_auto', 300, 'gemini' );
+                    $prompt = CSDT_AI_Dispatcher::call( $system_msg, $user_msg, $prompt_model, 300, 'gemini' );
                     break;
                 default:
-                    $prompt = "Professional blog header image for an article titled \"{$title}\". High-quality, photorealistic, wide landscape format, no text or typography.";
+                    $prompt = "Professional blog header image for an article titled \"{$title}\". Wide landscape format, no text or typography.";
                     break;
             }
         } catch ( \RuntimeException $e ) {
@@ -1883,11 +2016,81 @@ class CSDT_Thumbnails {
             return;
         }
 
+        wp_send_json_success( [ 'prompt' => $prompt ] );
+    }
+
+    // ─── AJAX: generate image from prompt (step 2 of 2) ─────────────────
+
+    public static function ajax_ai_image_generate(): void {
+        check_ajax_referer( self::THUMB_NONCE, 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
+        $post_id = isset( $_POST['post_id'] ) ? (int) $_POST['post_id'] : 0;
+        $quality = ( isset( $_POST['quality'] ) && $_POST['quality'] === 'hd' ) ? 'hd' : 'standard';
+        $count   = ( isset( $_POST['dual'] ) && '1' === $_POST['dual'] ) ? 2 : 1;
+        $prompt  = isset( $_POST['prompt'] ) ? sanitize_textarea_field( wp_unslash( $_POST['prompt'] ) ) : '';
+
+        // Legacy fallback: if no pre-written prompt, write one inline.
+        $prompt_vendor = isset( $_POST['prompt_vendor'] ) ? sanitize_key( wp_unslash( $_POST['prompt_vendor'] ) ) : 'openai';
+        $prompt_model  = isset( $_POST['prompt_model'] )  ? sanitize_text_field( wp_unslash( $_POST['prompt_model'] ) ) : 'gpt-4o-mini';
+
+        if ( ! $post_id ) {
+            wp_send_json_error( [ 'message' => 'Invalid post ID.' ] );
+            return;
+        }
+        $post = get_post( $post_id );
+        if ( ! $post ) {
+            wp_send_json_error( [ 'message' => 'Post not found.' ] );
+            return;
+        }
+
+        $title = $post->post_title;
+        $slug  = sanitize_file_name( $post->post_name ?: 'post-' . $post_id );
+
+        if ( '' === $prompt ) {
+            $content    = wp_strip_all_tags( $post->post_content );
+            $excerpt    = $post->post_excerpt ?: wp_trim_words( $content, 80 );
+            $categories = implode( ', ', wp_list_pluck( get_the_category( $post_id ), 'name' ) );
+            $tags       = implode( ', ', wp_list_pluck( get_the_tags( $post_id ) ?: [], 'name' ) );
+            $intro      = mb_substr( $content, 0, 600 );
+
+            $context_parts = [ "Post title: \"{$title}\"" ];
+            if ( $categories ) { $context_parts[] = "Categories: {$categories}"; }
+            if ( $tags )       { $context_parts[] = "Tags: {$tags}"; }
+            $context_parts[] = "Excerpt: \"{$excerpt}\"";
+            if ( $intro && strlen( $intro ) > strlen( $excerpt ) ) { $context_parts[] = "Article intro: \"{$intro}\""; }
+            $context_str = implode( "\n", $context_parts );
+
+            $system_msg = (string) get_option( 'csdt_devtools_img_system_prompt', self::DEFAULT_IMG_SYSTEM_PROMPT );
+            $user_msg   = "{$context_str}\n\nWrite a DALL-E 3 prompt for a 1792×1024 professional blog post header image. Under 150 words.";
+
+            try {
+                switch ( $prompt_vendor ) {
+                    case 'openai':
+                        $prompt = CSDT_AI_Dispatcher::call_openai_text( $system_msg, $user_msg, 300, $prompt_model );
+                        break;
+                    case 'anthropic':
+                        $prompt = CSDT_AI_Dispatcher::call( $system_msg, $user_msg, $prompt_model, 300, 'anthropic' );
+                        break;
+                    case 'gemini':
+                        $prompt = CSDT_AI_Dispatcher::call( $system_msg, $user_msg, $prompt_model, 300, 'gemini' );
+                        break;
+                    default:
+                        $prompt = "Professional blog header image for an article titled \"{$title}\". High-quality, wide landscape format, no text or typography.";
+                        break;
+                }
+            } catch ( \RuntimeException $e ) {
+                wp_send_json_error( [ 'message' => $e->getMessage() ] );
+                return;
+            }
+        }
+
         require_once ABSPATH . 'wp-admin/includes/file.php';
         require_once ABSPATH . 'wp-admin/includes/media.php';
         require_once ABSPATH . 'wp-admin/includes/image.php';
 
-        $slug    = sanitize_file_name( $post->post_name ?: 'post-' . $post_id );
         $options = [];
 
         for ( $i = 1; $i <= $count; $i++ ) {
